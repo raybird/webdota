@@ -1,0 +1,376 @@
+import Peer, { type DataConnection } from 'peerjs';
+
+export interface PlayerInput {
+    frame: number;
+    playerId: string;
+    moveX: number;
+    moveY: number;
+    action?: string; // 'attack' | 'skill1' | 'skill2' etc.
+}
+
+export interface GameState {
+    frame: number;
+    timestamp: number;
+    checksum?: string;
+}
+
+export class NetworkManager {
+    peer: Peer;
+    peerId: string = '';
+    connections: Map<string, DataConnection> = new Map();
+    isHost: boolean = false;
+    hostId: string = '';
+
+    // Frame sync
+    currentFrame: number = 0;
+    inputBuffer: Map<number, Map<string, PlayerInput>> = new Map(); // frame -> playerId -> input
+
+    // Callbacks
+    onConnected?: () => void;
+    onPeerJoined?: (peerId: string) => void;
+    onPeerLeft?: (peerId: string) => void;
+    onInputReceived?: (input: PlayerInput) => void;
+    onHostChanged?: (newHostId: string) => void;
+    onFrameSync?: (frame: number) => void;
+    onPlayerReady?: (peerId: string, isReady: boolean) => void;
+    onGameStartCountdown?: (seconds: number) => void;
+    onGameStarted?: () => void;
+    onGameState?: (state: any) => void;
+
+    constructor() {
+        // PeerJS 會自動生成 ID，或可指定
+        this.peer = new Peer({
+            // 使用公共 PeerJS Server (開發用)
+            // 生產環境應自架 PeerServer
+        });
+
+        this.setupPeerListeners();
+    }
+
+    private setupPeerListeners() {
+        this.peer.on('open', (id) => {
+            this.peerId = id;
+            console.log(`[Network] My Peer ID: ${id}`);
+            if (this.onConnected) this.onConnected();
+        });
+
+        this.peer.on('connection', (conn) => {
+            this.handleIncomingConnection(conn);
+        });
+
+        this.peer.on('error', (err) => {
+            console.error('[Network] Peer error:', err);
+        });
+    }
+
+    /**
+     * 連線到指定的 Peer (用於加入房間)
+     */
+    connectToPeer(remotePeerId: string) {
+        if (this.connections.has(remotePeerId)) {
+            console.warn(`[Network] Already connected to ${remotePeerId}`);
+            return;
+        }
+
+        const conn = this.peer.connect(remotePeerId, { reliable: true });
+        this.handleIncomingConnection(conn);
+    }
+
+    /**
+     * 處理新連線 (無論是主動連或被動連)
+     */
+    private handleIncomingConnection(conn: DataConnection) {
+        conn.on('open', () => {
+            console.log(`[Network] Connected to ${conn.peer}`);
+            this.connections.set(conn.peer, conn);
+
+            // 通知上層有新玩家加入
+            if (this.onPeerJoined) this.onPeerJoined(conn.peer);
+
+            // 如果是 Host，發送當前所有連線的 Peer 列表給新玩家
+            if (this.isHost) {
+                this.sendPeerList(conn);
+            }
+        });
+
+        conn.on('data', (data: any) => {
+            this.handleMessage(conn.peer, data);
+        });
+
+        conn.on('close', () => {
+            console.log(`[Network] ${conn.peer} disconnected`);
+            this.connections.delete(conn.peer);
+            if (this.onPeerLeft) this.onPeerLeft(conn.peer);
+
+            // 如果斷線的是 Host，觸發 Host Migration
+            if (conn.peer === this.hostId) {
+                this.electNewHost();
+            }
+        });
+
+        conn.on('error', (err) => {
+            console.error(`[Network] Connection error with ${conn.peer}:`, err);
+        });
+    }
+
+    /**
+     * Host 發送 Peer 列表給新加入的玩家，讓他們互相連線 (Mesh)
+     */
+    private sendPeerList(conn: DataConnection) {
+        const peerList = Array.from(this.connections.keys()).filter(id => id !== conn.peer);
+        conn.send({
+            type: 'peer_list',
+            peers: peerList,
+            hostId: this.hostId
+        });
+    }
+
+    /**
+     * 處理收到的訊息
+     */
+    private handleMessage(_fromPeerId: string, data: any) {
+        switch (data.type) {
+            case 'peer_list':
+                // 收到 Host 發來的 Peer 列表，連線到所有其他玩家
+                data.peers.forEach((peerId: string) => {
+                    if (peerId !== this.peerId && !this.connections.has(peerId)) {
+                        this.connectToPeer(peerId);
+                    }
+                });
+                this.hostId = data.hostId;
+                break;
+
+            case 'input':
+                // 收到其他玩家的輸入
+                const input: PlayerInput = data.input;
+
+                // Debug: 每 60 frame 輸出一次
+                if (input.frame % 60 === 0 && (input.moveX !== 0 || input.moveY !== 0)) {
+                    console.log(`[Network] Received input from ${input.playerId.substring(0, 8)}: Frame ${input.frame}, Move (${input.moveX}, ${input.moveY})`);
+                }
+
+                this.storeInput(input);
+                if (this.onInputReceived) this.onInputReceived(input);
+                break;
+
+            case 'host_migration':
+                // Host 遷移通知
+                this.hostId = data.newHostId;
+                this.isHost = (this.hostId === this.peerId);
+                console.log(`[Network] Host migrated to ${this.hostId}`);
+                if (this.onHostChanged) this.onHostChanged(this.hostId);
+                break;
+
+            case 'sync_frame':
+                if (this.onFrameSync) this.onFrameSync(data.frame);
+                break;
+
+            case 'player_ready':
+                if (this.onPlayerReady) this.onPlayerReady(data.peerId, data.isReady);
+                break;
+
+            case 'game_start_countdown':
+                if (this.onGameStartCountdown) this.onGameStartCountdown(data.seconds);
+                break;
+
+            case 'game_started':
+                if (this.onGameStarted) this.onGameStarted();
+                break;
+
+            case 'game_state':
+                if (this.onGameState) this.onGameState(data.state);
+                break;
+
+            default:
+                console.warn('[Network] Unknown message type:', data.type);
+        }
+    }
+
+    /**
+     * 發送遊戲狀態給指定玩家 (用於初始同步)
+     */
+    sendGameState(state: any, targetPeerId: string) {
+        const conn = this.connections.get(targetPeerId);
+        if (conn) {
+            conn.send({
+                type: 'game_state',
+                state
+            });
+        }
+    }
+
+    /**
+     * 發送準備狀態
+     */
+    sendPlayerReady(isReady: boolean) {
+        const message = {
+            type: 'player_ready',
+            peerId: this.peerId,
+            isReady
+        };
+
+        // 廣播給所有人 (包括 Host)
+        this.connections.forEach(conn => conn.send(message));
+
+        // 如果自己是 Host，也要觸發 callback
+        if (this.onPlayerReady) this.onPlayerReady(this.peerId, isReady);
+    }
+
+    /**
+     * 廣播遊戲開始倒數 (Host Only)
+     */
+    broadcastGameStartCountdown(seconds: number) {
+        const message = {
+            type: 'game_start_countdown',
+            seconds
+        };
+        this.connections.forEach(conn => conn.send(message));
+        if (this.onGameStartCountdown) this.onGameStartCountdown(seconds);
+    }
+
+    /**
+     * 廣播遊戲正式開始 (Host Only)
+     */
+    broadcastGameStarted() {
+        const message = {
+            type: 'game_started'
+        };
+        this.connections.forEach(conn => conn.send(message));
+        if (this.onGameStarted) this.onGameStarted();
+    }
+
+    /**
+     * 發送 Frame 同步訊息給指定玩家
+     */
+    sendFrameSync(frame: number, targetPeerId: string) {
+        const conn = this.connections.get(targetPeerId);
+        if (conn) {
+            conn.send({
+                type: 'sync_frame',
+                frame
+            });
+            // console.log(`[Network] Sent frame sync ${frame} to ${targetPeerId}`); // 減少 log
+        }
+    }
+
+    /**
+     * 廣播 Frame 同步訊息給所有玩家
+     */
+    broadcastFrameSync(frame: number) {
+        const message = {
+            type: 'sync_frame',
+            frame
+        };
+        this.connections.forEach(conn => conn.send(message));
+    }
+
+    /**
+     * 廣播玩家輸入給所有其他玩家
+     */
+    broadcastInput(input: PlayerInput) {
+        const message = {
+            type: 'input',
+            input
+        };
+
+        this.connections.forEach((conn) => {
+            conn.send(message);
+        });
+
+        // 也存到自己的 buffer
+        this.storeInput(input);
+    }
+
+    /**
+     * 儲存輸入到 buffer
+     */
+    private storeInput(input: PlayerInput) {
+        if (!this.inputBuffer.has(input.frame)) {
+            this.inputBuffer.set(input.frame, new Map());
+        }
+        this.inputBuffer.get(input.frame)!.set(input.playerId, input);
+    }
+
+    /**
+     * 檢查某個 Frame 是否收到所有玩家的輸入
+     */
+    hasAllInputsForFrame(frame: number): boolean {
+        const expectedPlayerCount = this.connections.size + 1; // +1 for self
+        const inputs = this.inputBuffer.get(frame);
+        return inputs ? inputs.size >= expectedPlayerCount : false;
+    }
+
+    /**
+     * 取得某個 Frame 的所有輸入
+     */
+    getInputsForFrame(frame: number): PlayerInput[] {
+        const inputs = this.inputBuffer.get(frame);
+        return inputs ? Array.from(inputs.values()) : [];
+    }
+
+    /**
+     * 選舉新 Host (當前 Host 斷線時)
+     */
+    private electNewHost() {
+        // 簡單策略: 選 Peer ID 字典序最小的
+        const allPeerIds = [this.peerId, ...Array.from(this.connections.keys())];
+        allPeerIds.sort();
+        const newHostId = allPeerIds[0];
+
+        if (!newHostId) {
+            console.error('[Network] Cannot elect new host: no peers available');
+            return;
+        }
+
+        this.hostId = newHostId;
+        this.isHost = (newHostId === this.peerId);
+
+        console.log(`[Network] New host elected: ${newHostId}`);
+
+        // 廣播 Host 變更
+        if (this.isHost) {
+            this.broadcastHostMigration();
+        }
+
+        if (this.onHostChanged) this.onHostChanged(newHostId);
+    }
+
+    /**
+     * 廣播 Host 遷移訊息
+     */
+    private broadcastHostMigration() {
+        const message = {
+            type: 'host_migration',
+            newHostId: this.hostId
+        };
+
+        this.connections.forEach((conn) => {
+            conn.send(message);
+        });
+    }
+
+    /**
+     * 建立房間 (成為 Host)
+     */
+    createRoom() {
+        this.isHost = true;
+        this.hostId = this.peerId;
+        console.log(`[Network] Room created. Host ID: ${this.peerId}`);
+    }
+
+    /**
+     * 加入房間 (連線到 Host)
+     */
+    joinRoom(hostPeerId: string) {
+        this.hostId = hostPeerId;
+        this.connectToPeer(hostPeerId);
+    }
+
+    /**
+     * 清理資源
+     */
+    destroy() {
+        this.connections.forEach((conn) => conn.close());
+        this.peer.destroy();
+    }
+}
