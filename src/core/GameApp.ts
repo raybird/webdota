@@ -22,16 +22,19 @@ export class GameApp {
     rngSeed: number = 12345;
 
     // 本地玩家輸入
-    localInput: PlayerInput = {
+    private localInput: PlayerInput = {
         frame: 0,
         playerId: '',
         moveX: 0,
         moveY: 0
     };
 
+    // 行動裝置輸入（虛擬搖桿）
+    private mobileInput = { moveX: 0, moveY: 0 };
+
     // Game State
-    isGameStarted: boolean = false;
-    playerReadyStatus: Map<string, boolean> = new Map();
+    private isGameStarted: boolean = false;
+    private playerReadyStatus: Map<string, boolean> = new Map();
 
     constructor() {
         // Placeholder for app, initialized in init
@@ -337,10 +340,26 @@ export class GameApp {
     }
 
     /**
+     * 設定行動裝置輸入（由虛擬搖桿呼叫）
+     */
+    setMobileInput(moveX: number, moveY: number) {
+        this.mobileInput.moveX = moveX;
+        this.mobileInput.moveY = moveY;
+    }
+
+    /**
      * 收集本地玩家輸入
      */
     collectInput() {
-        // 簡化版: 使用鍵盤 WASD
+        // 優先使用虛擬搖桿輸入（如果有）
+        if (this.mobileInput.moveX !== 0 || this.mobileInput.moveY !== 0) {
+            this.localInput.moveX = this.mobileInput.moveX;
+            this.localInput.moveY = this.mobileInput.moveY;
+            this.localInput.action = undefined;
+            return;
+        }
+
+        // 否則使用鍵盤輸入
         const keyboard = this.app.keyboard;
         this.localInput.moveX = 0;
         this.localInput.moveY = 0;

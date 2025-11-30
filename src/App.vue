@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import VirtualJoystick from './components/VirtualJoystick.vue'
 
 const showLobby = ref(true)
 const myPeerId = ref('載入中...')
@@ -33,17 +34,53 @@ const amIReady = ref(false)
 const isHost = ref(false)
 const countdown = ref(0)
 
+// 偵測是否為觸控裝置
+const isTouchDevice = ref(false)
+const forceShowJoystick = ref(false) // 手動切換（用於開發測試）
+
+// 儲存 gameApp 參考
+const gameApp = ref<any>(null)
+
 const canStartGame = computed(() => {
   if (connectedPlayers.value.length === 0) return false
   return connectedPlayers.value.every(p => p.isReady)
 })
 
+// 切換虛擬搖桿顯示（開發用）
+const toggleJoystick = () => {
+  forceShowJoystick.value = !forceShowJoystick.value
+}
+
+// 計算是否應該顯示搖桿
+const shouldShowJoystick = computed(() => {
+  return (isTouchDevice.value || forceShowJoystick.value) && !showLobby.value
+})
+
+// 虛擬搖桿事件處理
+const handleJoystickMove = (moveX: number, moveY: number) => {
+  if (gameApp.value) {
+    gameApp.value.setMobileInput(moveX, moveY)
+  }
+}
+
+const handleJoystickEnd = () => {
+  if (gameApp.value) {
+    gameApp.value.setMobileInput(0, 0)
+  }
+}
+
 onMounted(() => {
+  // 偵測是否為觸控裝置
+  isTouchDevice.value = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  
   // 等待遊戲初始化
   const checkGame = setInterval(() => {
     if ((window as any).game && (window as any).game.networkManager) {
       const game = (window as any).game
       const networkManager = game.networkManager
+      
+      // 儲存 gameApp 參考
+      gameApp.value = game
       
       // 監聽連線成功事件
       const originalOnConnected = networkManager.onConnected
@@ -370,8 +407,23 @@ function leaveLobby() {
 
       <div class="controls-hint">
         <p>WASD - 移動 | 空白鍵 - 測試扣血</p>
+        <button 
+          v-if="!showLobby" 
+          @click="toggleJoystick" 
+          class="joystick-toggle-btn"
+          style="pointer-events: auto; margin-top: 10px; padding: 8px 16px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 8px; color: white; cursor: pointer;"
+        >
+          {{ forceShowJoystick ? '隱藏' : '顯示' }} 虛擬搖桿 (測試)
+        </button>
       </div>
     </div>
+
+    <!-- 虛擬搖桿（觸控裝置或手動開啟） -->
+    <VirtualJoystick 
+      v-if="shouldShowJoystick"
+      @move="handleJoystickMove"
+      @end="handleJoystickEnd"
+    />
   </div>
 </template>
 
