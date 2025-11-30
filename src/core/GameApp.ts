@@ -3,12 +3,18 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { NetworkManager, type PlayerInput } from './NetworkManager';
 import { HostManager } from './HostManager';
 import { PlayerEntity } from './PlayerEntity';
+import { HitboxManager } from './combat/HitboxManager';
+import { InputMapper } from './InputMapper';
+import { UIManager } from './UIManager';
 
 export class GameApp {
     app!: pc.Application;
     physicsWorld!: RAPIER.World;
     networkManager!: NetworkManager;
     hostManager!: HostManager;
+    hitboxManager!: HitboxManager;
+    inputMapper!: InputMapper;
+    uiManager!: UIManager;
 
     // Player entities
     players: Map<string, PlayerEntity> = new Map();
@@ -31,6 +37,9 @@ export class GameApp {
 
     // 行動裝置輸入（虛擬搖桿）
     private mobileInput = { moveX: 0, moveY: 0 };
+
+    // 待處理的技能使用（在下一個 frame 中廣播）
+    private pendingSkillUse: { skillId: string, direction: { x: number, z: number } } | null = null;
 
     // Game State
     private isGameStarted: boolean = false;
@@ -61,7 +70,14 @@ export class GameApp {
         // 3. Create Basic Scene
         this.createScene();
 
-        // 4. Initialize Network
+        // 4. Initialize Combat Systems
+        this.hitboxManager = new HitboxManager(this.app);
+
+        // 5. Initialize Input & UI Systems
+        this.inputMapper = new InputMapper(); // 使用預設 WASD 映射
+        this.uiManager = new UIManager(this.app);
+
+        // 6. Initialize Network
         this.networkManager = new NetworkManager();
         this.networkManager.onConnected = () => {
             console.log('[GameApp] Network connected');
@@ -79,7 +95,11 @@ export class GameApp {
                 const playersData = Array.from(this.players.entries()).map(([id, p]) => ({
                     id,
                     pos: p.rigidBody.translation(),
-                    stats: p.stats
+                    stats: {
+                        hp: p.combatStats.currentHp,
+                        maxHp: p.combatStats.maxHp,
+                        energy: p.combatStats.currentEnergy
+                    }
                 }));
 
                 const gameState = {
@@ -131,10 +151,17 @@ export class GameApp {
                 // 強制更新位置
                 const player = this.players.get(pData.id);
                 if (player) {
-                    player.rigidBody.setTranslation(pData.pos, true);
-                    player.syncVisuals();
-                    // 同步屬性
-                    if (pData.stats) player.stats = pData.stats;
+                    if (pData.position && pData.rotation) {
+                        const rb = player.rigidBody;
+                        rb.setNextKinematicTranslation(pData.position);
+                        rb.setNextKinematicRotation(pData.rotation);
+                    }
+                    if (pData.stats) {
+                        // 同步戰鬥數值
+                        player.combatStats.currentHp = pData.stats.hp;
+                        player.combatStats.currentEnergy = pData.stats.energy || 0;
+                        player.updateHpBar();
+                    }
                 }
             });
 
@@ -241,6 +268,10 @@ export class GameApp {
             color
         );
 
+        // 使用 UIManager 建立玩家 UI
+        const uiConfig = this.uiManager.createPlayerUI(playerId);
+        player.setUIReferences(uiConfig.hpBarEntity, uiConfig.hpBarFillEntity);
+
         this.players.set(playerId, player);
         console.log(`[GameApp] Spawned player ${playerId} at (${x.toFixed(2)}, 1, ${z.toFixed(2)})`);
     }
@@ -253,6 +284,10 @@ export class GameApp {
         if (player) {
             player.destroy(this.app, this.physicsWorld);
             this.players.delete(playerId);
+
+            // 移除 UI
+            this.uiManager.removePlayerUI(playerId);
+
             console.log(`[GameApp] Removed player ${playerId}`);
         }
     }
@@ -276,10 +311,17 @@ export class GameApp {
     }
 
     /**
-     * 固定時間步長更新 (Deterministic)
+     * 固定時間步長更新 (60 FPS)
      */
     fixedUpdate(dt: number) {
-        if (!this.isGameStarted) return;
+        // 檢查遊戲是否已開始
+        if (!this.isGameStarted) {
+            // Debug: 每 60 幀記錄一次
+            if (this.currentFrame % 60 === 0) {
+                console.log(`[GameApp] Frame ${this.currentFrame}: Game not started yet, skipping update`);
+            }
+            return;
+        }
 
         // 1. 收集本地輸入
         this.collectInput();
@@ -332,10 +374,30 @@ export class GameApp {
 
         // 4. 執行遊戲邏輯
         this.processInputs(allInputs, dt);
+
+        // 5. 更新攻擊判定並處理傷害
+        const hits = this.hitboxManager.update(dt, this.players);
+        hits.forEach(hit => {
+            const target = this.players.get(hit.targetId);
+            if (target) {
+                target.takeDamage(hit.damage);
+                target.applyKnockback(hit.knockback);
+            }
+        });
+
+        // 7. 更新物理
         this.physicsWorld.step();
         this.hostManager.update(dt);
 
-        // 5. 清理舊的 input buffer
+        // 8. 同步視覺與物理
+        for (const player of this.players.values()) {
+            player.syncVisuals();
+        }
+
+        // 9. 更新所有玩家的 UI（血條位置與數值）
+        this.uiManager.updateAll(this.players);
+
+        // 10. 清理舊的 input buffer
         this.networkManager.inputBuffer.delete(this.currentFrame - 60); // 保留 1 秒
     }
 
@@ -348,6 +410,31 @@ export class GameApp {
     }
 
     /**
+     * 使用技能（由技能面板呼叫）
+     */
+    useSkill(skillId: string) {
+        const localPlayer = this.players.get(this.networkManager.peerId);
+        if (!localPlayer) return;
+
+        // 檢查技能是否可用（冷卻、能量）
+        if (!localPlayer.skillManager.canUseSkill(skillId, localPlayer.combatStats.currentEnergy)) {
+            console.log(`[GameApp] Skill ${skillId} not ready`);
+            return;
+        }
+
+        // 使用玩家當前的朝向方向
+        const direction = localPlayer.getFacingDirection();
+
+        // 設定待處理的技能（會在下一個 frame 的 collectInput 中收集）
+        this.pendingSkillUse = {
+            skillId,
+            direction: { x: direction.x, z: direction.z }
+        };
+
+        console.log(`[GameApp] Queued skill: ${skillId} in direction (${direction.x.toFixed(2)}, ${direction.z.toFixed(2)})`);
+    }
+
+    /**
      * 收集本地玩家輸入
      */
     collectInput() {
@@ -356,25 +443,29 @@ export class GameApp {
             this.localInput.moveX = this.mobileInput.moveX;
             this.localInput.moveY = this.mobileInput.moveY;
             this.localInput.action = undefined;
-            return;
-        }
+        } else {
+            // 使用 InputMapper 處理鍵盤輸入
+            const keyboard = this.app.keyboard;
+            const moveVector = this.inputMapper.getMoveVector(keyboard);
 
-        // 否則使用鍵盤輸入
-        const keyboard = this.app.keyboard;
-        this.localInput.moveX = 0;
-        this.localInput.moveY = 0;
-        this.localInput.action = undefined;
+            this.localInput.moveX = moveVector.x;
+            this.localInput.moveY = moveVector.y;
+            this.localInput.action = undefined;
 
-        if (keyboard) {
-            if (keyboard.isPressed(pc.KEY_W)) this.localInput.moveY = -1;
-            if (keyboard.isPressed(pc.KEY_S)) this.localInput.moveY = 1;
-            if (keyboard.isPressed(pc.KEY_A)) this.localInput.moveX = -1;
-            if (keyboard.isPressed(pc.KEY_D)) this.localInput.moveX = 1;
-
-            // 測試用: 空白鍵扣血
-            if (keyboard.wasPressed(pc.KEY_SPACE)) {
+            // 測試用：空白鍵扣血
+            if (keyboard && keyboard.isPressed(pc.KEY_SPACE)) {
                 this.localInput.action = 'test_damage';
             }
+        }
+
+        // 收集技能輸入
+        if (this.pendingSkillUse) {
+            this.localInput.skillUsed = this.pendingSkillUse.skillId;
+            this.localInput.skillDirection = this.pendingSkillUse.direction;
+            this.pendingSkillUse = null; // 清除待處理
+        } else {
+            this.localInput.skillUsed = undefined;
+            this.localInput.skillDirection = undefined;
         }
     }
 
@@ -391,19 +482,43 @@ export class GameApp {
             console.log(`[Frame ${this.currentFrame}] Processing ${inputs.length} inputs:`, inputDetails);
         }
 
-        inputs.forEach((input) => {
+        inputs.forEach(input => {
             const player = this.players.get(input.playerId);
-            if (player) {
-                player.move(input.moveX, input.moveY, dt);
+            if (!player) return;
 
-                // 處理動作
-                if (input.action === 'test_damage') {
-                    // 測試：讓自己受傷
-                    player.takeDamage(10);
+            // 處理移動
+            if (input.moveX !== 0 || input.moveY !== 0) {
+                player.move(input.moveX, input.moveY, dt);
+            }
+
+            // 處理技能使用
+            if (input.skillUsed && input.skillDirection) {
+                const result = player.useSkill(input.skillUsed);
+                if (result) {
+                    const { skill } = result;
+                    const direction = new pc.Vec3(input.skillDirection.x, 0, input.skillDirection.z);
+
+                    // 生成攻擊判定框
+                    const position = player.getPosition();
+                    position.x += direction.x * 1.0;
+                    position.z += direction.z * 1.0;
+
+                    this.hitboxManager.createHitbox(
+                        position,
+                        skill.range,
+                        skill.damage,
+                        direction.clone().mulScalar(skill.knockback || 0),
+                        input.playerId,
+                        0.3
+                    );
+
+                    console.log(`[GameApp] ${input.playerId.substring(0, 8)} used ${skill.name}`);
                 }
-            } else if (input.moveX !== 0 || input.moveY !== 0) {
-                console.warn(`[GameApp] Player ${input.playerId.substring(0, 8)} not found! Available:`,
-                    Array.from(this.players.keys()).map(id => id.substring(0, 8)));
+            }
+
+            // 處理其他行動（測試用）
+            if (input.action === 'test_damage') {
+                player.takeDamage(10);
             }
         });
     }

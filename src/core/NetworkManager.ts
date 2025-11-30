@@ -5,7 +5,14 @@ export interface PlayerInput {
     playerId: string;
     moveX: number;
     moveY: number;
-    action?: string; // 'attack' | 'skill1' | 'skill2' etc.
+    action?: 'test_damage'; // 'attack' | 'skill1' | 'skill2' etc.
+
+    // 技能系統
+    skillUsed?: string;        // 使用的技能 ID
+    skillDirection?: {         // 技能方向
+        x: number;
+        z: number;
+    };
 }
 
 export interface GameState {

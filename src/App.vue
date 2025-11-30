@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import VirtualJoystick from './components/VirtualJoystick.vue'
+import SkillPanel from './components/SkillPanel.vue'
 
 const showLobby = ref(true)
 const myPeerId = ref('載入中...')
@@ -41,6 +42,18 @@ const forceShowJoystick = ref(false) // 手動切換（用於開發測試）
 // 儲存 gameApp 參考
 const gameApp = ref<any>(null)
 
+// 技能系統狀態（參考灌籃高手布局）
+const skills = ref([
+  { id: 'basic', name: '籃板', icon: '🏀', cooldown: 0, type: 'basic' as const },           // 4. 基礎普通攻擊（最大）
+  { id: 'skill1', name: '加速', icon: '💨', cooldown: 3, type: 'normal' as const },          // 1. 突進
+  { id: 'skill2', name: '檔拆', icon: '⚡', cooldown: 4, type: 'normal' as const },          // 2. 震地
+  { id: 'skill3', name: '卡位', icon: '🛡️', cooldown: 2, type: 'normal' as const },         // 3. 格檔
+  { id: 'ultimate', name: '決勝三分', icon: '🔥', cooldown: 0, type: 'ultimate' as const }    // 大招（最上方）
+])
+
+const skillCooldowns = ref<Map<string, number>>(new Map())
+const skillPanelRef = ref<InstanceType<typeof SkillPanel> | null>(null)
+
 const canStartGame = computed(() => {
   if (connectedPlayers.value.length === 0) return false
   return connectedPlayers.value.every(p => p.isReady)
@@ -66,6 +79,27 @@ const handleJoystickMove = (moveX: number, moveY: number) => {
 const handleJoystickEnd = () => {
   if (gameApp.value) {
     gameApp.value.setMobileInput(0, 0)
+  }
+}
+
+// 技能按下處理
+// 技能按下處理
+const handleSkillPress = (skillId: string) => {
+  console.log(`Skill pressed: ${skillId}`)
+  
+  // 呼叫遊戲核心的技能系統
+  if (gameApp.value) {
+    gameApp.value.useSkill(skillId)
+  }
+  
+  // 測試接招模式（技能 1 加速後可接招）
+  if (skillId === 'skill1') {
+    setTimeout(() => {
+      skillPanelRef.value?.activateComboMode('basic_dash_combo', '💥')
+      setTimeout(() => {
+        skillPanelRef.value?.deactivateComboMode()
+      }, 1000)
+    }, 100)
   }
 }
 
@@ -147,8 +181,15 @@ onMounted(() => {
 
       const originalOnGameStarted = networkManager.onGameStarted
       networkManager.onGameStarted = () => {
-        if (originalOnGameStarted) originalOnGameStarted()
+        console.log('[App.vue] onGameStarted triggered')
         countdown.value = 0
+        isInRoom.value = false
+        console.log('[App.vue] Game started, countdown reset, isInRoom = false')
+        
+        if (originalOnGameStarted) {
+          console.log('[App.vue] Calling original onGameStarted')
+          originalOnGameStarted()
+        }
         showLobby.value = false
         addNetworkEvent(`🚀 遊戲開始！`)
       }
@@ -423,6 +464,15 @@ function leaveLobby() {
       v-if="shouldShowJoystick"
       @move="handleJoystickMove"
       @end="handleJoystickEnd"
+    />
+    
+    <!-- 技能面板（遊戲進行中） -->
+    <SkillPanel
+      v-if="!showLobby"
+      ref="skillPanelRef"
+      :skills="skills"
+      :current-cooldowns="skillCooldowns"
+      @skill-press="handleSkillPress"
     />
   </div>
 </template>
