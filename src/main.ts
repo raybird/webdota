@@ -1,10 +1,15 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import './style.css'
 import App from './App.vue'
 import { GameApp } from './core/GameApp'
 
 // Mount Vue UI
-createApp(App).mount('#app')
+const app = createApp(App)
+const pinia = createPinia()
+
+app.use(pinia)
+app.mount('#app')
 
 // Initialize Game Engine
 const initGame = async () => {

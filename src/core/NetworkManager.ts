@@ -277,6 +277,49 @@ export class NetworkManager {
     }
 
     /**
+     * 發送輸入
+     */
+    sendInput(input: PlayerInput) {
+        const message = {
+            type: 'input',
+            input
+        };
+        this.connections.forEach(conn => conn.send(message));
+    }
+
+    /**
+     * 廣播遊戲狀態 (Host Only)
+     */
+    broadcastGameState(state: any) {
+        const message = {
+            type: 'game_state',
+            state
+        };
+        this.connections.forEach(conn => conn.send(message));
+    }
+
+    /**
+     * 清理網路資源
+     */
+    cleanup() {
+        console.log('[Network] Cleaning up network resources...');
+
+        // 關閉所有連線
+        this.connections.forEach(conn => conn.close());
+        this.connections.clear();
+
+        // 銷毀 Peer
+        if (this.peer) {
+            this.peer.destroy();
+        }
+
+        this.peerId = '';
+        this.isHost = false;
+        this.hostId = '';
+        this.inputBuffer.clear();
+    }
+
+    /**
      * 發送 Frame 同步訊息給指定玩家
      */
     sendFrameSync(frame: number, targetPeerId: string) {
@@ -389,10 +432,11 @@ export class NetworkManager {
     /**
      * 建立房間 (成為 Host)
      */
-    createRoom() {
+    createRoom(): string {
         this.isHost = true;
         this.hostId = this.peerId;
         console.log(`[Network] Room created. Host ID: ${this.peerId}`);
+        return this.peerId;
     }
 
     /**
@@ -401,13 +445,5 @@ export class NetworkManager {
     joinRoom(hostPeerId: string) {
         this.hostId = hostPeerId;
         this.connectToPeer(hostPeerId);
-    }
-
-    /**
-     * 清理資源
-     */
-    destroy() {
-        this.connections.forEach((conn) => conn.close());
-        this.peer.destroy();
     }
 }
