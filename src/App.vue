@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import VirtualJoystick from './components/VirtualJoystick.vue'
 import SkillPanel from './components/SkillPanel.vue'
+import { DEFAULT_CHARACTER_ID } from './types/Character'
 
 const showLobby = ref(true)
 const myPeerId = ref('載入中...')
@@ -30,10 +31,14 @@ const maxMana = ref(100)
 
 // Waiting Room State
 const isInRoom = ref(false)
-const connectedPlayers = ref<{id: string, isReady: boolean}[]>([])
+const connectedPlayers = ref<{id: string, isReady: boolean, characterId?: string}[]>([])
 const amIReady = ref(false)
 const isHost = ref(false)
 const countdown = ref(0)
+
+// Character Selection
+const selectedCharacterId = ref<string>(DEFAULT_CHARACTER_ID)
+const showCharacterSelector = ref(false)
 
 // 偵測是否為觸控裝置
 const isTouchDevice = ref(false)
@@ -79,6 +84,50 @@ const handleJoystickMove = (moveX: number, moveY: number) => {
 const handleJoystickEnd = () => {
   if (gameApp.value) {
     gameApp.value.setMobileInput(0, 0)
+  }
+}
+
+// 角色相關輔助函式
+import { getCharacter as getCharacterData, getAllCharacters as getAllChars } from './data/characters'
+
+const getAllCharacters = () => {
+  return getAllChars()
+}
+
+const getCharacterIcon = (characterId: string): string => {
+  const character = getCharacterData(characterId)
+  return character?.icon || '👤'
+}
+
+const getCharacter = (characterId: string) => {
+  return getCharacterData(characterId)
+}
+
+const selectCharacter = (characterId: string) => {
+  selectedCharacterId.value = characterId
+  addNetworkEvent(`🎭 選擇角色: ${characterId}`)
+  
+  // 同步到 GameApp（讓它知道我們的角色選擇）
+  const game = (window as any).game
+  if (game) {
+    game.setMyCharacter(characterId)
+  }
+  
+  // 廣播角色選擇到其他玩家
+  if (game && game.networkManager) {
+    game.networkManager.sendCharacterSelected(characterId)
+  }
+  
+  // 更新自己在玩家列表中的角色（使用響應式方式）
+  const myPlayerIndex = connectedPlayers.value.findIndex(p => p.id === myPeerId.value)
+  if (myPlayerIndex !== -1) {
+    const existingPlayer = connectedPlayers.value[myPlayerIndex]!
+    connectedPlayers.value[myPlayerIndex] = {
+      id: existingPlayer.id,
+      isReady: existingPlayer.isReady,
+      characterId
+    }
+    console.log('[App.vue] Updated my character:', characterId, connectedPlayers.value)
   }
 }
 
@@ -167,6 +216,29 @@ onMounted(() => {
         addNetworkEvent(`👤 玩家 ${peerId.substring(0, 8)} ${isReady ? '已準備' : '取消準備'}`)
       }
 
+      // 監聽角色選擇事件
+      const originalOnCharacterSelected = networkManager.onCharacterSelected
+      networkManager.onCharacterSelected = (peerId: string, characterId: string) => {
+        if (originalOnCharacterSelected) originalOnCharacterSelected(peerId, characterId)
+        
+        // 尋找玩家並更新角色
+        const playerIndex = connectedPlayers.value.findIndex(p => p.id === peerId)
+        if (playerIndex !== -1) {
+          // 使用 Vue 的方式更新以觸發響應式
+          const existingPlayer = connectedPlayers.value[playerIndex]!
+          connectedPlayers.value[playerIndex] = {
+            id: existingPlayer.id,
+            isReady: existingPlayer.isReady,
+            characterId
+          }
+        } else {
+          // 如果玩家不在列表中，先加入
+          connectedPlayers.value.push({ id: peerId, isReady: false, characterId })
+        }
+        addNetworkEvent(`🎭 玩家 ${peerId.substring(0, 8)} 選擇角色: ${characterId}`)
+        console.log('[App.vue] Updated player character:', peerId, characterId, connectedPlayers.value)
+      }
+
       const originalOnGameStartCountdown = networkManager.onGameStartCountdown
       networkManager.onGameStartCountdown = (seconds: number) => {
         if (originalOnGameStartCountdown) originalOnGameStartCountdown(seconds)
@@ -244,10 +316,13 @@ function createRoom() {
     return
   }
   (window as any).createRoom()
-  // showLobby.value = false // 改為進入等待室
+  isHost.value = true
+  addNetworkEvent('🏠 建立房間')
+  
+  // 直接進入等待室
   isInRoom.value = true
   connectedPlayers.value = [{ id: myPeerId.value, isReady: false }]
-  addNetworkEvent('🏠 建立房間')
+  // showLobby 保持 true，不隱藏
 }
 
 function joinRoom() {
@@ -257,10 +332,12 @@ function joinRoom() {
   }
   if (roomIdInput.value.trim()) {
     (window as any).joinRoom(roomIdInput.value.trim())
-    // showLobby.value = false // 改為進入等待室
-    isInRoom.value = true
-    connectedPlayers.value = [{ id: myPeerId.value, isReady: false }] // 初始只有自己，稍後會同步
     addNetworkEvent(`🚪 加入房間: ${roomIdInput.value.substring(0, 8)}`)
+    
+    // 直接進入等待室
+    isInRoom.value = true
+    connectedPlayers.value = [{ id: myPeerId.value, isReady: false }]
+    // showLobby 保持 true，不隱藏
   } else {
     alert('請輸入房間 ID')
   }
@@ -356,12 +433,50 @@ function leaveLobby() {
                 <button class="small-btn" @click="copyRoomId">複製</button>
             </div>
 
+            <!-- 選擇你的角色 -->
+            <div class="character-selection-section">
+                <h3>選擇你的角色</h3>
+                <div class="character-cards">
+                    <div
+                        v-for="character in getAllCharacters()"
+                        :key="character.id"
+                        class="character-card-inline"
+                        :class="{ selected: selectedCharacterId === character.id }"
+                        @click="selectCharacter(character.id)"
+                    >
+                        <div class="character-icon-inline" :style="{ backgroundColor: character.appearance.color }">
+                            {{ character.icon }}
+                        </div>
+                        <div class="character-name-inline">{{ character.name }}</div>
+                        <div class="character-check-inline" v-if="selectedCharacterId === character.id">✓</div>
+                    </div>
+                </div>
+                <div class="selected-character-info" v-if="getCharacter(selectedCharacterId)">
+                    <strong>{{ getCharacter(selectedCharacterId)?.name }}</strong>: 
+                    {{ getCharacter(selectedCharacterId)?.description }}
+                </div>
+            </div>
+
+            <!-- 玩家列表 -->
             <div class="player-list">
+                <h3>房間成員</h3>
                 <div v-for="p in connectedPlayers" :key="p.id" class="player-item">
-                    <span class="p-name">{{ p.id === myPeerId ? '你' : p.id.substring(0, 8) }}</span>
-                    <span class="p-status" :class="{ ready: p.isReady }">
-                        {{ p.isReady ? '✅ 已準備' : '⏳ 等待中' }}
-                    </span>
+                    <div class="player-info-left">
+                        <span class="player-character">
+                            {{ p.id === myPeerId ? getCharacterIcon(selectedCharacterId) : (p.characterId ? getCharacterIcon(p.characterId) : '👤') }}
+                        </span>
+                        <div class="player-details">
+                            <span class="p-name">{{ p.id === myPeerId ? '你' : p.id.substring(0, 8) }}</span>
+                            <span class="p-character-name">
+                                {{ p.id === myPeerId ? getCharacter(selectedCharacterId)?.name : (p.characterId ? getCharacter(p.characterId)?.name : '等待選擇...') }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="player-actions">
+                        <span class="p-status" :class="{ ready: p.isReady }">
+                            {{ p.isReady ? '✓ 準備' : '等待中' }}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -913,26 +1028,187 @@ button:disabled {
   overflow-y: auto;
 }
 
-.player-item {
+
+/* 等待室內的角色選擇區 */
+.character-selection-section {
+  margin-bottom: 25px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.character-selection-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  color: #fff;
+}
+
+.character-cards {
   display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 15px;
+  margin-bottom: 15px;
+  justify-content: center;
 }
 
-.player-item:last-child {
-  border-bottom: none;
+.character-card-inline {
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  text-align: center;
+  min-width: 100px;
 }
 
-.p-name {
+.character-card-inline:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.character-card-inline.selected {
+  border-color: #4CAF50;
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.character-icon-inline {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin: 0 auto 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.character-name-inline {
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.character-check-inline {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  background: #4CAF50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
   font-weight: bold;
 }
 
+.selected-character-info {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}
+
+.selected-character-info strong {
+  color: #fff;
+}
+
+.player-list h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.player-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  transition: background 0.3s;
+}
+
+.player-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.player-info-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.player-character {
+  font-size: 32px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.p-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.p-character-name {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.player-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.select-character-btn {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.select-character-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
 .p-status {
-  color: #aaa;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .p-status.ready {
+  background: rgba(76, 175, 80, 0.2);
   color: #4CAF50;
   font-weight: bold;
 }

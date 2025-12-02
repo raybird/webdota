@@ -40,6 +40,7 @@ export class NetworkManager {
     onHostChanged?: (newHostId: string) => void;
     onFrameSync?: (frame: number) => void;
     onPlayerReady?: (peerId: string, isReady: boolean) => void;
+    onCharacterSelected?: (peerId: string, characterId: string) => void;
     onGameStartCountdown?: (seconds: number) => void;
     onGameStarted?: () => void;
     onGameState?: (state: any) => void;
@@ -176,6 +177,16 @@ export class NetworkManager {
                 if (this.onPlayerReady) this.onPlayerReady(data.peerId, data.isReady);
                 break;
 
+            case 'character_selected':
+                console.log('[NetworkManager] Received character selection:', data);
+                if (this.onCharacterSelected) {
+                    console.log('[NetworkManager] Calling onCharacterSelected callback');
+                    this.onCharacterSelected(data.peerId, data.characterId);
+                } else {
+                    console.warn('[NetworkManager] onCharacterSelected callback not set!');
+                }
+                break;
+
             case 'game_start_countdown':
                 if (this.onGameStartCountdown) this.onGameStartCountdown(data.seconds);
                 break;
@@ -221,6 +232,25 @@ export class NetworkManager {
 
         // 如果自己是 Host，也要觸發 callback
         if (this.onPlayerReady) this.onPlayerReady(this.peerId, isReady);
+    }
+
+    /**
+     * 發送角色選擇
+     */
+    sendCharacterSelected(characterId: string) {
+        const message = {
+            type: 'character_selected',
+            peerId: this.peerId,
+            characterId
+        };
+
+        console.log('[NetworkManager] Sending character selection:', message, 'to', this.connections.size, 'peers');
+
+        // 廣播給所有人
+        this.connections.forEach(conn => conn.send(message));
+
+        // 如果自己是 Host，也要觸發 callback
+        if (this.onCharacterSelected) this.onCharacterSelected(this.peerId, characterId);
     }
 
     /**

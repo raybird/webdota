@@ -173,17 +173,19 @@ export class PlayerEntity {
      */
     updateHpBar() {
         // 數值更新已由 UIManager 處理
-        // 這裡只處理視覺回饋：受傷時閃爍紅色
+        // 這裡只處理視覺回饋：受傷時閃爍白色
         if (this.entity.render) {
             const material = this.entity.render.material as pc.StandardMaterial;
-            const originalColor = material.diffuse.clone();
-            material.diffuse.set(1, 0, 0);
+            const originalEmissive = material.emissive.clone();
+
+            // 變白閃爍 (使用 emissive 自發光)
+            material.emissive = new pc.Color(1, 1, 1);
             material.update();
 
             setTimeout(() => {
                 if (this.entity.render) {
                     const mat = this.entity.render.material as pc.StandardMaterial;
-                    mat.diffuse = originalColor;
+                    mat.emissive = originalEmissive;
                     mat.update();
                 }
             }, 100);

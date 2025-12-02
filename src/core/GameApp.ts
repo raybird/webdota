@@ -18,6 +18,7 @@ export class GameApp {
 
     // Player entities
     players: Map<string, PlayerEntity> = new Map();
+    playerCharacters: Map<string, string> = new Map(); // 追蹤玩家選擇的角色
 
     // Deterministic Lockstep
     readonly FIXED_TIMESTEP = 1 / 60; // 60 FPS
@@ -290,6 +291,14 @@ export class GameApp {
 
             console.log(`[GameApp] Removed player ${playerId}`);
         }
+    }
+
+    /**
+     * 設定玩家的角色（由 App.vue 呼叫）
+     */
+    setMyCharacter(characterId: string) {
+        this.playerCharacters.set(this.networkManager.peerId, characterId);
+        console.log(`[GameApp] Set my character to: ${characterId}`);
     }
 
     /**
