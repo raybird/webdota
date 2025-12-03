@@ -219,7 +219,7 @@ export class PlayerEntity {
     /**
      * 清理資源
      */
-    destroy(app: pc.Application, physicsWorld: RAPIER.World) {
+    destroy(_app: pc.Application, physicsWorld: RAPIER.World) {
         if (this.entity) {
             this.entity.destroy();
         }

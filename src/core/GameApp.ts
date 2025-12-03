@@ -351,7 +351,7 @@ export class GameApp {
         allInputs.push(this.localInput);
 
         // 加入所有遠端玩家的最新輸入
-        this.players.forEach((player, playerId) => {
+        this.players.forEach((_player, playerId) => {
             if (playerId === this.networkManager.peerId) return; // 跳過自己
 
             // 尋找這個玩家最近的輸入 (在當前 Frame 附近)

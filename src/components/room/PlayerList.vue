@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoomStore } from '../../stores/roomStore'
-import { useCharacterStore } from '../../stores/characterStore'
 import { getCharacter } from '../../data/characters'
 
 const roomStore = useRoomStore()
-const characterStore = useCharacterStore()
 
 const players = computed(() => roomStore.connectedPlayers)
 const myPeerId = computed(() => roomStore.myPeerId)

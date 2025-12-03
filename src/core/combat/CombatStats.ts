@@ -83,7 +83,7 @@ export class CombatStats {
     /**
      * 更新狀態 (清理過期狀態)
      */
-    update(dt: number) {
+    update(_dt: number) {
         const now = Date.now();
         for (const [state, expiry] of this.states.entries()) {
             if (now > expiry) {
