@@ -8,6 +8,7 @@ import { PlayerManager } from './managers/PlayerManager';
 import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { useGameStore } from '../stores/gameStore';
+import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
 
 /**
@@ -34,10 +35,12 @@ export class GameEngine {
 
     // State
     private gameStore = useGameStore();
+    private roomStore = useRoomStore();
     private isGameStarted: boolean = false;
 
-    constructor() {
-        // Init in init()
+    constructor(networkManager: NetworkManager) {
+        // 使用外部傳入的 NetworkManager，避免覆蓋
+        this.networkManager = networkManager;
     }
 
     async init(canvas: HTMLCanvasElement) {
@@ -73,8 +76,7 @@ export class GameEngine {
             this.renderManager.setCamera(camera as pc.Entity);
         }
 
-        // 5. Initialize Network & Host
-        this.networkManager = new NetworkManager();
+        // 5. Initialize Host Manager (使用已有的 NetworkManager)
         this.hostManager = new HostManager(this.app, this.physicsWorld);
 
         // 6. Setup Event Listeners
@@ -92,9 +94,9 @@ export class GameEngine {
         // Camera
         const camera = new pc.Entity('Camera');
         camera.addComponent('camera', {
-            clearColor: new pc.Color(0.1, 0.1, 0.1)
+            clearColor: new pc.Color(0.05, 0.05, 0.15)  // 深藍色背景
         });
-        camera.setPosition(0, 20, 20);
+        camera.setPosition(0, 25, 30);
         camera.lookAt(0, 0, 0);
         this.app.root.addChild(camera);
 
@@ -109,46 +111,27 @@ export class GameEngine {
         light.setEulerAngles(45, 0, 0);
         this.app.root.addChild(light);
 
-        // Ground (Visual)
+        // Ground (Visual) - 擴大地板尺寸以滿版
         const ground = new pc.Entity('Ground');
         ground.addComponent('render', { type: 'box' });
-        ground.setLocalScale(20, 0.1, 20);
+        ground.setLocalScale(100, 0.1, 100);  // 100x100 滿版地板
         const material = new pc.StandardMaterial();
-        material.diffuse = new pc.Color(0.3, 0.5, 0.3);
+        material.diffuse = new pc.Color(0.15, 0.25, 0.15);  // 深綠色
         material.update();
         if (ground.render) ground.render.material = material;
         this.app.root.addChild(ground);
 
-        // Ground (Physics)
-        const groundColliderDesc = RAPIER.ColliderDesc.cuboid(10.0, 0.05, 10.0);
+        // Ground (Physics) - 對應擴大
+        const groundColliderDesc = RAPIER.ColliderDesc.cuboid(50.0, 0.05, 50.0);
         this.physicsWorld.createCollider(groundColliderDesc);
     }
 
     private setupEventListeners() {
-        // Network Events
-        this.networkManager.onConnected = () => {
-            this.inputManager.setPlayerId(this.networkManager.peerId);
-            // 本地玩家生成由 RoomService 處理，這裡只負責遊戲邏輯
-        };
-
-        this.networkManager.onPeerJoined = (peerId) => {
-            // 如果是 Host，發送遊戲狀態
-            if (this.hostManager.isHost) {
-                this.sendFullGameState(peerId);
-            }
-        };
+        // Network Events - 設置 playerId
+        this.inputManager.setPlayerId(this.networkManager.peerId);
 
         this.networkManager.onPeerLeft = (peerId) => {
             this.playerManager.removePlayer(peerId);
-        };
-
-        this.networkManager.onGameStarted = () => {
-            this.isGameStarted = true;
-            this.currentFrame = 0;
-            // 重新生成所有玩家以確保位置正確
-            this.playerManager.clearAll();
-            // 這裡應該從 RoomStore 獲取所有玩家並生成
-            // 暫時略過，由外部服務控制
         };
 
         this.networkManager.onGameState = (state: any) => {
@@ -157,8 +140,8 @@ export class GameEngine {
 
         // EventBus Events
         eventBus.on('GAME_STARTED', () => {
-            this.isGameStarted = true;
-            this.currentFrame = 0;
+            console.log('[GameEngine] GAME_STARTED event received');
+            this.startGame();
         });
 
         eventBus.on('SKILL_USED', (event) => {
@@ -166,24 +149,36 @@ export class GameEngine {
         });
     }
 
-    private sendFullGameState(targetPeerId: string) {
-        const playersData = Array.from(this.playerManager.getAllPlayers().entries()).map(([id, p]) => ({
-            id,
-            pos: p.rigidBody.translation(),
-            stats: {
-                hp: p.combatStats.currentHp,
-                maxHp: p.combatStats.maxHp,
-                energy: p.combatStats.currentEnergy
-            }
-        }));
+    /**
+     * 開始遊戲 - 生成所有玩家
+     */
+    startGame() {
+        console.log('[GameEngine] Starting game...');
+        this.isGameStarted = true;
+        this.currentFrame = 0;
 
-        const gameState = {
-            isGameStarted: this.isGameStarted,
-            currentFrame: this.currentFrame,
-            players: playersData
-        };
+        // 清空現有玩家
+        this.playerManager.clearAll();
 
-        this.networkManager.sendGameState(gameState, targetPeerId);
+        // 從 roomStore 獲取所有連線玩家並生成
+        const players = this.roomStore.connectedPlayers;
+        console.log(`[GameEngine] Spawning ${players.length} players:`, players);
+
+        // 計算玩家生成位置 (圓形排列)
+        const radius = 5;
+        players.forEach((player, index) => {
+            const angle = (index / players.length) * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+
+            console.log(`[GameEngine] Spawning player ${player.id} with character ${player.characterId} at (${x}, 1, ${z})`);
+            this.playerManager.spawnPlayer(player.id, { x, y: 1, z });
+        });
+
+        // 設置 Host 狀態
+        this.hostManager.setHost(this.roomStore.isHost);
+
+        console.log('[GameEngine] Game started with', players.length, 'players');
     }
 
     private handleGameState(state: any) {

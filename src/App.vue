@@ -24,6 +24,9 @@ const roomService = new RoomService(networkManager)
 const characterService = new CharacterService(networkManager)
 const gameService = new GameService(networkManager)
 
+// 連結 RoomService 與 GameService
+roomService.setGameService(gameService)
+
 // Provide services to children (optional, but good for deep components)
 import { provide } from 'vue'
 provide('roomService', roomService)

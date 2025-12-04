@@ -32,8 +32,9 @@ export class GameService {
      * 開始遊戲 (Host Only)
      */
     startGame() {
-        this.networkManager.broadcastGameStarted()
-        // 本地狀態更新由 onGameStarted 回調處理
+        console.log('[GameService] startGame called')
+        this.gameStore.startGame()
+        eventBus.emit({ type: 'GAME_STARTED' })
     }
 
     /**
@@ -72,16 +73,14 @@ export class GameService {
     async init(canvas: HTMLCanvasElement) {
         // 動態導入 GameEngine 以避免循環依賴
         const { GameEngine } = await import('../core/GameEngine')
-        this.gameEngine = new GameEngine()
 
-        // 設置依賴
-        this.gameEngine.networkManager = this.networkManager
+        // 傳入 NetworkManager 給 GameEngine
+        this.gameEngine = new GameEngine(this.networkManager)
 
         // 初始化引擎
         await this.gameEngine.init(canvas)
 
-        // 設置 GameEngine 的引用回 GameService (如果需要)
-        // this.gameEngine.gameService = this
+        console.log('[GameService] GameEngine initialized with shared NetworkManager')
     }
 
     /**

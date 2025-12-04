@@ -1,7 +1,8 @@
 import { useRoomStore } from '../stores/roomStore'
 import { eventBus } from '../events/EventBus'
 import { NetworkManager } from '../core/NetworkManager'
-
+import { RoomCodeManager } from '../utils/RoomCodeManager'
+import type { GameService } from './GameService'
 
 /**
  * 房間服務
@@ -10,10 +11,19 @@ import { NetworkManager } from '../core/NetworkManager'
 export class RoomService {
     private roomStore = useRoomStore()
     private networkManager: NetworkManager
+    private gameService: GameService | null = null
+    private countdownTimer: number | null = null
 
     constructor(networkManager: NetworkManager) {
         this.networkManager = networkManager
         this.initListeners()
+    }
+
+    /**
+     * 設置 GameService 引用 (用於開始遊戲)
+     */
+    setGameService(gameService: GameService) {
+        this.gameService = gameService
     }
 
     private initListeners() {
@@ -33,45 +43,99 @@ export class RoomService {
             eventBus.emit({ type: 'PLAYER_READY', playerId: peerId, isReady })
         }
 
+        // 監聽角色選擇事件，同步到 RoomStore
+        this.networkManager.onCharacterSelected = (peerId, characterId) => {
+            console.log(`[RoomService] Player ${peerId} selected character ${characterId}`)
+            this.roomStore.updatePlayerCharacter(peerId, characterId)
+        }
+
         this.networkManager.onGameStartCountdown = (seconds) => {
             this.roomStore.setCountdown(seconds)
             eventBus.emit({ type: 'COUNTDOWN_STARTED', seconds })
+
+            // 非 Host 接收到倒數時，開始本地倒數
+            if (!this.roomStore.isHost && seconds > 0) {
+                this.startLocalCountdown(seconds)
+            }
         }
+
+        this.networkManager.onGameStarted = () => {
+            console.log('[RoomService] Game started signal received')
+            this.roomStore.setCountdown(0)
+            if (this.gameService) {
+                this.gameService.startGame()
+            }
+        }
+    }
+
+    /**
+     * 開始本地倒數 (用於非 Host 玩家)
+     */
+    private startLocalCountdown(seconds: number) {
+        if (this.countdownTimer) {
+            clearInterval(this.countdownTimer)
+        }
+
+        let remaining = seconds
+        this.countdownTimer = window.setInterval(() => {
+            remaining--
+            this.roomStore.setCountdown(remaining)
+
+            if (remaining <= 0) {
+                if (this.countdownTimer) {
+                    clearInterval(this.countdownTimer)
+                    this.countdownTimer = null
+                }
+            }
+        }, 1000)
     }
 
     /**
      * 建立房間
      */
     async createRoom(): Promise<string> {
-        // createRoom 現在是同步返回 string
-        const peerId = this.networkManager.createRoom()
+        // 先生成短房間碼
+        const roomCode = RoomCodeManager.generateCode()
+
+        // 使用房間碼作為 Peer ID 創建房間
+        await this.networkManager.createRoom(roomCode)
 
         this.roomStore.setInRoom(true)
         this.roomStore.setHost(true)
-        this.roomStore.setMyPeerId(peerId)
-        this.roomStore.addPlayer({ id: peerId, isReady: false, characterId: undefined })
+        this.roomStore.setMyPeerId(roomCode)  // roomCode 就是 peerId
+        this.roomStore.setRoomCode(roomCode)
+        this.roomStore.addPlayer({ id: roomCode, isReady: false, characterId: undefined })
 
-        eventBus.emit({ type: 'ROOM_CREATED', roomId: peerId })
-        return peerId
+        eventBus.emit({ type: 'ROOM_CREATED', roomId: roomCode, roomCode })
+        return roomCode
     }
 
     /**
-     * 加入房間
+     * 加入房間 (直接使用房間碼)
      */
-    async joinRoom(hostId: string): Promise<void> {
-        await this.networkManager.joinRoom(hostId)
+    async joinRoom(roomCode: string): Promise<void> {
+        // 房間碼就是 Host 的 Peer ID，直接連線
+        const normalizedCode = roomCode.toUpperCase().trim()
+
+        await this.networkManager.joinRoom(normalizedCode)
 
         this.roomStore.setInRoom(true)
         this.roomStore.setHost(false)
         this.roomStore.setMyPeerId(this.networkManager.peerId)
+        this.roomStore.setRoomCode(normalizedCode)
 
-        eventBus.emit({ type: 'ROOM_JOINED', roomId: hostId })
+        eventBus.emit({ type: 'ROOM_JOINED', roomId: normalizedCode })
     }
 
     /**
      * 離開房間
      */
     leaveRoom() {
+        if (this.countdownTimer) {
+            clearInterval(this.countdownTimer)
+            this.countdownTimer = null
+        }
+        RoomCodeManager.clear()
         this.networkManager.cleanup()
         this.roomStore.clearRoom()
         eventBus.emit({ type: 'ROOM_LEFT' })
@@ -82,7 +146,8 @@ export class RoomService {
      */
     setReady(isReady: boolean) {
         this.networkManager.sendPlayerReady(isReady)
-        // 本地狀態更新由 onPlayerReady 回調處理
+        // 本地狀態也需要立即更新
+        this.roomStore.updatePlayerReady(this.networkManager.peerId, isReady)
     }
 
     /**
@@ -90,6 +155,44 @@ export class RoomService {
      */
     startGameCountdown() {
         if (!this.roomStore.isHost) return
-        this.networkManager.broadcastGameStartCountdown(3)
+
+        // 清除之前的倒數
+        if (this.countdownTimer) {
+            clearInterval(this.countdownTimer)
+        }
+
+        let countdown = 3
+
+        // 廣播初始倒數
+        this.networkManager.broadcastGameStartCountdown(countdown)
+        this.roomStore.setCountdown(countdown)
+        eventBus.emit({ type: 'COUNTDOWN_STARTED', seconds: countdown })
+
+        // 開始倒數
+        this.countdownTimer = window.setInterval(() => {
+            countdown--
+
+            if (countdown > 0) {
+                // 廣播更新的倒數
+                this.networkManager.broadcastGameStartCountdown(countdown)
+                this.roomStore.setCountdown(countdown)
+            } else {
+                // 倒數結束
+                if (this.countdownTimer) {
+                    clearInterval(this.countdownTimer)
+                    this.countdownTimer = null
+                }
+
+                this.roomStore.setCountdown(0)
+
+                // 廣播遊戲開始
+                this.networkManager.broadcastGameStarted()
+
+                // 開始遊戲
+                if (this.gameService) {
+                    this.gameService.startGame()
+                }
+            }
+        }, 1000)
     }
 }

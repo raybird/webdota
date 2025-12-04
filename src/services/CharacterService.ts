@@ -1,4 +1,5 @@
 import { useCharacterStore } from '../stores/characterStore'
+import { useRoomStore } from '../stores/roomStore'
 import { eventBus } from '../events/EventBus'
 import { NetworkManager } from '../core/NetworkManager'
 import { getAllCharacters, getCharacter } from '../data/characters'
@@ -10,6 +11,7 @@ import type { Character } from '../types/Character'
  */
 export class CharacterService {
     private characterStore = useCharacterStore()
+    private roomStore = useRoomStore()
     private networkManager: NetworkManager
 
     constructor(networkManager: NetworkManager) {
@@ -18,9 +20,17 @@ export class CharacterService {
     }
 
     private initListeners() {
-        // 監聽網路事件
+        // 監聯網路事件 - 同時更新 characterStore 和 roomStore
         this.networkManager.onCharacterSelected = (peerId, characterId) => {
+            console.log(`[CharacterService] Player ${peerId} selected character ${characterId}`)
+
+            // 更新 CharacterStore
             this.characterStore.setPlayerCharacter(peerId, characterId)
+
+            // 同時更新 RoomStore 的 connectedPlayers
+            this.roomStore.updatePlayerCharacter(peerId, characterId)
+
+            // 發送事件
             eventBus.emit({ type: 'CHARACTER_SELECTED', playerId: peerId, characterId })
         }
     }
@@ -50,12 +60,16 @@ export class CharacterService {
         this.networkManager.sendCharacterSelected(characterId)
 
         // 更新自己的角色映射
-        this.characterStore.setPlayerCharacter(this.networkManager.peerId, characterId)
+        const myPeerId = this.networkManager.peerId
+        this.characterStore.setPlayerCharacter(myPeerId, characterId)
+
+        // 同時更新 RoomStore
+        this.roomStore.updatePlayerCharacter(myPeerId, characterId)
 
         // 發送本地事件
         eventBus.emit({
             type: 'CHARACTER_SELECTED',
-            playerId: this.networkManager.peerId,
+            playerId: myPeerId,
             characterId
         })
     }

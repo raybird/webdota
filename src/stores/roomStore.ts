@@ -9,6 +9,7 @@ export const useRoomStore = defineStore('room', () => {
     const isInRoom = ref(false)
     const isHost = ref(false)
     const myPeerId = ref('')
+    const roomCode = ref('')  // 短房間碼 (6位)
     const connectedPlayers = ref<{
         id: string
         isReady: boolean
@@ -38,6 +39,10 @@ export const useRoomStore = defineStore('room', () => {
 
     function setMyPeerId(peerId: string) {
         myPeerId.value = peerId
+    }
+
+    function setRoomCode(code: string) {
+        roomCode.value = code
     }
 
     function addPlayer(player: { id: string; isReady: boolean; characterId?: string }) {
@@ -93,6 +98,7 @@ export const useRoomStore = defineStore('room', () => {
         isHost.value = false
         connectedPlayers.value = []
         countdown.value = 0
+        roomCode.value = ''
     }
 
     return {
@@ -100,6 +106,7 @@ export const useRoomStore = defineStore('room', () => {
         isInRoom,
         isHost,
         myPeerId,
+        roomCode,
         connectedPlayers,
         countdown,
 
@@ -113,6 +120,7 @@ export const useRoomStore = defineStore('room', () => {
         setInRoom,
         setHost,
         setMyPeerId,
+        setRoomCode,
         addPlayer,
         removePlayer,
         updatePlayerReady,
