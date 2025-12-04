@@ -100,25 +100,4 @@ export class HitboxManager {
 
         return hits;
     }
-
-    private createDebugVisual(hitbox: AttackHitbox) {
-        const entity = new pc.Entity();
-        entity.addComponent('model', {
-            type: 'cylinder',
-        });
-        // 調整為圓形平面
-        entity.setLocalScale(hitbox.radius * 2, 0.1, hitbox.radius * 2);
-        entity.setPosition(hitbox.position);
-
-        const material = new pc.StandardMaterial();
-        material.diffuse = new pc.Color(1, 0, 0); // 紅色
-        material.opacity = 0.3;
-        material.blendType = pc.BLEND_NORMAL;
-        material.update();
-
-        entity.model!.material = material;
-
-        this.app.root.addChild(entity);
-        hitbox.debugEntity = entity;
-    }
 }

@@ -193,6 +193,17 @@ export class PlayerEntity {
     }
 
     /**
+     * 更新 UI 位置 (由 RenderManager 呼叫)
+     */
+    updateUIPosition() {
+        if (this.hpBarEntity && this.entity) {
+            const pos = this.entity.getPosition();
+            // 血條在頭頂上方
+            this.hpBarEntity.setPosition(pos.x, pos.y + 1.5, pos.z);
+        }
+    }
+
+    /**
      * 同步視覺與物理
      */
     syncVisuals() {
@@ -208,7 +219,7 @@ export class PlayerEntity {
     /**
      * 清理資源
      */
-    destroy(app: pc.Application, physicsWorld: RAPIER.World) {
+    destroy(_app: pc.Application, physicsWorld: RAPIER.World) {
         if (this.entity) {
             this.entity.destroy();
         }

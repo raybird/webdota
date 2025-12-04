@@ -22,7 +22,7 @@ export interface GameState {
 }
 
 export class NetworkManager {
-    peer: Peer;
+    peer!: Peer;  // 會在 initPeer 中初始化
     peerId: string = '';
     connections: Map<string, DataConnection> = new Map();
     isHost: boolean = false;
@@ -44,30 +44,49 @@ export class NetworkManager {
     onGameStartCountdown?: (seconds: number) => void;
     onGameStarted?: () => void;
     onGameState?: (state: any) => void;
+    onRoomCode?: (code: string, hostId: string) => void;
 
     constructor() {
-        // PeerJS 會自動生成 ID，或可指定
-        this.peer = new Peer({
-            // 使用公共 PeerJS Server (開發用)
-            // 生產環境應自架 PeerServer
-        });
-
-        this.setupPeerListeners();
+        // Peer 會在 createRoom 或 joinRoom 時初始化
+        // 不在這裡自動創建，以便使用自定義 ID
     }
 
-    private setupPeerListeners() {
-        this.peer.on('open', (id) => {
-            this.peerId = id;
-            console.log(`[Network] My Peer ID: ${id}`);
-            if (this.onConnected) this.onConnected();
-        });
+    /**
+     * 初始化 Peer 連線 (內部使用)
+     */
+    private initPeer(customId?: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            // 如果已經有 Peer，先清理
+            if (this.peer) {
+                this.peer.destroy();
+            }
 
-        this.peer.on('connection', (conn) => {
-            this.handleIncomingConnection(conn);
-        });
+            // 創建 Peer，可指定自定義 ID
+            if (customId) {
+                this.peer = new Peer(customId, {
+                    // 使用公共 PeerJS Server (開發用)
+                });
+            } else {
+                this.peer = new Peer({
+                    // 使用公共 PeerJS Server (開發用)
+                });
+            }
 
-        this.peer.on('error', (err) => {
-            console.error('[Network] Peer error:', err);
+            this.peer.on('open', (id) => {
+                this.peerId = id;
+                console.log(`[Network] My Peer ID: ${id}`);
+                if (this.onConnected) this.onConnected();
+                resolve(id);
+            });
+
+            this.peer.on('connection', (conn) => {
+                this.handleIncomingConnection(conn);
+            });
+
+            this.peer.on('error', (err) => {
+                console.error('[Network] Peer error:', err);
+                reject(err);
+            });
         });
     }
 
@@ -199,6 +218,10 @@ export class NetworkManager {
                 if (this.onGameState) this.onGameState(data.state);
                 break;
 
+            case 'room_code':
+                if (this.onRoomCode) this.onRoomCode(data.code, data.hostId);
+                break;
+
             default:
                 console.warn('[Network] Unknown message type:', data.type);
         }
@@ -254,6 +277,20 @@ export class NetworkManager {
     }
 
     /**
+     * 發送房間碼給指定玩家
+     */
+    sendRoomCode(targetPeerId: string, code: string) {
+        const conn = this.connections.get(targetPeerId);
+        if (conn) {
+            conn.send({
+                type: 'room_code',
+                code,
+                hostId: this.hostId
+            });
+        }
+    }
+
+    /**
      * 廣播遊戲開始倒數 (Host Only)
      */
     broadcastGameStartCountdown(seconds: number) {
@@ -274,6 +311,49 @@ export class NetworkManager {
         };
         this.connections.forEach(conn => conn.send(message));
         if (this.onGameStarted) this.onGameStarted();
+    }
+
+    /**
+     * 發送輸入
+     */
+    sendInput(input: PlayerInput) {
+        const message = {
+            type: 'input',
+            input
+        };
+        this.connections.forEach(conn => conn.send(message));
+    }
+
+    /**
+     * 廣播遊戲狀態 (Host Only)
+     */
+    broadcastGameState(state: any) {
+        const message = {
+            type: 'game_state',
+            state
+        };
+        this.connections.forEach(conn => conn.send(message));
+    }
+
+    /**
+     * 清理網路資源
+     */
+    cleanup() {
+        console.log('[Network] Cleaning up network resources...');
+
+        // 關閉所有連線
+        this.connections.forEach(conn => conn.close());
+        this.connections.clear();
+
+        // 銷毀 Peer
+        if (this.peer) {
+            this.peer.destroy();
+        }
+
+        this.peerId = '';
+        this.isHost = false;
+        this.hostId = '';
+        this.inputBuffer.clear();
     }
 
     /**
@@ -387,27 +467,27 @@ export class NetworkManager {
     }
 
     /**
-     * 建立房間 (成為 Host)
+     * 建立房間 (成為 Host) - 使用短碼作為 Peer ID
      */
-    createRoom() {
+    async createRoom(roomCode: string): Promise<string> {
+        // 使用房間碼作為 Peer ID
+        await this.initPeer(roomCode);
+
         this.isHost = true;
         this.hostId = this.peerId;
-        console.log(`[Network] Room created. Host ID: ${this.peerId}`);
+        console.log(`[Network] Room created. Room Code: ${roomCode}, Host ID: ${this.peerId}`);
+        return this.peerId;
     }
 
     /**
-     * 加入房間 (連線到 Host)
+     * 加入房間 (連線到 Host) - 使用房間碼
      */
-    joinRoom(hostPeerId: string) {
-        this.hostId = hostPeerId;
-        this.connectToPeer(hostPeerId);
-    }
+    async joinRoom(roomCode: string): Promise<void> {
+        // 先初始化自己的 Peer (自動生成 ID)
+        await this.initPeer();
 
-    /**
-     * 清理資源
-     */
-    destroy() {
-        this.connections.forEach((conn) => conn.close());
-        this.peer.destroy();
+        // 使用房間碼作為 Host ID 連線
+        this.hostId = roomCode;
+        this.connectToPeer(roomCode);
     }
 }
