@@ -52,6 +52,16 @@ export class GameService {
     }
 
     /**
+     * 獲取本地玩家技能
+     */
+    getPlayerSkills() {
+        if (this.gameEngine) {
+            return this.gameEngine.getLocalPlayerSkills()
+        }
+        return []
+    }
+
+    /**
      * 更新遊戲狀態 (每幀調用)
      */
     updateState(frame: number) {

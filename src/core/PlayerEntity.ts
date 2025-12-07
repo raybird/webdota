@@ -2,7 +2,9 @@ import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
 
 import { CombatStats } from './combat/CombatStats';
-import { SkillManager, DEFAULT_SKILLS } from './combat/SkillManager';
+import { SkillManager } from './combat/SkillManager';
+import { getCharacter } from '../data/characters';
+import { getSkill } from '../data/skills';
 
 export class PlayerEntity {
     playerId: string;
@@ -22,6 +24,7 @@ export class PlayerEntity {
 
     constructor(
         playerId: string,
+        characterId: string, // 新增 characterId
         app: pc.Application,
         physicsWorld: RAPIER.World,
         position: { x: number; y: number; z: number },
@@ -29,17 +32,41 @@ export class PlayerEntity {
     ) {
         this.playerId = playerId;
 
-        // 初始化戰鬥屬性
+        // 獲取角色資料
+        const character = getCharacter(characterId);
+        if (!character) {
+            console.error(`[PlayerEntity] Character not found: ${characterId}`);
+        }
+
+        // 初始化戰鬥屬性 (使用角色基礎屬性)
         this.combatStats = new CombatStats({
-            maxHp: 1000,
-            currentHp: 1000,
+            maxHp: character?.baseStats.maxHp || 1000,
+            currentHp: character?.baseStats.maxHp || 1000,
             maxEnergy: 100,
             currentEnergy: 0,
-            moveSpeed: 5.0
+            moveSpeed: character?.baseStats.moveSpeed || 5.0,
+            attackPower: character?.baseStats.attackPower || 10
         });
 
         // 初始化技能管理器
-        this.skillManager = new SkillManager(DEFAULT_SKILLS);
+        const skills = [];
+        // 添加通用技能
+        const basicAttack = getSkill('basic_attack');
+        if (basicAttack) skills.push(basicAttack);
+
+        // 添加角色專屬技能
+        if (character && character.skills) {
+            character.skills.forEach(skillId => {
+                const skill = getSkill(skillId);
+                if (skill) {
+                    skills.push(skill);
+                } else {
+                    console.warn(`[PlayerEntity] Skill not found: ${skillId}`);
+                }
+            });
+        }
+
+        this.skillManager = new SkillManager(skills);
 
         // 建立視覺實體
         this.entity = new pc.Entity(`Player_${playerId}`);

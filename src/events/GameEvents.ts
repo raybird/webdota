@@ -100,3 +100,12 @@ export type GameEvent =
     | SkillUsedEvent
     | PlayerDamagedEvent
     | PlayerHealedEvent
+    | SkillEffectEvent
+
+export type SkillEffectEvent = {
+    type: 'SKILL_EFFECT'
+    playerId: string
+    skillId: string
+    position: { x: number, y: number, z: number }
+    direction: { x: number, y: number, z: number }
+}

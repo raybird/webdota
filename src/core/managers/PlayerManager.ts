@@ -61,6 +61,7 @@ export class PlayerManager {
 
         const player = new PlayerEntity(
             playerId,
+            characterId || 'warrior', // Pass characterId
             this.app,
             this.physicsWorld,
             { x, y: 1, z },

@@ -66,6 +66,38 @@ export class RoomService {
                 this.gameService.startGame()
             }
         }
+
+        // Host: 提供房間狀態給新加入的玩家
+        this.networkManager.onGetRoomState = () => {
+            return {
+                players: this.roomStore.connectedPlayers.map(p => ({
+                    id: p.id,
+                    isReady: p.isReady,
+                    characterId: p.characterId
+                }))
+            }
+        }
+
+        // Client: 接收房間狀態並同步
+        this.networkManager.onRoomState = (players) => {
+            console.log('[RoomService] Received room state, syncing players:', players)
+            players.forEach(p => {
+                // 添加所有玩家到本地 store
+                if (!this.roomStore.connectedPlayers.find(cp => cp.id === p.id)) {
+                    this.roomStore.addPlayer({
+                        id: p.id,
+                        isReady: p.isReady,
+                        characterId: p.characterId
+                    })
+                } else {
+                    // 更新已存在玩家的狀態
+                    this.roomStore.updatePlayerReady(p.id, p.isReady)
+                    if (p.characterId) {
+                        this.roomStore.updatePlayerCharacter(p.id, p.characterId)
+                    }
+                }
+            })
+        }
     }
 
     /**

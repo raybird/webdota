@@ -19,7 +19,8 @@ export const CHARACTERS: Record<string, Character> = {
             maxHp: 100,
             moveSpeed: 5,
             attackPower: 10
-        }
+        },
+        skills: ['warrior_q', 'warrior_w', 'warrior_e', 'warrior_r']
     },
 
     assassin: {
@@ -35,7 +36,8 @@ export const CHARACTERS: Record<string, Character> = {
             maxHp: 100,
             moveSpeed: 5,
             attackPower: 10
-        }
+        },
+        skills: ['assassin_q', 'assassin_w', 'assassin_e', 'assassin_r']
     },
 
     mage: {
@@ -51,7 +53,8 @@ export const CHARACTERS: Record<string, Character> = {
             maxHp: 100,
             moveSpeed: 5,
             attackPower: 10
-        }
+        },
+        skills: ['mage_q', 'mage_w', 'mage_e', 'mage_r']
     }
 };
 

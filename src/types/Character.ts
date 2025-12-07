@@ -20,6 +20,9 @@ export interface Character {
         moveSpeed: number;
         attackPower: number;
     };
+
+    // 技能組 (Q, W, E, R)
+    skills: string[];
 }
 
 export const DEFAULT_CHARACTER_ID = 'warrior';

@@ -45,6 +45,8 @@ export class NetworkManager {
     onGameStarted?: () => void;
     onGameState?: (state: any) => void;
     onRoomCode?: (code: string, hostId: string) => void;
+    onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string }> };
+    onRoomState?: (players: Array<{ id: string; isReady: boolean; characterId?: string }>) => void;
 
     constructor() {
         // Peer 會在 createRoom 或 joinRoom 時初始化
@@ -142,6 +144,7 @@ export class NetworkManager {
 
     /**
      * Host 發送 Peer 列表給新加入的玩家，讓他們互相連線 (Mesh)
+     * 同時發送完整的玩家資訊 (characterId, isReady)
      */
     private sendPeerList(conn: DataConnection) {
         const peerList = Array.from(this.connections.keys()).filter(id => id !== conn.peer);
@@ -150,6 +153,15 @@ export class NetworkManager {
             peers: peerList,
             hostId: this.hostId
         });
+
+        // 發送完整的玩家狀態給新加入的玩家
+        if (this.onGetRoomState) {
+            const roomState = this.onGetRoomState();
+            conn.send({
+                type: 'room_state',
+                players: roomState.players
+            });
+        }
     }
 
     /**
@@ -220,6 +232,11 @@ export class NetworkManager {
 
             case 'room_code':
                 if (this.onRoomCode) this.onRoomCode(data.code, data.hostId);
+                break;
+
+            case 'room_state':
+                console.log('[NetworkManager] Received room_state:', data.players);
+                if (this.onRoomState) this.onRoomState(data.players);
                 break;
 
             default:

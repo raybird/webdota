@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, watch } from 'vue'
 import SkillButton from './SkillButton.vue'
 
 // Props
@@ -23,17 +23,15 @@ const emit = defineEmits<{
   skillPress: [skillId: string]
 }>()
 
-// State
-const comboMode = ref(false)
-const comboSkillId = ref<string | null>(null)
-const comboIcon = ref('💥')
+// Computed - 動態分配技能到按鈕位置
+const basicSkill = computed(() => props.skills.find(s => s.type === 'basic'))
+const ultimateSkill = computed(() => props.skills.find(s => s.type === 'ultimate'))
+const normalSkills = computed(() => props.skills.filter(s => s.type === 'normal'))
 
-// Computed
-const basicSkill = computed(() => props.skills.find(s => s.id === 'basic'))
-const skill1 = computed(() => props.skills.find(s => s.id === 'skill1'))
-const skill2 = computed(() => props.skills.find(s => s.id === 'skill2'))
-const skill3 = computed(() => props.skills.find(s => s.id === 'skill3'))
-const ultimateSkill = computed(() => props.skills.find(s => s.id === 'ultimate'))
+// 分配 normal 技能到 Q, W, E 位置
+const skill1 = computed(() => normalSkills.value[0] || null)
+const skill2 = computed(() => normalSkills.value[1] || null)
+const skill3 = computed(() => normalSkills.value[2] || null)
 
 // Methods
 const handleSkillPress = (skillId: string) => {
@@ -48,28 +46,17 @@ const isReady = (skillId: string): boolean => {
   return getCooldown(skillId) <= 0
 }
 
-// 暴露方法給父元件呼叫
-const activateComboMode = (comboSkill: string, icon: string) => {
-  comboMode.value = true
-  comboSkillId.value = comboSkill
-  comboIcon.value = icon
-}
-
-const deactivateComboMode = () => {
-  comboMode.value = false
-  comboSkillId.value = null
-}
-
-defineExpose({
-  activateComboMode,
-  deactivateComboMode
-})
+// 監聽 skills 變化以便調試
+watch(() => props.skills, (newSkills) => {
+  console.log('[SkillPanel] Skills updated:', newSkills)
+}, { immediate: true })
 </script>
 
 <template>
-  <div class="skill-panel">
-    <!-- 大招按鈕（最上方） -->
+  <div class="skill-panel" v-if="skills.length > 0">
+    <!-- 大招按鈕 (R / 4) -->
     <div class="ultimate-slot" v-if="ultimateSkill">
+      <div class="key-hint">R / 4</div>
       <SkillButton
         :skill-id="ultimateSkill.id"
         :name="ultimateSkill.name"
@@ -85,6 +72,7 @@ defineExpose({
     <!-- 技能 1-3（弧形排列） -->
     <div class="skills-arc">
       <div class="skill-slot skill-1" v-if="skill1">
+        <div class="key-hint">Q / 1</div>
         <SkillButton
           :skill-id="skill1.id"
           :name="skill1.name"
@@ -98,6 +86,7 @@ defineExpose({
       </div>
       
       <div class="skill-slot skill-2" v-if="skill2">
+        <div class="key-hint">W / 2</div>
         <SkillButton
           :skill-id="skill2.id"
           :name="skill2.name"
@@ -111,6 +100,7 @@ defineExpose({
       </div>
       
       <div class="skill-slot skill-3" v-if="skill3">
+        <div class="key-hint">E / 3</div>
         <SkillButton
           :skill-id="skill3.id"
           :name="skill3.name"
@@ -124,8 +114,9 @@ defineExpose({
       </div>
     </div>
     
-    <!-- 基本攻擊按鈕（最大最下方） -->
+    <!-- 基本攻擊按鈕 (Space / 0) -->
     <div class="basic-slot" v-if="basicSkill">
+      <div class="key-hint">Space / 0</div>
       <SkillButton
         :skill-id="basicSkill.id"
         :name="basicSkill.name"
@@ -134,11 +125,14 @@ defineExpose({
         :cooldown="basicSkill.cooldown"
         :current-cooldown="getCooldown(basicSkill.id)"
         :is-ready="isReady(basicSkill.id)"
-        :is-combo-mode="comboMode"
-        :combo-icon="comboIcon"
-        @press="handleSkillPress(comboMode && comboSkillId ? comboSkillId : basicSkill.id)"
+        @press="handleSkillPress(basicSkill.id)"
       />
     </div>
+  </div>
+  
+  <!-- 無技能時的提示 -->
+  <div class="skill-panel-empty" v-else>
+    <span>載入技能中...</span>
   </div>
 </template>
 
@@ -153,14 +147,38 @@ defineExpose({
   z-index: 100;
 }
 
-/* 決勝三分（大招）- 加速正上方 */
+.skill-panel-empty {
+  position: fixed;
+  right: 20px;
+  bottom: 40px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 8px;
+  z-index: 100;
+}
+
+.key-hint {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #aaa;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* 大招 - 最上方 */
 .ultimate-slot {
   position: absolute;
   bottom: 215px;
   right: 35px;
 }
 
-/* 技能圓弧排列（緊密包圍籃板左上方） */
+/* 技能圓弧排列 */
 .skills-arc {
   position: absolute;
   bottom: 0;
@@ -175,25 +193,25 @@ defineExpose({
   pointer-events: auto;
 }
 
-/* 加速1（突進）- 籃板正上方，微偏左 */
+/* 技能1（Q）- 籃板正上方 */
 .skill-1 {
   bottom: 135px;
   right: 35px;
 }
 
-/* 檔拆2（震地）- 籃板左上方（夾在中間） */
+/* 技能2（W）- 籃板左上方 */
 .skill-2 {
   bottom: 95px;
   right: 105px;
 }
 
-/* 卡位3（格檔）- 籃板正左方，微偏下 */
+/* 技能3（E）- 籃板正左方 */
 .skill-3 {
   bottom: 25px;
   right: 135px;
 }
 
-/* 籃板4（基本攻擊）- 右下最大 */
+/* 籃板（基本攻擊）- 右下最大 */
 .basic-slot {
   position: absolute;
   bottom: 15px;
@@ -201,7 +219,3 @@ defineExpose({
   pointer-events: auto;
 }
 </style>
-
-
-
-

@@ -1,6 +1,7 @@
 export interface Skill {
     id: string;
     name: string;
+    icon?: string;           // Emoji or image path
     type: 'normal' | 'ultimate' | 'basic' | 'combo';
 
     // 冷卻與消耗
