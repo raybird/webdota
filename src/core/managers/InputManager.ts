@@ -67,27 +67,35 @@ export class InputManager {
     }
 
     private handleSkillKey(key: string) {
-        // 技能按鍵映射
-        // Q / 1 -> 技能 0 (第一個普通技能)
-        // W / 2 -> 技能 1 (第二個普通技能) - 注意：W 用於移動，所以只用數字鍵
-        // E / 3 -> 技能 2 (第三個普通技能)
-        // R / 4 -> 技能 3 (大招)
-        // Space / 0 -> 基本攻擊
+        // 技能按鍵映射 - 使用右手 Numpad
+        // Numpad 4 -> 技能 1
+        // Numpad 5 -> 技能 2
+        // Numpad 6 -> 技能 3
+        // Numpad + -> 技能 4 (大招)
+        // Numpad 0 -> 基本攻擊
 
         let skillIndex = -1;
 
-        // 數字鍵優先
-        if (key === '1') skillIndex = 0;
-        if (key === '2') skillIndex = 1;
-        if (key === '3') skillIndex = 2;
-        if (key === '4') skillIndex = 3;
-        if (key === '0' || key === ' ') skillIndex = 4; // 基本攻擊
+        // Q / 1 -> Skill 1 (Index 0)
+        if (key === 'q' || key === '1') skillIndex = 0;
 
-        // QWER 鍵 (避開 WASD 移動)
-        // 注意: Q, E, R 可用於技能，W 不行因為用於移動
-        if (key === 'q') skillIndex = 0;
-        if (key === 'e') skillIndex = 2;
-        if (key === 'r') skillIndex = 3;
+        // 2 -> Skill 2 (Index 1)
+        if (key === '2') skillIndex = 1;
+
+        // 3 -> Skill 3 (Index 2)
+        if (key === '3') skillIndex = 2;
+
+        // 4 -> Skill 4 (Ultimate) (Index 3)
+        if (key === '4') skillIndex = 3;
+
+        // Space / 0 -> Basic Attack (Index 4)
+        if (key === ' ' || key === '0') skillIndex = 4;
+
+        // Legacy / Numpad Support (Optional, keeping for backward compatibility if needed)
+        if (key === 'num4') skillIndex = 0;
+        if (key === 'num5') skillIndex = 1;
+        if (key === 'num6') skillIndex = 2;
+        if (key === '+') skillIndex = 3;
 
         if (skillIndex >= 0 && skillIndex < this.skillSlotIds.length) {
             const skillId = this.skillSlotIds[skillIndex];

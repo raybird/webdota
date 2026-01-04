@@ -11,6 +11,8 @@ import { EffectManager } from './EffectManager';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
+import { SkillExecutor } from './combat/SkillExecutor';
+import { ProjectileManager } from './combat/ProjectileManager';
 
 /**
  * 遊戲引擎核心
@@ -29,6 +31,10 @@ export class GameEngine {
     inputManager!: InputManager;
     renderManager!: RenderManager;
     effectManager!: EffectManager;
+    skillExecutor!: SkillExecutor;
+    projectileManager!: ProjectileManager;
+
+    // Game Loop
 
     // Game Loop
     readonly FIXED_TIMESTEP = 1 / 60;
@@ -79,6 +85,10 @@ export class GameEngine {
         this.inputManager = new InputManager();
         this.renderManager = new RenderManager(this.app);
         this.effectManager = new EffectManager(this.app);
+        this.skillExecutor = new SkillExecutor();
+        this.projectileManager = new ProjectileManager(this.app);
+
+        // Find and set camera for RenderManager
 
         // Find and set camera for RenderManager
         const camera = this.app.root.findByName('Camera');
@@ -298,6 +308,7 @@ export class GameEngine {
         // Visual Update
         this.renderManager.syncVisuals(this.playerManager.getAllPlayers());
         this.renderManager.updateCamera(this.networkManager.peerId, this.playerManager.getAllPlayers());
+        this.uiManager.updateAll(this.playerManager.getAllPlayers());
     }
 
     /**
@@ -336,10 +347,15 @@ export class GameEngine {
                 this.pendingRemoteInputs = []; // 清空佇列
             }
 
-            // Step Physics
+            // 3. Physics Step
             this.physicsWorld.step();
 
-            // Broadcast State
+            // 4. Update Game Logic (Combat, Stats, Skills)
+            this.playerManager.getAllPlayers().forEach(player => {
+                player.update(dt);
+            });
+
+            // 5. Broadcast State
             if (this.currentFrame % 3 === 0) { // 每 3 幀同步一次
                 const gameState = {
                     frame: this.currentFrame,
@@ -352,19 +368,24 @@ export class GameEngine {
                             hp: p.combatStats.currentHp,
                             energy: p.combatStats.currentEnergy
                         }
-                    }))
+                    })),
+                    isGameStarted: this.isGameStarted
                 };
                 this.networkManager.broadcastGameState(gameState);
             }
         } else {
-            // Client: 也執行物理模擬
+            // Client: 也執行物理模擬 (在此架構下，Client 需要執行物理模擬來實現平滑移動與預測，但結果會被 Host 覆蓋)
             this.physicsWorld.step();
+            // Client Logic Updates (e.g. cooldowns)
+            const localPlayer = this.playerManager.getPlayer(this.networkManager.peerId);
+            if (localPlayer) {
+                localPlayer.update(dt);
+            }
         }
 
         this.currentFrame++;
         this.gameStore.setFrame(this.currentFrame);
     }
-
     processInputs(inputs: PlayerInput[], dt: number) {
         inputs.forEach((input) => {
             // 厳格 ID 驗證：在處理前確認 ID 存在於 PlayerManager
@@ -400,29 +421,15 @@ export class GameEngine {
                         const { skill } = result;
                         const direction = new pc.Vec3(input.skillDirection.x, 0, input.skillDirection.z);
 
-                        // 生成攻擊判定框
-                        const position = player.getPosition();
-                        // 根據技能範圍調整 Hitbox 位置 (稍微前方)
-                        position.add(direction.clone().mulScalar(1.0));
-
-                        this.hitboxManager.createHitbox(
-                            position,
-                            skill.aoe || skill.range * 0.5, // 如果有 AOE 使用 AOE，否則使用範圍的一半
-                            skill.damage,
-                            direction.clone().mulScalar(skill.knockback || 0),
-                            input.playerId,
-                            0.2 // 持續時間
+                        // 使用 SkillExecutor 執行複雜技能邏輯
+                        this.skillExecutor.executeSkill(
+                            skill,
+                            player,
+                            direction,
+                            this.hitboxManager,
+                            this.effectManager,
+                            this.projectileManager
                         );
-
-                        // 廣播技能使用事件 (用於播放特效)
-                        // 廣播技能使用事件 (用於播放特效)
-                        eventBus.emit({
-                            type: 'SKILL_EFFECT',
-                            playerId: input.playerId,
-                            skillId: input.skillUsed,
-                            position: { x: position.x, y: position.y, z: position.z },
-                            direction: { x: direction.x, y: direction.y, z: direction.z }
-                        });
 
                         console.log(`[GameEngine] ${input.playerId.substring(0, 8)} used ${skill.name}`);
                     }
@@ -441,6 +448,9 @@ export class GameEngine {
                 }
             }
         });
+
+        // Update Projectiles (投射物移動與碰撞)
+        this.projectileManager.update(dt, this.hitboxManager, this.playerManager.getAllPlayers());
     }
 
     useSkill(skillId: string) {
@@ -473,5 +483,15 @@ export class GameEngine {
         if (!localPlayer) return [];
 
         return Array.from(localPlayer.skillManager.skills.values());
+    }
+
+    /**
+     * 獲取本地玩家的技能冷卻狀態
+     */
+    getLocalPlayerCooldowns(): Map<string, number> {
+        const localPlayer = this.playerManager.getPlayer(this.networkManager.peerId);
+        if (!localPlayer) return new Map();
+
+        return localPlayer.skillManager.getAllCooldowns();
     }
 }

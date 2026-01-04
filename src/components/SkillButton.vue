@@ -131,7 +131,8 @@ const handleMouseDown = (e: MouseEvent) => {
 }
 
 .skill-button.cooldown {
-  opacity: 0.5;
+  opacity: 0.6;
+  filter: grayscale(100%);
   cursor: not-allowed;
 }
 

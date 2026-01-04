@@ -14,6 +14,7 @@ export class PlayerEntity {
     // 戰鬥系統
     combatStats: CombatStats;
     skillManager: SkillManager;
+    private app: pc.Application; // 保存 App 引用以存取 Updated Loop
 
     // UI 實體
     hpBarEntity!: pc.Entity;
@@ -30,6 +31,7 @@ export class PlayerEntity {
         position: { x: number; y: number; z: number },
         color: pc.Color
     ) {
+        this.app = app; // 儲存 App 引用
         this.playerId = playerId;
 
         // 獲取角色資料
@@ -43,7 +45,7 @@ export class PlayerEntity {
             maxHp: character?.baseStats.maxHp || 1000,
             currentHp: character?.baseStats.maxHp || 1000,
             maxEnergy: 100,
-            currentEnergy: 0,
+            currentEnergy: 100, // 初始滿能量讓玩家可以立即使用技能
             moveSpeed: character?.baseStats.moveSpeed || 5.0,
             attackPower: character?.baseStats.attackPower || 10
         });
@@ -68,44 +70,36 @@ export class PlayerEntity {
 
         this.skillManager = new SkillManager(skills);
 
-        // 建立視覺實體
+        // 建立根實體（不包含渲染組件，只作為容器）
         this.entity = new pc.Entity(`Player_${playerId}`);
-        this.entity.addComponent('render', {
-            type: 'box'
-        });
-        this.entity.setLocalScale(1, 1, 1);
         this.entity.setPosition(position.x, position.y, position.z);
 
-        // 先將 Entity 加入場景圖（這會觸發 PlayCanvas 初始化 meshInstances）
+        // 先將 Entity 加入場景圖
         app.root.addChild(this.entity);
 
-        // 建立 Material
-        const material = new pc.StandardMaterial();
-        console.log(`[PlayerEntity] Setting material for Player_${playerId}: r=${color.r.toFixed(3)}, g=${color.g.toFixed(3)}, b=${color.b.toFixed(3)}`);
-        material.diffuse = color.clone();
-        material.emissive = color.clone();
-        material.useLighting = true;
-        material.update();
+        // 根據 modelConfig 建立複合模型，或使用預設方塊
+        if (character?.modelConfig) {
+            this.createModelFromConfig(app, character.modelConfig, color);
+        } else {
+            // Fallback: 建立預設方塊
+            const fallbackPart = new pc.Entity('Body');
+            fallbackPart.addComponent('render', { type: 'box' });
+            fallbackPart.setLocalScale(1, 1, 1);
 
-        // 設定 Material（先嘗試直接設定，再延遲設定確保覆蓋）
-        const applyMaterial = () => {
-            if (this.entity.render && this.entity.render.meshInstances) {
-                this.entity.render.meshInstances.forEach(mi => {
+            const material = new pc.StandardMaterial();
+            material.diffuse = color.clone();
+            material.emissive = color.clone();
+            material.useLighting = true;
+            material.update();
+
+            if (fallbackPart.render) {
+                fallbackPart.render.meshInstances.forEach(mi => {
                     mi.material = material;
                 });
-                console.log(`[PlayerEntity] Material applied to ${this.entity.name} meshInstances`);
-            } else {
-                console.error(`[PlayerEntity] No meshInstances for ${this.entity.name}`);
             }
-        };
 
-        // 立即嘗試
-        applyMaterial();
-
-        // 延遲一幀再次確保（處理某些初始化延遲情況）
-        setTimeout(() => {
-            applyMaterial();
-        }, 0);
+            this.entity.addChild(fallbackPart);
+        }
 
         // 建立物理剛體
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
@@ -119,6 +113,65 @@ export class PlayerEntity {
     }
 
     /**
+     * 根據 ModelConfig 建立複合模型
+     * 將多個基本幾何體組合成 Low Poly 風格角色
+     */
+    private createModelFromConfig(
+        _app: pc.Application,
+        config: import('../types/Character').ModelConfig,
+        baseColor: pc.Color
+    ) {
+        config.bodyParts.forEach((part, index) => {
+            const partEntity = new pc.Entity(`Part_${index}_${part.type}`);
+
+            // 根據類型建立渲染組件
+            partEntity.addComponent('render', { type: part.type });
+
+            // 設定縮放
+            partEntity.setLocalScale(part.scale.x, part.scale.y, part.scale.z);
+
+            // 設定位置
+            partEntity.setLocalPosition(part.position.x, part.position.y, part.position.z);
+
+            // 設定旋轉 (如果有)
+            if (part.rotation) {
+                partEntity.setLocalEulerAngles(part.rotation.x, part.rotation.y, part.rotation.z);
+            }
+
+            // 建立材質
+            const material = new pc.StandardMaterial();
+
+            // 使用部件指定顏色或繼承基礎顏色
+            if (part.color) {
+                const hexColor = part.color;
+                const r = parseInt(hexColor.slice(1, 3), 16) / 255;
+                const g = parseInt(hexColor.slice(3, 5), 16) / 255;
+                const b = parseInt(hexColor.slice(5, 7), 16) / 255;
+                material.diffuse = new pc.Color(r, g, b);
+                material.emissive = new pc.Color(r * 0.3, g * 0.3, b * 0.3);
+            } else {
+                material.diffuse = baseColor.clone();
+                material.emissive = new pc.Color(baseColor.r * 0.3, baseColor.g * 0.3, baseColor.b * 0.3);
+            }
+
+            material.useLighting = true;
+            material.update();
+
+            // 套用材質
+            if (partEntity.render && partEntity.render.meshInstances) {
+                partEntity.render.meshInstances.forEach(mi => {
+                    mi.material = material;
+                });
+            }
+
+            // 加入為子實體
+            this.entity.addChild(partEntity);
+        });
+
+        console.log(`[PlayerEntity] Created Low Poly model with ${config.bodyParts.length} parts`);
+    }
+
+    /**
      * 設定 UI 參考（由 GameApp 在建立玩家後呼叫）
      */
     setUIReferences(hpBarEntity: pc.Entity, hpBarFillEntity: pc.Entity) {
@@ -127,14 +180,26 @@ export class PlayerEntity {
     }
 
     /**
+     * 更新邏輯 (由 GameEngine 呼叫)
+     */
+    update(dt: number) {
+        // 更新屬性 (能量回復、狀態檢查)
+        this.combatStats.update(dt);
+
+        // 更新技能 (冷卻時間)
+        this.skillManager.update(dt);
+    }
+
+    /**
      * 移動角色
      */
     move(moveX: number, moveY: number, dt: number) {
         // 計算移動向量 (moveY 對應 Z 軸，moveX 對應 X 軸)
+        const speed = this.combatStats.getMoveSpeed();
         const velocity = {
-            x: moveX * this.combatStats.moveSpeed * dt,
+            x: moveX * speed * dt,
             y: 0,
-            z: moveY * this.combatStats.moveSpeed * dt
+            z: moveY * speed * dt
         };
 
         // 更新最後移動方向（用於攻擊方向）
@@ -185,16 +250,123 @@ export class PlayerEntity {
         // 使用最後移動方向作為攻擊方向
         const direction = this.lastMoveDirection.clone();
 
+        // 播放動畫
+        if (skill.animation) {
+            this.playAnimation(skill.animation);
+        } else {
+            // 預設攻擊動作
+            this.playAnimation('attack_normal');
+        }
+
         console.log(`[PlayerEntity] ${this.playerId.substring(0, 8)} used skill: ${skill.name} towards (${direction.x.toFixed(2)}, ${direction.z.toFixed(2)})`);
 
         return { skill, direction };
     }
 
     /**
+     * 播放程序化動畫
+     */
+    playAnimation(animName: string) {
+        // 找到模型容器 (所有非 UI 子節點)
+        const parts = this.entity.children.filter(c => c.name !== 'HPBar' && c.name !== 'HPBarFill');
+
+        if (parts.length === 0) {
+            console.warn('[PlayerEntity] No parts found for animation');
+            return;
+        }
+
+        console.log(`[PlayerEntity] Playing animation: ${animName}`);
+
+        // 根據動畫名稱決定動作類型
+        const animLower = animName.toLowerCase();
+
+        if (animLower.includes('ultimate') || animLower.includes('whirlwind')) {
+            // 旋轉一圈 (大招/旋風)
+            let timer = 0;
+            const duration = 0.5;
+            const updateAnim = (dt: number) => {
+                timer += dt;
+                if (timer >= duration) {
+                    this.app.off('update', updateAnim);
+                    return;
+                }
+                parts.forEach(p => p.rotateLocal(0, 720 * dt, 0)); // 快速旋轉
+            };
+            this.app.on('update', updateAnim);
+        } else if (animLower.includes('dash') || animLower.includes('blink')) {
+            // 身體前傾 (衝刺/閃現)
+            parts.forEach(p => {
+                const originalRot = p.getLocalRotation().clone();
+                p.rotateLocal(20, 0, 0);
+                setTimeout(() => p.setLocalRotation(originalRot), 250);
+            });
+        } else if (animLower.includes('stomp') || animLower.includes('nova')) {
+            // 向下砸 (震地/冰環)
+            parts.forEach(p => {
+                const originalPos = p.getLocalPosition().clone();
+                p.translateLocal(0, 0.3, 0); // 先提起
+                setTimeout(() => {
+                    p.setLocalPosition(originalPos.x, originalPos.y - 0.2, originalPos.z); // 然後砸下
+                    setTimeout(() => p.setLocalPosition(originalPos), 150); // 回復
+                }, 100);
+            });
+        } else if (animLower.includes('smoke') || animLower.includes('buff')) {
+            // 縮放閃爍 (煙霧/buff)
+            parts.forEach(p => {
+                const originalScale = p.getLocalScale().clone();
+                p.setLocalScale(originalScale.x * 1.2, originalScale.y * 1.2, originalScale.z * 1.2);
+                setTimeout(() => p.setLocalScale(originalScale), 200);
+            });
+        } else {
+            // 預設：前衝 + 回彈 (攻擊/施法)
+            const forward = this.lastMoveDirection.clone().mulScalar(0.5);
+            parts.forEach(p => {
+                const originalPos = p.getLocalPosition().clone();
+                let timer = 0;
+                const duration = 0.2;
+                const updateAnim = (dt: number) => {
+                    timer += dt;
+                    if (timer >= duration) {
+                        p.setLocalPosition(originalPos);
+                        this.app.off('update', updateAnim);
+                        return;
+                    }
+                    const progress = timer / duration;
+                    const offset = Math.sin(progress * Math.PI);
+                    p.setLocalPosition(
+                        originalPos.x + forward.x * offset,
+                        originalPos.y,
+                        originalPos.z + forward.z * offset
+                    );
+                };
+                this.app.on('update', updateAnim);
+            });
+        }
+    }
+
+    /**
      * 獲取當前朝向方向（用於技能發動）
+     * 使用實體的實際旋轉角度計算前方向量，而非依靠移動歷史
      */
     getFacingDirection(): pc.Vec3 {
-        return this.lastMoveDirection.clone();
+        // 從 rigidBody 獲取當前旋轉 (Quaternion)
+        const rotation = this.rigidBody.rotation();
+        const quat = new pc.Quat(rotation.x, rotation.y, rotation.z, rotation.w);
+
+        // 計算前方向量 (Z+ 是預設前方)
+        const forward = new pc.Vec3(0, 0, 1);
+        quat.transformVector(forward, forward);
+
+        // 確保只在水平面上移動
+        forward.y = 0;
+        forward.normalize();
+
+        // 如果向量為零（極端情況），使用備用方向
+        if (forward.length() < 0.01) {
+            return this.lastMoveDirection.clone();
+        }
+
+        return forward;
     }
 
     /**

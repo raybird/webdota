@@ -17,9 +17,25 @@ export interface Skill {
     knockback?: number;      // 擊退距離
     stun?: number;           // 暈眩時間 (秒)
 
-    // 特殊效果
-    effect?: string;         // 如 'invincible'
+    // 狀態效果
+    effect?: string;         // 如 'invincible', 'invisible', 'slow'
     duration?: number;       // 效果持續時間
+    effectValue?: number;    // 效果數值 (如緩速倍率 0.5)
+
+    // 位移技能
+    dashDistance?: number;      // 衝刺距離
+    teleport?: boolean;         // 是否瞬移（無動畫）
+
+    // 投射物技能
+    projectile?: boolean;       // 是否為投射物
+    projectileSpeed?: number;   // 投射物速度
+
+    // 延遲技能
+    delay?: number;             // 傷害延遲（秒）
+
+    // 多段攻擊
+    multiHit?: number;          // 多次打擊次數
+    multiHitInterval?: number;  // 多次打擊間隔
 
     // 連擊系統
     enablesCombo?: string;   // 啟用哪個接招技能
@@ -43,14 +59,23 @@ export class SkillManager {
      */
     canUseSkill(skillId: string, energy: number): boolean {
         const skill = this.skills.get(skillId);
-        if (!skill) return false;
+        if (!skill) {
+            console.log(`[SkillManager] Skill ${skillId} not found in skills map. Available: ${Array.from(this.skills.keys()).join(', ')}`);
+            return false;
+        }
 
         // 檢查冷卻
         const cooldownEnd = this.cooldowns.get(skillId) || 0;
-        if (Date.now() < cooldownEnd) return false;
+        if (Date.now() < cooldownEnd) {
+            console.log(`[SkillManager] Skill ${skillId} on cooldown`);
+            return false;
+        }
 
         // 檢查能量
-        if (skill.energyCost && energy < skill.energyCost) return false;
+        if (skill.energyCost && energy < skill.energyCost) {
+            console.log(`[SkillManager] Skill ${skillId} needs ${skill.energyCost} energy, have ${energy}`);
+            return false;
+        }
 
         return true;
     }
@@ -92,6 +117,14 @@ export class SkillManager {
             }
         }
         return result;
+    }
+
+    /**
+     * 更新 (預留)
+     */
+    update(_dt: number) {
+        // 目前冷卻使用 Date.now() 判定，不需 delta time 更新
+        // 可用於其他技能狀態效果
     }
 }
 

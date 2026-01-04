@@ -62,6 +62,16 @@ export class GameService {
     }
 
     /**
+     * 獲取本地玩家技能冷卻
+     */
+    getCooldowns(): Map<string, number> {
+        if (this.gameEngine) {
+            return this.gameEngine.getLocalPlayerCooldowns()
+        }
+        return new Map()
+    }
+
+    /**
      * 更新遊戲狀態 (每幀調用)
      */
     updateState(frame: number) {

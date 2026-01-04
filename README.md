@@ -54,6 +54,16 @@ npm run build
 npm run preview
 ```
 
+### 部署 (Cloudflare Pages)
+
+```bash
+# 1. 構建生產版本
+npm run build
+
+# 2. 部署到 Cloudflare Pages
+npx wrangler pages deploy dist
+```
+
 ## 🎮 遊戲玩法
 
 ### 創建房間

@@ -42,6 +42,17 @@ export class CombatStats {
     }
 
     /**
+     * 獲取當前移動速度 (考慮緩速)
+     */
+    getMoveSpeed(): number {
+        let speed = this.moveSpeed;
+        if (this.isSlowed()) {
+            speed *= this.getSlowMultiplier();
+        }
+        return speed;
+    }
+
+    /**
      * 消耗能量
      */
     consumeEnergy(amount: number): boolean {
@@ -57,6 +68,28 @@ export class CombatStats {
      */
     isInvincible(): boolean {
         return this.hasState('invincible');
+    }
+
+    /**
+     * 檢查是否隱身
+     */
+    isInvisible(): boolean {
+        return this.hasState('invisible');
+    }
+
+    /**
+     * 檢查是否緩速
+     */
+    isSlowed(): boolean {
+        return this.hasState('slow');
+    }
+
+    /**
+     * 獲取緩速倍率
+     */
+    getSlowMultiplier(): number {
+        // 預設緩速 50%
+        return 0.5;
     }
 
     /**
@@ -81,9 +114,9 @@ export class CombatStats {
     }
 
     /**
-     * 更新狀態 (清理過期狀態)
+     * 更新狀態 (清理過期狀態 + 能量回復)
      */
-    update(_dt: number) {
+    update(dt: number) {
         const now = Date.now();
         for (const [state, expiry] of this.states.entries()) {
             if (now > expiry) {
@@ -91,7 +124,7 @@ export class CombatStats {
             }
         }
 
-        // 自然回覆能量 (可選)
-        // this.addEnergy(1 * dt);
+        // 自然回復能量 (每秒 10 點)
+        this.addEnergy(10 * dt);
     }
 }

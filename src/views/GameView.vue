@@ -48,6 +48,8 @@ const handleJoystickEnd = () => {
   props.gameService.setMobileInput(0, 0)
 }
 
+const animationFrameId = ref<number>(0)
+
 onMounted(async () => {
   // 監聽遊戲開始事件以更新技能
   eventBus.on('GAME_STARTED', refreshSkills)
@@ -62,14 +64,23 @@ onMounted(async () => {
     }
   }, 500)
 
+  // 先等待 GameEngine 初始化完成
   if (canvasRef.value) {
     await props.gameService.init(canvasRef.value)
     props.gameService.startGame()
+    
+    // init 完成後才啟動冷卻更新循環
+    const updateCooldowns = () => {
+      currentCooldowns.value = props.gameService.getCooldowns()
+      animationFrameId.value = requestAnimationFrame(updateCooldowns)
+    }
+    updateCooldowns()
   }
 })
 
 onUnmounted(() => {
   // 清理資源
+  cancelAnimationFrame(animationFrameId.value)
   props.gameService.destroy()
 })
 </script>
@@ -88,6 +99,10 @@ onUnmounted(() => {
           <div class="peer-id">ID: {{ roomStore.myPeerId?.substring(0, 8) || 'N/A' }}</div>
           <div class="role-indicator" :class="{ host: roomStore.isHost }">
             {{ roomStore.isHost ? '🟢 HOST' : '🔵 CLIENT' }}
+          </div>
+          <!-- Cooldown Debug -->
+          <div style="margin-top: 10px; font-size: 10px; color: #aaa;">
+            CDs: {{ Array.from(currentCooldowns.entries()).map(([k, v]) => `${k}:${v.toFixed(1)}`).join(', ') }}
           </div>
         </div>
       </div>

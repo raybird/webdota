@@ -10,6 +10,7 @@ export interface PlayerUIConfig {
     playerName: string;          // 玩家顯示名稱
     hpBarEntity: pc.Entity;
     hpBarFillEntity: pc.Entity;
+    energyBarFillEntity: pc.Entity;  // 新增能量條
     nameTextEntity: pc.Entity;   // 名稱文字實體
 }
 
@@ -20,7 +21,8 @@ export class UIManager {
 
     // UI 配置常數
     private readonly HP_BAR_WIDTH = 150;
-    private readonly HP_BAR_HEIGHT = 25;
+    private readonly HP_BAR_HEIGHT = 20;
+    private readonly ENERGY_BAR_HEIGHT = 10; // 能量條比血條矮
     private readonly HP_BAR_OFFSET_Y = 2.0; // 血條離角色的高度
     // private readonly NAME_TEXT_OFFSET_Y = 20; // 已改用固定數值
 
@@ -76,6 +78,32 @@ export class UIManager {
             opacity: 1.0
         });
         hpBarFill.setLocalPosition(-this.HP_BAR_WIDTH / 2, 0, 0);
+
+        // 能量條背景（深藍）
+        const energyBarBg = new pc.Entity('EnergyBar_Background');
+        energyBarBg.addComponent('element', {
+            type: 'image',
+            anchor: new pc.Vec4(0.5, 0.5, 0.5, 0.5),
+            pivot: new pc.Vec2(0.5, 0.5),
+            width: this.HP_BAR_WIDTH,
+            height: this.ENERGY_BAR_HEIGHT,
+            color: new pc.Color(0.1, 0.1, 0.3),
+            opacity: 0.8
+        });
+        energyBarBg.setLocalPosition(0, -this.HP_BAR_HEIGHT, 0); // 在血條下方
+
+        // 能量條填充（藍色）
+        const energyBarFill = new pc.Entity('EnergyBar_Fill');
+        energyBarFill.addComponent('element', {
+            type: 'image',
+            anchor: new pc.Vec4(0, 0.5, 0, 0.5),
+            pivot: new pc.Vec2(0, 0.5),
+            width: this.HP_BAR_WIDTH,
+            height: this.ENERGY_BAR_HEIGHT,
+            color: new pc.Color(0.2, 0.6, 1.0),
+            opacity: 1.0
+        });
+        energyBarFill.setLocalPosition(-this.HP_BAR_WIDTH / 2, -this.HP_BAR_HEIGHT, 0);
 
         // 名稱文字（在血條上方）- 使用 Canvas 繪製確保顯示
         const nameText = new pc.Entity('NameText');
@@ -148,6 +176,8 @@ export class UIManager {
 
         hpBarEntity.addChild(hpBarBg);
         hpBarEntity.addChild(hpBarFill);
+        hpBarEntity.addChild(energyBarBg);
+        hpBarEntity.addChild(energyBarFill);
         hpBarEntity.addChild(nameText);
         this.app.root.addChild(hpBarEntity);
 
@@ -156,6 +186,7 @@ export class UIManager {
             playerName,
             hpBarEntity,
             hpBarFillEntity: hpBarFill,
+            energyBarFillEntity: energyBarFill,
             nameTextEntity: nameText
         };
 
@@ -210,6 +241,17 @@ export class UIManager {
     }
 
     /**
+     * 更新玩家能量條數值
+     */
+    updatePlayerEnergy(playerId: string, currentEnergy: number, maxEnergy: number) {
+        const ui = this.playerUIs.get(playerId);
+        if (!ui || !ui.energyBarFillEntity.element) return;
+
+        const energyPercent = Math.max(0, Math.min(1, currentEnergy / maxEnergy));
+        ui.energyBarFillEntity.element.width = this.HP_BAR_WIDTH * energyPercent;
+    }
+
+    /**
      * 移除玩家 UI
      */
     removePlayerUI(playerId: string) {
@@ -238,6 +280,11 @@ export class UIManager {
                     playerId,
                     player.combatStats.currentHp,
                     player.combatStats.maxHp
+                );
+                this.updatePlayerEnergy(
+                    playerId,
+                    player.combatStats.currentEnergy,
+                    player.combatStats.maxEnergy
                 );
             }
         }

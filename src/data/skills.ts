@@ -25,6 +25,7 @@ export const SKILLS: Record<string, Skill> = {
         damage: 30,
         range: 4.0,
         knockback: 2.0,
+        dashDistance: 4.0, // 新增衝刺距離
         animation: 'skill_dash'
     },
     'warrior_w': {
@@ -77,6 +78,7 @@ export const SKILLS: Record<string, Skill> = {
         energyCost: 15,
         damage: 20,
         range: 5.0,
+        dashDistance: 6.0, // 瞬步更遠
         animation: 'skill_dash'
     },
     'assassin_w': {
@@ -100,7 +102,7 @@ export const SKILLS: Record<string, Skill> = {
         energyCost: 30,
         damage: 0,
         range: 0,
-        effect: 'invisible',
+        effect: 'invisible', // 隱身狀態
         duration: 3.0,
         animation: 'skill_smoke'
     },
@@ -129,6 +131,8 @@ export const SKILLS: Record<string, Skill> = {
         damage: 35,
         range: 8.0, // 遠程
         knockback: 1.0,
+        projectile: true, // 投射物
+        projectileSpeed: 15,
         animation: 'skill_cast'
     },
     'mage_w': {
@@ -141,7 +145,8 @@ export const SKILLS: Record<string, Skill> = {
         damage: 25,
         range: 4.0,
         aoe: 4.0,
-        effect: 'slow',
+        effect: 'slow', // 減速
+        effectValue: 0.5,
         duration: 3.0,
         animation: 'skill_nova'
     },
@@ -154,6 +159,7 @@ export const SKILLS: Record<string, Skill> = {
         energyCost: 30,
         damage: 0,
         range: 6.0, // 移動距離
+        teleport: true, // 瞬移
         animation: 'skill_blink'
     },
     'mage_r': {
@@ -167,6 +173,7 @@ export const SKILLS: Record<string, Skill> = {
         range: 10.0,
         aoe: 5.0,
         knockback: 4.0,
+        delay: 1.0, // 延遲傷害
         animation: 'skill_ultimate'
     }
 };

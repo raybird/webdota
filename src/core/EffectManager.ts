@@ -47,6 +47,7 @@ export class EffectManager {
         this.materials.set('shockwave', shockwaveMat);
 
         // 4. 大招特效材質（紅色高亮）
+        // 4. 大招特效材質（紅色高亮）
         const ultMat = new pc.StandardMaterial();
         ultMat.diffuse = new pc.Color(1, 0, 0);
         ultMat.emissive = new pc.Color(1, 0.2, 0.2);
@@ -54,28 +55,66 @@ export class EffectManager {
         ultMat.blendType = pc.BLEND_ADDITIVE;
         ultMat.update();
         this.materials.set('ultimate', ultMat);
+
+        // 5. 火球特效材質
+        const fireMat = new pc.StandardMaterial();
+        fireMat.diffuse = new pc.Color(1, 0.5, 0);
+        fireMat.emissive = new pc.Color(1, 0.5, 0);
+        fireMat.opacity = 0.8;
+        fireMat.blendType = pc.BLEND_ADDITIVE;
+        fireMat.update();
+        this.materials.set('fire', fireMat);
+
+        // 6. 冰霜特效材質
+        const iceMat = new pc.StandardMaterial();
+        iceMat.diffuse = new pc.Color(0.5, 0.8, 1);
+        iceMat.emissive = new pc.Color(0.5, 0.8, 1);
+        iceMat.opacity = 0.7;
+        iceMat.blendType = pc.BLEND_ADDITIVE;
+        iceMat.update();
+        this.materials.set('ice', iceMat);
     }
 
     /**
      * 播放技能特效
      */
     playSkillEffect(skillId: string, position: pc.Vec3, direction: pc.Vec3) {
-        switch (skillId) {
-            case 'basic': // 籃板/普攻
+        // --- 戰士技能 ---
+        if (skillId === 'warrior_q') {
+            this.createDashEffect(position, direction); // 衝鋒
+        } else if (skillId === 'warrior_w') {
+            this.createShockwaveEffect(position, 3.0); // 震地
+        } else if (skillId === 'warrior_e') {
+            this.createShieldEffect(position); // 鋼鐵意志
+        } else if (skillId === 'warrior_r') {
+            this.createWhirlwindEffect(position, 4.0); // 旋風斬
+        }
+        // --- 刺客技能 ---
+        else if (skillId === 'assassin_q') {
+            this.createDashEffect(position, direction); // 瞬步
+        } else if (skillId === 'assassin_w') {
+            this.createSlashEffect(position, direction); // 致命一擊
+        } else if (skillId === 'assassin_e') {
+            this.createSmokeEffect(position); // 煙霧彈
+        } else if (skillId === 'assassin_r') {
+            this.createPhantomEffect(position); // 幻影殺陣 (初始特效)
+        }
+        // --- 法師技能 ---
+        else if (skillId === 'mage_q') {
+            this.createFireballEffect(position, direction); // 火球術
+        } else if (skillId === 'mage_w') {
+            this.createFrostNovaEffect(position, 4.0); // 冰霜新星
+        } else if (skillId === 'mage_e') {
+            this.createBlinkEffect(position, direction); // 閃現
+        } else if (skillId === 'mage_r') {
+            this.createMeteorEffect(position, 5.0); // 隕石術 (預警)
+        }
+        // --- 通用/舊技能 ---
+        else {
+            // Fallback for old skills or basic attacks
+            if (skillId.includes('basic') || skillId === 'basic_attack') {
                 this.createSlashEffect(position, direction);
-                break;
-            case 'skill1': // 加速
-                this.createDashEffect(position, direction);
-                break;
-            case 'skill2': // 檔拆/震地
-                this.createShockwaveEffect(position, 2.0);
-                break;
-            case 'skill3': // 卡位/護盾
-                this.createShieldEffect(position);
-                break;
-            case 'ultimate': // 決勝三分
-                this.createExplosionEffect(position, 4.0);
-                break;
+            }
         }
     }
 
@@ -297,5 +336,240 @@ export class EffectManager {
 
             this.app.on('update', update);
         }
+    }
+
+    /**
+     * 旋風斬特效 (持續旋轉的紅色圓柱)
+     */
+    private createWhirlwindEffect(pos: pc.Vec3, radius: number) {
+        const entity = new pc.Entity('Whirlwind');
+        entity.addComponent('render', {
+            type: 'cylinder',
+            material: this.materials.get('ultimate')
+        });
+
+        entity.setPosition(pos.x, pos.y + 1.0, pos.z);
+        entity.setLocalScale(radius * 0.1, 0.1, radius * 0.1); // Start small
+
+        this.app.root.addChild(entity);
+
+        let timer = 0;
+        const duration = 1.0;
+
+        const update = (dt: number) => {
+            timer += dt;
+            if (timer >= duration) {
+                entity.destroy();
+                this.app.off('update', update);
+                return;
+            }
+
+            // 旋轉與擴大
+            entity.rotate(0, 720 * dt, 0);
+            const scale = Math.min(radius * 2, (radius * 2) * (timer / 0.2));
+            entity.setLocalScale(scale, 0.2 + (Math.sin(timer * 10) * 0.1), scale);
+        };
+
+        this.app.on('update', update);
+    }
+
+    /**
+     * 煙霧彈特效 (多個灰色球體)
+     */
+    private createSmokeEffect(pos: pc.Vec3) {
+        const count = 8;
+        for (let i = 0; i < count; i++) {
+            const entity = new pc.Entity('Smoke');
+            entity.addComponent('render', {
+                type: 'sphere',
+                material: this.materials.get('shockwave') // 用白色代替煙霧
+            });
+
+            const angle = (i / count) * Math.PI * 2;
+            const radius = 1.5;
+            const x = pos.x + Math.cos(angle) * radius * Math.random();
+            const z = pos.z + Math.sin(angle) * radius * Math.random();
+
+            entity.setPosition(x, pos.y + 0.5 + Math.random(), z);
+            entity.setLocalScale(0.1, 0.1, 0.1);
+
+            this.app.root.addChild(entity);
+
+            let timer = 0;
+            const duration = 2.0;
+
+            const update = (dt: number) => {
+                timer += dt;
+                if (timer >= duration) {
+                    entity.destroy();
+                    this.app.off('update', update);
+                    return;
+                }
+
+                const progress = timer / duration;
+                const scale = 1.0 + progress * 0.5;
+                entity.setLocalScale(scale, scale, scale);
+                // 向上飄
+                entity.translate(0, 0.5 * dt, 0);
+            };
+            this.app.on('update', update);
+        }
+    }
+
+    /**
+     * 幻影特效
+     */
+    private createPhantomEffect(pos: pc.Vec3) {
+        // 簡單的紫色殘影
+        const entity = new pc.Entity('Phantom');
+        entity.addComponent('render', {
+            type: 'capsule',
+            material: this.materials.get('dash')
+        });
+        entity.setPosition(pos.x, pos.y + 1, pos.z);
+        this.app.root.addChild(entity);
+        setTimeout(() => entity.destroy(), 500);
+    }
+
+    /**
+     * 火球特效
+     */
+    private createFireballEffect(pos: pc.Vec3, dir: pc.Vec3) {
+        const entity = new pc.Entity('Fireball');
+        entity.addComponent('render', {
+            type: 'sphere',
+            material: this.materials.get('fire')
+        });
+
+        entity.setPosition(pos.x, pos.y + 1, pos.z);
+        entity.setLocalScale(0.5, 0.5, 0.5);
+
+        this.app.root.addChild(entity);
+
+        // 火球飛行 (純視覺，邏輯在 SkillExecutor)
+        let timer = 0;
+        const duration = 0.5;
+        const speed = 15;
+
+        const update = (dt: number) => {
+            timer += dt;
+            if (timer >= duration) {
+                this.createExplosionEffect(entity.getPosition(), 2.0); // 結尾爆炸
+                entity.destroy();
+                this.app.off('update', update);
+                return;
+            }
+
+            entity.translate(dir.x * speed * dt, 0, dir.z * speed * dt);
+        };
+        this.app.on('update', update);
+    }
+
+    /**
+     * 冰霜新星
+     */
+    private createFrostNovaEffect(pos: pc.Vec3, radius: number) {
+        const entity = new pc.Entity('FrostNova');
+        entity.addComponent('render', {
+            type: 'cylinder',
+            material: this.materials.get('ice')
+        });
+
+        entity.setPosition(pos.x, pos.y + 0.1, pos.z);
+        entity.setLocalScale(0.1, 0.1, 0.1);
+
+        this.app.root.addChild(entity);
+
+        let timer = 0;
+        const duration = 0.5;
+
+        const update = (dt: number) => {
+            timer += dt;
+            if (timer >= duration) {
+                entity.destroy();
+                this.app.off('update', update);
+                return;
+            }
+
+            const scale = (timer / duration) * radius * 2;
+            entity.setLocalScale(scale, 0.1, scale);
+        };
+        this.app.on('update', update);
+    }
+
+    /**
+     * 閃現特效 (起點消失)
+     */
+    private createBlinkEffect(pos: pc.Vec3, _dir: pc.Vec3) {
+        const entity = new pc.Entity('Blink');
+        entity.addComponent('render', {
+            type: 'cylinder',
+            material: this.materials.get('ice') // 用冰材質代表魔法
+        });
+        entity.setPosition(pos.x, pos.y + 1, pos.z);
+        entity.setLocalScale(0.5, 2.0, 0.5);
+        this.app.root.addChild(entity);
+
+        // 快速縮小消失
+        let timer = 0;
+        const duration = 0.2;
+        const update = (dt: number) => {
+            timer += dt;
+            if (timer >= duration) {
+                entity.destroy();
+                this.app.off('update', update);
+                return;
+            }
+            const scale = 0.5 * (1 - timer / duration);
+            entity.setLocalScale(scale, 2.0, scale);
+        };
+        this.app.on('update', update);
+    }
+
+    /**
+     * 隕石特效 (預警圈 + 落下)
+     */
+    private createMeteorEffect(pos: pc.Vec3, radius: number) {
+        // 1. 地面預警圈
+        const indicator = new pc.Entity('MeteorIndicator');
+        indicator.addComponent('render', {
+            type: 'cylinder',
+            material: this.materials.get('fire')
+        });
+        indicator.setPosition(pos.x, pos.y + 0.1, pos.z);
+        indicator.setLocalScale(radius * 2, 0.05, radius * 2);
+        this.app.root.addChild(indicator);
+
+        // 2. 隕石本體 (從天而降)
+        const meteor = new pc.Entity('Meteor');
+        meteor.addComponent('render', {
+            type: 'sphere',
+            material: this.materials.get('ultimate')
+        });
+        const startHeight = 20;
+        meteor.setPosition(pos.x, startHeight, pos.z);
+        meteor.setLocalScale(2, 2, 2);
+        this.app.root.addChild(meteor);
+
+        let timer = 0;
+        const fallDuration = 1.0; // 1秒落地
+
+        const update = (dt: number) => {
+            timer += dt;
+            if (timer >= fallDuration) {
+                // 落地爆炸
+                this.createExplosionEffect(pos, radius);
+                indicator.destroy();
+                meteor.destroy();
+                this.app.off('update', update);
+                return;
+            }
+
+            // 落下邏輯
+            const progress = timer / fallDuration;
+            const currentY = startHeight * (1 - progress * progress); // 加速落下
+            meteor.setPosition(pos.x, currentY, pos.z);
+        };
+        this.app.on('update', update);
     }
 }
