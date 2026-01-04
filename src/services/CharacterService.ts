@@ -53,20 +53,25 @@ export class CharacterService {
      * 選擇角色
      */
     selectCharacter(characterId: string) {
-        // 更新本地 Store
+        const myPeerId = this.networkManager.peerId;
+        if (!myPeerId) {
+            console.error('[CharacterService] Cannot select character: No peerId');
+            return;
+        }
+
+        console.log(`[CharacterService] Selecting character ${characterId} for local player ${myPeerId}`);
+
+        // 1. 更新本地 CharacterStore
         this.characterStore.selectCharacter(characterId)
-
-        // 發送網路訊息
-        this.networkManager.sendCharacterSelected(characterId)
-
-        // 更新自己的角色映射
-        const myPeerId = this.networkManager.peerId
         this.characterStore.setPlayerCharacter(myPeerId, characterId)
 
-        // 同時更新 RoomStore
+        // 2. 更新本地 RoomStore (確保 Host 的 connectedPlayers 有正確資料)
         this.roomStore.updatePlayerCharacter(myPeerId, characterId)
 
-        // 發送本地事件
+        // 3. 發送網路訊息通知其他人
+        this.networkManager.sendCharacterSelected(characterId)
+
+        // 4. 發送本地事件
         eventBus.emit({
             type: 'CHARACTER_SELECTED',
             playerId: myPeerId,

@@ -39,11 +39,13 @@ export class RenderManager {
     updateCamera(targetPlayerId: string, players: Map<string, PlayerEntity>) {
         if (!this.camera) return;
 
-        const player = players.get(targetPlayerId);
+        // 使用大寫 ID 查找玩家
+        const player = players.get(targetPlayerId.toUpperCase());
         if (player) {
             const pos = player.entity.getPosition();
-            // 簡單的相機跟隨：保持固定偏移
-            this.camera.setPosition(pos.x, pos.y + 20, pos.z + 20);
+            // 固定的 Isometric 視角：垂直高度 25，後方偏移 15
+            // 這確保所有玩家看到的畫面方向與角度一致
+            this.camera.setPosition(pos.x, pos.y + 25, pos.z + 15);
             this.camera.lookAt(pos.x, pos.y, pos.z);
         }
     }

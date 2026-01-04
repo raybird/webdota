@@ -3,6 +3,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { PlayerEntity } from '../PlayerEntity';
 import { UIManager } from '../UIManager';
 import { useCharacterStore } from '../../stores/characterStore';
+import { useRoomStore } from '../../stores/roomStore';
 import { getCharacter } from '../../data/characters';
 
 /**
@@ -26,7 +27,10 @@ export class PlayerManager {
      * 生成玩家實體
      */
     spawnPlayer(playerId: string, initialPos?: { x: number, y: number, z: number }) {
-        if (this.players.has(playerId)) {
+        // 強制 ID 大寫
+        const normalizedId = playerId.toUpperCase();
+
+        if (this.players.has(normalizedId)) {
             return;
         }
 
@@ -49,18 +53,39 @@ export class PlayerManager {
             z = Math.sin(angle) * radius;
         }
 
-        // 獲取角色顏色
+        // 獲取角色顏色和名稱 - 優先從 roomStore 讀取以確保同步
         let color = new pc.Color(Math.random(), Math.random(), Math.random());
-        const characterId = this.characterStore.getPlayerCharacter(playerId);
+        let characterName = 'Player'; // 預設名稱
+
+        // 從 roomStore 取得角色資訊（確保同步）- 使用大寫比較
+        const roomStore = useRoomStore();
+        const playerInfo = roomStore.connectedPlayers.find(p => p.id.toUpperCase() === normalizedId);
+
+        let characterId = playerInfo?.characterId;
+
+        // 如果 roomStore 沒資料（可能是比賽剛開始同步延遲），嘗試從 characterStore 補救
+        if (!characterId) {
+            characterId = this.characterStore.getPlayerCharacter(normalizedId);
+            console.warn(`[PlayerManager] Player ${normalizedId} characterId not found in roomStore, falling back to characterStore: ${characterId}`);
+        }
+
         if (characterId) {
             const character = getCharacter(characterId);
             if (character) {
                 color = new pc.Color().fromString(character.appearance.color);
+                // characterName = character.name; // 我們現在改用 Player ID
+                console.log(`[PlayerManager] Using character ${characterId} for ${playerId}: color=${character.appearance.color}`);
             }
+        } else {
+            console.error(`[PlayerManager] Player ${playerId} has no characterId! Using default warrior.`);
+            characterId = 'warrior';
+            color = new pc.Color(0.8, 0.2, 0.2); // 預設紅色
         }
 
+        console.log(`[PlayerManager] Spawning player ${normalizedId} with CharacterID: ${characterId}, Color: r=${color.r}, g=${color.g}, b=${color.b}`);
+
         const player = new PlayerEntity(
-            playerId,
+            normalizedId, // 使用大寫 ID
             characterId || 'warrior', // Pass characterId
             this.app,
             this.physicsWorld,
@@ -68,12 +93,13 @@ export class PlayerManager {
             color
         );
 
-        // 使用 UIManager 建立玩家 UI
-        const uiConfig = this.uiManager.createPlayerUI(playerId);
+        // 使用 UIManager 建立玩家 UI（顯示 Player ID 前 8 碼）
+        const displayName = normalizedId.substring(0, 8);
+        const uiConfig = this.uiManager.createPlayerUI(normalizedId, displayName);
         player.setUIReferences(uiConfig.hpBarEntity, uiConfig.hpBarFillEntity);
 
-        this.players.set(playerId, player);
-        console.log(`[PlayerManager] Spawned player ${playerId} at (${x.toFixed(2)}, 1, ${z.toFixed(2)})`);
+        this.players.set(normalizedId, player);
+        console.log(`[PlayerManager] Spawned player ${normalizedId} (${characterName}) at (${x.toFixed(2)}, 1, ${z.toFixed(2)})`);
     }
 
     /**
@@ -96,7 +122,7 @@ export class PlayerManager {
      * 獲取玩家實體
      */
     getPlayer(playerId: string): PlayerEntity | undefined {
-        return this.players.get(playerId);
+        return this.players.get(playerId.toUpperCase());
     }
 
     /**

@@ -14,7 +14,7 @@ export const useCharacterStore = defineStore('character', () => {
     const myCharacter = computed(() => selectedCharacterId.value)
 
     function getPlayerCharacter(playerId: string): string | undefined {
-        return playerCharacters.value.get(playerId)
+        return playerCharacters.value.get(playerId.toUpperCase())
     }
 
     // Actions
@@ -23,11 +23,11 @@ export const useCharacterStore = defineStore('character', () => {
     }
 
     function setPlayerCharacter(playerId: string, characterId: string) {
-        playerCharacters.value.set(playerId, characterId)
+        playerCharacters.value.set(playerId.toUpperCase(), characterId)
     }
 
     function removePlayerCharacter(playerId: string) {
-        playerCharacters.value.delete(playerId)
+        playerCharacters.value.delete(playerId.toUpperCase())
     }
 
     function clearAll() {

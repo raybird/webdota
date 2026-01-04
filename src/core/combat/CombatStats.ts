@@ -2,7 +2,7 @@ export class CombatStats {
     maxHp: number = 1000;
     currentHp: number = 1000;
     maxEnergy: number = 100;
-    currentEnergy: number = 0;
+    currentEnergy: number = 50;  // 初始給 50 能量，讓玩家可以立即使用技能
 
     attackPower: number = 50;
     defense: number = 10;

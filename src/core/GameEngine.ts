@@ -32,16 +32,20 @@ export class GameEngine {
 
     // Game Loop
     readonly FIXED_TIMESTEP = 1 / 60;
-    currentFrame: number = 0;
-    accumulator: number = 0;
 
     // State
     private gameStore = useGameStore();
     private roomStore = useRoomStore();
-    private isGameStarted: boolean = false;
+    // Frame sync
+    private currentFrame = 0;
+    private accumulator = 0;
+    private isGameStarted = false;
 
-    // 待處理的技能使用（在下一個 frame 中廣播）
-    private pendingSkillUse: { skillId: string, direction: { x: number, z: number } } | null = null;
+    // 待處理的技能使用
+    private pendingSkillUse: { skillId: string; direction: { x: number; z: number } } | null = null;
+
+    // 待處理的遠端玩家輸入（不依賴 frame 對齊）
+    private pendingRemoteInputs: PlayerInput[] = [];
 
     constructor(networkManager: NetworkManager) {
         // 使用外部傳入的 NetworkManager，避免覆蓋
@@ -136,6 +140,17 @@ export class GameEngine {
         // Network Events - 設置 playerId
         this.inputManager.setPlayerId(this.networkManager.peerId);
 
+        // 設置輸入接收 callback (Host 需要接收 Client 的輸入)
+        this.networkManager.onInputReceived = (input) => {
+            // 直接加入待處理佇列（不依賴 frame 對齊）
+            this.pendingRemoteInputs.push(input);
+
+            // Debug log
+            if (input.moveX !== 0 || input.moveY !== 0 || input.skillUsed) {
+                console.log(`[GameEngine] Received remote input from ${input.playerId.substring(0, 8)}: move(${input.moveX.toFixed(2)}, ${input.moveY.toFixed(2)}) skill: ${input.skillUsed || 'none'}`);
+            }
+        };
+
         this.networkManager.onPeerLeft = (peerId) => {
             this.playerManager.removePlayer(peerId);
         };
@@ -169,15 +184,25 @@ export class GameEngine {
         console.log('[GameEngine] My peerId:', this.networkManager.peerId);
         console.log('[GameEngine] Am I Host?:', this.roomStore.isHost);
 
+        // 確保 InputManager 使用正確的 playerId (此時 peerId 已確定設定完成)
+        this.inputManager.setPlayerId(this.networkManager.peerId);
+        console.log('[GameEngine] InputManager playerId set to:', this.networkManager.peerId);
+
         this.isGameStarted = true;
+
+        // 如果是 Host，廣播遊戲開始 (再次確保，雖然 RoomService 已經廣播過訊號，但 Engine 需要同步狀態)
+        if (this.roomStore.isHost) {
+            console.log('[GameEngine] Host broadcasting initial game state...');
+        }
+
         this.currentFrame = 0;
 
         // 清空現有玩家
         this.playerManager.clearAll();
 
-        // 從 roomStore 獲取所有連線玩家並生成
-        const players = this.roomStore.connectedPlayers;
-        console.log(`[GameEngine] Connected players (${players.length}):`, JSON.stringify(players));
+        // 從 roomStore 獲取所有連線玩家並生成 (強制依 ID 排序以確保所有客戶端一致)
+        const players = [...this.roomStore.connectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
+        console.log(`[GameEngine] Connected players (${players.length}), sorted by ID:`, JSON.stringify(players.map(p => p.id)));
 
         if (players.length === 0) {
             console.error('[GameEngine] ERROR: No players in roomStore!');
@@ -305,10 +330,10 @@ export class GameEngine {
 
         // 4. Host 額外處理遠端玩家輸入
         if (this.hostManager.isHost) {
-            // 處理所有遠端玩家輸入
-            const remoteInputs = this.networkManager.getInputsForFrame(this.currentFrame);
-            if (remoteInputs.length > 0) {
-                this.processInputs(remoteInputs, dt);
+            // 處理所有待處理的遠端輸入（不依賴 frame 對齊）
+            if (this.pendingRemoteInputs.length > 0) {
+                this.processInputs(this.pendingRemoteInputs, dt);
+                this.pendingRemoteInputs = []; // 清空佇列
             }
 
             // Step Physics
@@ -316,7 +341,7 @@ export class GameEngine {
 
             // Broadcast State
             if (this.currentFrame % 3 === 0) { // 每 3 幀同步一次
-                this.networkManager.broadcastGameState({
+                const gameState = {
                     frame: this.currentFrame,
                     timestamp: Date.now(),
                     players: Array.from(this.playerManager.getAllPlayers().entries()).map(([id, p]) => ({
@@ -328,7 +353,8 @@ export class GameEngine {
                             energy: p.combatStats.currentEnergy
                         }
                     }))
-                });
+                };
+                this.networkManager.broadcastGameState(gameState);
             }
         } else {
             // Client: 也執行物理模擬
@@ -340,7 +366,12 @@ export class GameEngine {
     }
 
     processInputs(inputs: PlayerInput[], dt: number) {
-        inputs.forEach(input => {
+        inputs.forEach((input) => {
+            // 厳格 ID 驗證：在處理前確認 ID 存在於 PlayerManager
+            if (!this.playerManager.getPlayer(input.playerId)) {
+                console.warn(`[GameEngine] processInputs: Player ${input.playerId.substring(0, 8)} not found in PlayerManager! Skipping input.`);
+                return; // skip this input
+            }
             const player = this.playerManager.getPlayer(input.playerId);
             if (player) {
                 // Movement

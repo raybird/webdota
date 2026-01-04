@@ -75,10 +75,10 @@ export class NetworkManager {
             }
 
             this.peer.on('open', (id) => {
-                this.peerId = id;
-                console.log(`[Network] My Peer ID: ${id}`);
+                this.peerId = id.toUpperCase(); // 強制大寫
+                console.log(`[Network] My Peer ID: ${this.peerId}`);
                 if (this.onConnected) this.onConnected();
-                resolve(id);
+                resolve(this.peerId);
             });
 
             this.peer.on('connection', (conn) => {
@@ -110,11 +110,12 @@ export class NetworkManager {
      */
     private handleIncomingConnection(conn: DataConnection) {
         conn.on('open', () => {
-            console.log(`[Network] Connected to ${conn.peer}`);
-            this.connections.set(conn.peer, conn);
+            const normalizedPeerId = conn.peer.toUpperCase(); // 強制大寫
+            console.log(`[Network] Connected to ${normalizedPeerId}`);
+            this.connections.set(normalizedPeerId, conn);
 
             // 通知上層有新玩家加入
-            if (this.onPeerJoined) this.onPeerJoined(conn.peer);
+            if (this.onPeerJoined) this.onPeerJoined(normalizedPeerId);
 
             // 如果是 Host，發送當前所有連線的 Peer 列表給新玩家
             if (this.isHost) {
@@ -127,12 +128,13 @@ export class NetworkManager {
         });
 
         conn.on('close', () => {
-            console.log(`[Network] ${conn.peer} disconnected`);
-            this.connections.delete(conn.peer);
-            if (this.onPeerLeft) this.onPeerLeft(conn.peer);
+            const normalizedPeerId = conn.peer.toUpperCase();
+            console.log(`[Network] ${normalizedPeerId} disconnected`);
+            this.connections.delete(normalizedPeerId);
+            if (this.onPeerLeft) this.onPeerLeft(normalizedPeerId);
 
             // 如果斷線的是 Host，觸發 Host Migration
-            if (conn.peer === this.hostId) {
+            if (normalizedPeerId === this.hostId) {
                 this.electNewHost();
             }
         });
@@ -503,8 +505,8 @@ export class NetworkManager {
         // 先初始化自己的 Peer (自動生成 ID)
         await this.initPeer();
 
-        // 使用房間碼作為 Host ID 連線
-        this.hostId = roomCode;
-        this.connectToPeer(roomCode);
+        // 使用房間碼作為 Host ID 連線 (強制大寫)
+        this.hostId = roomCode.toUpperCase();
+        this.connectToPeer(this.hostId);
     }
 }

@@ -24,7 +24,7 @@ export const useRoomStore = defineStore('room', () => {
         connectedPlayers.value.every(p => p.isReady)
     )
     const myPlayer = computed(() =>
-        connectedPlayers.value.find(p => p.id === myPeerId.value)
+        connectedPlayers.value.find(p => p.id === myPeerId.value.toUpperCase())
     )
     const amIReady = computed(() => myPlayer.value?.isReady ?? false)
 
@@ -38,7 +38,7 @@ export const useRoomStore = defineStore('room', () => {
     }
 
     function setMyPeerId(peerId: string) {
-        myPeerId.value = peerId
+        myPeerId.value = peerId.toUpperCase()
     }
 
     function setRoomCode(code: string) {
@@ -46,21 +46,24 @@ export const useRoomStore = defineStore('room', () => {
     }
 
     function addPlayer(player: { id: string; isReady: boolean; characterId?: string }) {
-        const existingIndex = connectedPlayers.value.findIndex(p => p.id === player.id)
+        const normalizedId = player.id.toUpperCase()
+        const existingIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
         if (existingIndex === -1) {
-            connectedPlayers.value.push(player)
+            connectedPlayers.value.push({ ...player, id: normalizedId })
         }
     }
 
     function removePlayer(playerId: string) {
-        const index = connectedPlayers.value.findIndex(p => p.id === playerId)
+        const normalizedId = playerId.toUpperCase()
+        const index = connectedPlayers.value.findIndex(p => p.id === normalizedId)
         if (index !== -1) {
             connectedPlayers.value.splice(index, 1)
         }
     }
 
     function updatePlayerReady(playerId: string, isReady: boolean) {
-        const playerIndex = connectedPlayers.value.findIndex(p => p.id === playerId)
+        const normalizedId = playerId.toUpperCase()
+        const playerIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
         if (playerIndex !== -1) {
             const player = connectedPlayers.value[playerIndex]!
             connectedPlayers.value[playerIndex] = {
@@ -70,12 +73,13 @@ export const useRoomStore = defineStore('room', () => {
             }
         } else {
             // 玩家不存在，新增
-            connectedPlayers.value.push({ id: playerId, isReady })
+            connectedPlayers.value.push({ id: normalizedId, isReady })
         }
     }
 
     function updatePlayerCharacter(playerId: string, characterId: string) {
-        const playerIndex = connectedPlayers.value.findIndex(p => p.id === playerId)
+        const normalizedId = playerId.toUpperCase()
+        const playerIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
         if (playerIndex !== -1) {
             const player = connectedPlayers.value[playerIndex]!
             connectedPlayers.value[playerIndex] = {
@@ -85,7 +89,7 @@ export const useRoomStore = defineStore('room', () => {
             }
         } else {
             // 玩家不存在，新增
-            connectedPlayers.value.push({ id: playerId, isReady: false, characterId })
+            connectedPlayers.value.push({ id: normalizedId, isReady: false, characterId })
         }
     }
 

@@ -1,4 +1,5 @@
 import { useRoomStore } from '../stores/roomStore'
+import { useCharacterStore } from '../stores/characterStore'
 import { eventBus } from '../events/EventBus'
 import { NetworkManager } from '../core/NetworkManager'
 import { RoomCodeManager } from '../utils/RoomCodeManager'
@@ -10,6 +11,7 @@ import type { GameService } from './GameService'
  */
 export class RoomService {
     private roomStore = useRoomStore()
+    private characterStore = useCharacterStore()
     private networkManager: NetworkManager
     private gameService: GameService | null = null
     private countdownTimer: number | null = null
@@ -43,10 +45,12 @@ export class RoomService {
             eventBus.emit({ type: 'PLAYER_READY', playerId: peerId, isReady })
         }
 
-        // 監聽角色選擇事件，同步到 RoomStore
+        // 監聽角色選擇事件，同步到 RoomStore 和 CharacterStore
         this.networkManager.onCharacterSelected = (peerId, characterId) => {
             console.log(`[RoomService] Player ${peerId} selected character ${characterId}`)
             this.roomStore.updatePlayerCharacter(peerId, characterId)
+            // 同時同步到 characterStore
+            this.characterStore.setPlayerCharacter(peerId, characterId)
         }
 
         this.networkManager.onGameStartCountdown = (seconds) => {
@@ -95,6 +99,10 @@ export class RoomService {
                     if (p.characterId) {
                         this.roomStore.updatePlayerCharacter(p.id, p.characterId)
                     }
+                }
+                // 同時同步到 characterStore
+                if (p.characterId) {
+                    this.characterStore.setPlayerCharacter(p.id, p.characterId)
                 }
             })
         }
@@ -177,9 +185,19 @@ export class RoomService {
      * 設定準備狀態
      */
     setReady(isReady: boolean) {
-        this.networkManager.sendPlayerReady(isReady)
+        const myPeerId = this.networkManager.peerId;
+
+        // 確保 characterId 有值（若未選擇則使用預設 warrior）
+        const myPlayer = this.roomStore.connectedPlayers.find(p => p.id === myPeerId.toUpperCase());
+        if (!myPlayer?.characterId) {
+            console.log(`[RoomService] Player ${myPeerId} has no characterId, setting default warrior`);
+            this.roomStore.updatePlayerCharacter(myPeerId, 'warrior');
+            this.characterStore.setPlayerCharacter(myPeerId, 'warrior');
+        }
+
+        this.networkManager.sendPlayerReady(isReady);
         // 本地狀態也需要立即更新
-        this.roomStore.updatePlayerReady(this.networkManager.peerId, isReady)
+        this.roomStore.updatePlayerReady(myPeerId, isReady);
     }
 
     /**

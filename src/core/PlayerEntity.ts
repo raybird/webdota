@@ -76,14 +76,36 @@ export class PlayerEntity {
         this.entity.setLocalScale(1, 1, 1);
         this.entity.setPosition(position.x, position.y, position.z);
 
-        const material = new pc.StandardMaterial();
-        material.diffuse = color;
-        material.update();
-        if (this.entity.render) {
-            this.entity.render.material = material;
-        }
-
+        // 先將 Entity 加入場景圖（這會觸發 PlayCanvas 初始化 meshInstances）
         app.root.addChild(this.entity);
+
+        // 建立 Material
+        const material = new pc.StandardMaterial();
+        console.log(`[PlayerEntity] Setting material for Player_${playerId}: r=${color.r.toFixed(3)}, g=${color.g.toFixed(3)}, b=${color.b.toFixed(3)}`);
+        material.diffuse = color.clone();
+        material.emissive = color.clone();
+        material.useLighting = true;
+        material.update();
+
+        // 設定 Material（先嘗試直接設定，再延遲設定確保覆蓋）
+        const applyMaterial = () => {
+            if (this.entity.render && this.entity.render.meshInstances) {
+                this.entity.render.meshInstances.forEach(mi => {
+                    mi.material = material;
+                });
+                console.log(`[PlayerEntity] Material applied to ${this.entity.name} meshInstances`);
+            } else {
+                console.error(`[PlayerEntity] No meshInstances for ${this.entity.name}`);
+            }
+        };
+
+        // 立即嘗試
+        applyMaterial();
+
+        // 延遲一幀再次確保（處理某些初始化延遲情況）
+        setTimeout(() => {
+            applyMaterial();
+        }, 0);
 
         // 建立物理剛體
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()

@@ -7,8 +7,10 @@ import * as pc from 'playcanvas';
 
 export interface PlayerUIConfig {
     playerId: string;
+    playerName: string;          // 玩家顯示名稱
     hpBarEntity: pc.Entity;
     hpBarFillEntity: pc.Entity;
+    nameTextEntity: pc.Entity;   // 名稱文字實體
 }
 
 export class UIManager {
@@ -18,8 +20,9 @@ export class UIManager {
 
     // UI 配置常數
     private readonly HP_BAR_WIDTH = 150;
-    private readonly HP_BAR_HEIGHT = 35;
+    private readonly HP_BAR_HEIGHT = 25;
     private readonly HP_BAR_OFFSET_Y = 2.0; // 血條離角色的高度
+    // private readonly NAME_TEXT_OFFSET_Y = 20; // 已改用固定數值
 
     constructor(app: pc.Application) {
         this.app = app;
@@ -41,8 +44,10 @@ export class UIManager {
 
     /**
      * 為玩家建立頭頂 UI
+     * @param playerId 玩家 ID
+     * @param playerName 玩家顯示名稱（角色名稱或暱稱）
      */
-    createPlayerUI(playerId: string): PlayerUIConfig {
+    createPlayerUI(playerId: string, playerName: string = 'Player'): PlayerUIConfig {
         // 建立血條容器
         const hpBarEntity = new pc.Entity(`HPBar_${playerId}`);
         hpBarEntity.setLocalScale(0.01, 0.01, 0.01); // 重要：縮放 UI 以適應 3D 世界
@@ -72,14 +77,84 @@ export class UIManager {
         });
         hpBarFill.setLocalPosition(-this.HP_BAR_WIDTH / 2, 0, 0);
 
+        // 名稱文字（在血條上方）- 使用 Canvas 繪製確保顯示
+        const nameText = new pc.Entity('NameText');
+
+        // 使用 Canvas 繪製名稱文字
+        const nameCanvas = document.createElement('canvas');
+        const nameCtx = nameCanvas.getContext('2d');
+        nameCanvas.width = 256;
+        nameCanvas.height = 64;
+
+        if (nameCtx) {
+            nameCtx.font = 'bold 32px Arial, sans-serif';
+            nameCtx.textAlign = 'center';
+            nameCtx.textBaseline = 'middle';
+
+            // 黑色描邊
+            nameCtx.strokeStyle = 'black';
+            nameCtx.lineWidth = 4;
+            nameCtx.strokeText(playerName, nameCanvas.width / 2, nameCanvas.height / 2);
+
+            // 白色文字
+            nameCtx.fillStyle = 'white';
+            nameCtx.fillText(playerName, nameCanvas.width / 2, nameCanvas.height / 2);
+        }
+
+        // 建立紋理
+        const nameTexture = new pc.Texture(this.app.graphicsDevice, {
+            width: nameCanvas.width,
+            height: nameCanvas.height,
+            format: pc.PIXELFORMAT_R8_G8_B8_A8,
+            magFilter: pc.FILTER_LINEAR,
+            minFilter: pc.FILTER_LINEAR_MIPMAP_LINEAR
+        });
+        nameTexture.setSource(nameCanvas);
+
+        // 建立材質
+        const nameMaterial = new pc.StandardMaterial();
+        nameMaterial.diffuseMap = nameTexture;
+        nameMaterial.emissiveMap = nameTexture;
+        nameMaterial.emissive = new pc.Color(1, 1, 1);
+        nameMaterial.opacityMap = nameTexture;
+        nameMaterial.blendType = pc.BLEND_NORMAL;
+        nameMaterial.alphaTest = 0.1;
+        nameMaterial.useLighting = false;
+        nameMaterial.depthTest = true; // 開啟深度測試
+        nameMaterial.depthWrite = false; // 但不寫入深度（避免遮擋血條）
+        nameMaterial.update();
+
+        // 使用 Plane 顯示名稱
+        nameText.addComponent('render', {
+            type: 'plane',
+            material: nameMaterial,
+            castShadows: false,
+            receiveShadows: false
+        });
+
+        // 縮放與位置
+        // 父層 scale 為 0.01，所以這裡的數值需要放大 100 倍以對應 Element 的大小
+        // Element 寬度 150，這裡設 250 (即 World Space 2.5) 以容納較長 ID
+        nameText.setLocalScale(250, 1, 60);
+        // Element 在 Y=0. HP Bar 高度 25. 文字要在上方.
+        // Element 座標系中 Y+ 是向上.
+        nameText.setLocalPosition(0, 50, 0);
+
+        // Plane 原本是 XZ 平面，繞 X 軸轉 90 度變成 XY 平面（面向 Z+）
+        // hpBarEntity 會 LookAt Camera，所以 Z 軸指向 Camera
+        nameText.setLocalEulerAngles(90, 0, 0);
+
         hpBarEntity.addChild(hpBarBg);
         hpBarEntity.addChild(hpBarFill);
+        hpBarEntity.addChild(nameText);
         this.app.root.addChild(hpBarEntity);
 
         const config: PlayerUIConfig = {
             playerId,
+            playerName,
             hpBarEntity,
-            hpBarFillEntity: hpBarFill
+            hpBarFillEntity: hpBarFill,
+            nameTextEntity: nameText
         };
 
         this.playerUIs.set(playerId, config);
@@ -100,8 +175,16 @@ export class UIManager {
             position.z
         );
 
-        // 血條永遠平行於地面（不受角色旋轉影響）
-        ui.hpBarEntity.setEulerAngles(0, 0, 0);
+        // 血條永遠平行於地面，且面向攝影機 (Billboard)
+        const camera = this.app.root.findByName('Camera');
+        if (camera) {
+            ui.hpBarEntity.lookAt(camera.getPosition());
+            // 修正旋轉，使 UI 垂直且面向攝影機
+            const rot = ui.hpBarEntity.getEulerAngles();
+            ui.hpBarEntity.setEulerAngles(0, rot.y, 0);
+        } else {
+            ui.hpBarEntity.setEulerAngles(0, 0, 0);
+        }
     }
 
     /**
