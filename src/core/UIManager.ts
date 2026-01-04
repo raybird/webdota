@@ -83,17 +83,17 @@ export class UIManager {
         // 使用 Canvas 繪製名稱文字
         const nameCanvas = document.createElement('canvas');
         const nameCtx = nameCanvas.getContext('2d');
-        nameCanvas.width = 256;
-        nameCanvas.height = 64;
+        nameCanvas.width = 512;   // 加大解析度
+        nameCanvas.height = 128;  // 加大解析度
 
         if (nameCtx) {
-            nameCtx.font = 'bold 32px Arial, sans-serif';
+            nameCtx.font = 'bold 64px Arial, sans-serif'; // 加大字體
             nameCtx.textAlign = 'center';
             nameCtx.textBaseline = 'middle';
 
             // 黑色描邊
             nameCtx.strokeStyle = 'black';
-            nameCtx.lineWidth = 4;
+            nameCtx.lineWidth = 8; // 加粗描邊
             nameCtx.strokeText(playerName, nameCanvas.width / 2, nameCanvas.height / 2);
 
             // 白色文字
@@ -133,12 +133,14 @@ export class UIManager {
         });
 
         // 縮放與位置
-        // 父層 scale 為 0.01，所以這裡的數值需要放大 100 倍以對應 Element 的大小
-        // Element 寬度 150，這裡設 250 (即 World Space 2.5) 以容納較長 ID
-        nameText.setLocalScale(250, 1, 60);
+        // 父層 scale 為 0.01
+        // Element 寬度 150
+        // 調整比例讓字體看起來更大：(300, 1, 100)
+        nameText.setLocalScale(300, 1, 100);
+
         // Element 在 Y=0. HP Bar 高度 25. 文字要在上方.
-        // Element 座標系中 Y+ 是向上.
-        nameText.setLocalPosition(0, 50, 0);
+        // 因為高度增加到 100 (visual scale)，需要把位置拉高避免重疊
+        nameText.setLocalPosition(0, 80, 0);
 
         // Plane 原本是 XZ 平面，繞 X 軸轉 90 度變成 XY 平面（面向 Z+）
         // hpBarEntity 會 LookAt Camera，所以 Z 軸指向 Camera

@@ -43,9 +43,28 @@ export class RenderManager {
         const player = players.get(targetPlayerId.toUpperCase());
         if (player) {
             const pos = player.entity.getPosition();
-            // 固定的 Isometric 視角：垂直高度 25，後方偏移 15
-            // 這確保所有玩家看到的畫面方向與角度一致
-            this.camera.setPosition(pos.x, pos.y + 25, pos.z + 15);
+            // 基礎相機設定
+            let targetHeight = 25;
+            let targetDistance = 15;
+
+            // RWD 調整：偵測螢幕長寬比
+            const aspectRatio = window.innerWidth / window.innerHeight;
+
+            // 如果是直式螢幕 (或接近方形)，拉高相機以增加水平視野
+            if (aspectRatio < 1.0) {
+                // 簡單的反比公式：螢幕越窄，相機越高
+                // 例如 Aspect Ratio 0.5 (9:16) -> Factor 2.0 -> Height 50
+                const factor = 1.0 / aspectRatio;
+                targetHeight *= factor;
+                targetDistance *= factor;
+
+                // 限制最大高度，避免過遠
+                targetHeight = Math.min(targetHeight, 60);
+                targetDistance = Math.min(targetDistance, 35);
+            }
+
+            // 更新相機位置
+            this.camera.setPosition(pos.x, pos.y + targetHeight, pos.z + targetDistance);
             this.camera.lookAt(pos.x, pos.y, pos.z);
         }
     }
