@@ -147,7 +147,7 @@ export class InputManager {
         }
 
         this.localInput.frame = frame;
-        this.localInput.moveX = -moveX; // 反轉 X 軸以修復左右相反問題
+        this.localInput.moveX = moveX; // 移除 X 軸反轉
         this.localInput.moveY = moveY;
 
         // Return a copy
