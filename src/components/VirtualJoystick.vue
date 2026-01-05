@@ -206,10 +206,20 @@ const handleMouseUp = (e: MouseEvent) => {
 .joystick-base {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-  border: 3px solid rgba(255, 255, 255, 0.5);
+  background: radial-gradient(circle, rgba(74, 14, 78, 0.4), rgba(0, 0, 0, 0.2));
+  border: 2px solid rgba(255, 215, 0, 0.3);
   pointer-events: none;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 15px rgba(157, 78, 221, 0.2);
+}
+
+/* 魔法陣裝飾圈 */
+.joystick-base::after {
+  content: '';
+  position: absolute;
+  top: 10%; left: 10%; right: 10%; bottom: 10%;
+  border: 1px dashed rgba(255, 215, 0, 0.4);
+  border-radius: 50%;
+  animation: spin 20s linear infinite;
 }
 
 .joystick-knob {
@@ -217,10 +227,15 @@ const handleMouseUp = (e: MouseEvent) => {
   top: 50%;
   left: 50%;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(200, 200, 200, 0.7));
-  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
+  border: 1px solid #fff;
   pointer-events: none;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
   transition: transform 0.05s ease-out;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

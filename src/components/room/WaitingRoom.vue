@@ -156,15 +156,12 @@ const copyRoomCode = async () => {
 /* 根容器 - 確保填滿視口且不超出 */
 .kof-screen {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(180deg, #0a0a2e 0%, #1a1a4e 50%, #0a0a2e 100%);
-  color: white;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at center, #1a0b2e 0%, #0a0a12 100%);
+  color: var(--c-primary);
   display: flex;
   flex-direction: column;
-  font-family: 'Arial Black', Arial, sans-serif;
+  font-family: var(--font-heading);
   overflow: hidden;
 }
 
@@ -173,49 +170,44 @@ const copyRoomCode = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 1rem;
-  background: linear-gradient(90deg, #ff0 0%, #f80 50%, #ff0 100%);
-  color: #000;
+  padding: 0.8rem 1.5rem;
+  background: linear-gradient(90deg, #240046 0%, #3c096c 50%, #240046 100%);
+  border-bottom: 2px solid var(--c-primary-dim);
+  box-shadow: 0 0 15px rgba(0,0,0,0.8);
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .title {
-  font-size: 1.5rem;
+  font-size: 2rem;
   margin: 0;
-  text-shadow: 1px 1px 0 #fff;
+  text-shadow: 0 0 10px var(--c-primary);
+  letter-spacing: 2px;
 }
 
 .room-code-box {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: #000;
-  padding: 0.4rem 1rem;
-  border-radius: 6px;
+  gap: 0.8rem;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.5rem 1.2rem;
+  border: 1px solid var(--c-primary-dim);
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
 }
 
 .room-code-box:hover {
-  box-shadow: 0 0 10px #0ff;
-}
-
-.code-label {
-  font-size: 0.7rem;
-  color: #888;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 15px var(--c-secondary);
 }
 
 .code-value {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: bold;
-  color: #0ff;
-  letter-spacing: 3px;
-  font-family: monospace;
-}
-
-.code-hint {
-  font-size: 0.6rem;
-  color: #888;
+  color: var(--c-primary);
+  letter-spacing: 4px;
+  text-shadow: 0 0 5px var(--c-primary);
 }
 
 /* 主區域 */
@@ -230,27 +222,41 @@ const copyRoomCode = async () => {
 
 /* 左側 1P */
 .p1-area {
-  width: 120px;
+  width: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
   flex-shrink: 0;
+  padding-top: 2rem;
 }
 
 .p-label {
-  font-size: 1.2rem;
-  color: #ff0;
+  font-size: 1.5rem;
+  color: var(--c-primary);
+  text-shadow: 0 0 5px var(--c-primary);
 }
 
 .p-portrait {
-  width: 100px;
-  height: 120px;
-  border: 3px solid #ff0;
+  width: 120px;
+  height: 140px;
+  border: 3px solid var(--c-primary);
+  box-shadow: 0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 8px;
+  background: #1a1a1a;
+  position: relative;
+  overflow: hidden;
+}
+
+.p-portrait::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+  pointer-events: none;
 }
 
 .p-icon {
@@ -293,14 +299,16 @@ const copyRoomCode = async () => {
 .chars {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  gap: 12px;
   width: 100%;
-  max-width: 320px;
-  padding: 0.5rem;
-  background: rgba(0,0,0,0.3);
-  border-radius: 6px;
+  max-width: 400px;
+  padding: 1rem;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
   overflow-y: auto;
   max-height: 60vh;
+  backdrop-filter: blur(5px);
 }
 
 .char {
@@ -311,19 +319,25 @@ const copyRoomCode = async () => {
   justify-content: center;
   cursor: pointer;
   border: 2px solid transparent;
-  border-radius: 4px;
-  background: rgba(0,0,0,0.3);
-  padding: 2px;
-  transition: all 0.15s;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  padding: 4px;
+  transition: all 0.2s;
+  position: relative;
 }
 
 .char:hover {
-  border-color: #fff;
+  border-color: rgba(255, 215, 0, 0.5);
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.1);
 }
 
 .char.sel {
-  border-color: #ff0;
-  box-shadow: 0 0 8px rgba(255,255,0,0.5);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 15px var(--c-primary);
+  background: rgba(255, 215, 0, 0.1);
+  transform: scale(1.05);
+  z-index: 2;
 }
 
 .char-icon {
@@ -372,46 +386,76 @@ const copyRoomCode = async () => {
 /* 按鈕區 */
 .btns {
   display: flex;
-  gap: 0.5rem;
+  gap: 1.5rem;
   margin-top: auto;
-  padding: 0.5rem 0;
+  padding: 1.5rem 0;
   flex-wrap: wrap;
   justify-content: center;
   flex-shrink: 0;
 }
 
 .btn {
-  padding: 0.5rem 1.2rem;
-  font-size: 0.85rem;
+  padding: 0.8rem 2rem;
+  font-size: 1rem;
+  font-family: var(--font-heading);
   font-weight: bold;
-  border: none;
-  border-radius: 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  filter: grayscale(100%);
 }
 
 .btn-leave {
-  background: #444;
+  background: transparent;
+  border: 1px solid #666;
+  color: #ccc;
+}
+
+.btn-leave:hover {
+  border-color: #fff;
   color: #fff;
+  background: rgba(255,255,255,0.1);
 }
 
 .btn-ready {
-  background: #0a0;
-  color: #fff;
+  background: var(--c-secondary-dark);
+  border: 1px solid var(--c-secondary);
+  color: var(--c-secondary);
+  box-shadow: 0 0 10px rgba(157, 78, 221, 0.2);
+}
+
+.btn-ready:hover {
+  background: var(--c-secondary);
+  color: white;
+  box-shadow: 0 0 20px var(--c-secondary);
 }
 
 .btn-ready.on {
-  background: #f80;
+  background: var(--c-success);
+  border-color: #fff;
+  color: #000;
+  box-shadow: 0 0 20px var(--c-success);
 }
 
 .btn-start {
-  background: linear-gradient(180deg, #ff0 0%, #f80 100%);
+  background: linear-gradient(135deg, var(--c-primary), #b8860b);
   color: #000;
+  border: 1px solid #fff;
+  font-weight: 800;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.btn-start:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
 }
 
 /* 右側玩家列表 */

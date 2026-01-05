@@ -92,16 +92,23 @@ onUnmounted(() => {
     <!-- HUD -->
     <div class="hud-layer">
       <!-- 左上角：狀態資訊 -->
-      <div class="status-panel">
-        <div class="debug-info">
+      <div class="status-panel card-fantasy">
+        <div class="hud-header">
           <div class="frame-counter">Frame: {{ gameStore.currentFrame }}</div>
-          <div class="player-count">玩家: {{ roomStore.connectedPlayers.length }}</div>
-          <div class="peer-id">ID: {{ roomStore.myPeerId?.substring(0, 8) || 'N/A' }}</div>
           <div class="role-indicator" :class="{ host: roomStore.isHost }">
-            {{ roomStore.isHost ? '🟢 HOST' : '🔵 CLIENT' }}
+            {{ roomStore.isHost ? '♔ HOST' : '♙ CLIENT' }}
           </div>
-          <!-- Cooldown Debug -->
-          <div style="margin-top: 10px; font-size: 10px; color: #aaa;">
+        </div>
+        <div class="hud-content">
+          <div class="info-row">
+            <span class="label">PLAYERS:</span>
+            <span class="value">{{ roomStore.connectedPlayers.length }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">ID:</span>
+            <span class="value">{{ roomStore.myPeerId?.substring(0, 8) || 'N/A' }}</span>
+          </div>
+          <div class="cooldown-debug">
             CDs: {{ Array.from(currentCooldowns.entries()).map(([k, v]) => `${k}:${v.toFixed(1)}`).join(', ') }}
           </div>
         </div>
@@ -169,17 +176,49 @@ onUnmounted(() => {
 
 .status-panel {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 20px;
+  left: 20px;
+  width: 250px;
+  pointer-events: auto;
 }
 
-.debug-info {
-  background: rgba(0, 0, 0, 0.7);
-  padding: 10px 15px;
-  border-radius: 8px;
-  color: white;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
+.hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  font-family: var(--font-heading);
+  color: var(--c-primary);
+}
+
+.hud-content {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--c-text-muted);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.label {
+  color: var(--c-primary-dim);
+}
+
+.value {
+  color: var(--c-text-main);
+  font-weight: bold;
+}
+
+.cooldown-debug {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--c-text-muted);
+  opacity: 0.7;
 }
 
 .frame-counter {
@@ -188,10 +227,16 @@ onUnmounted(() => {
 
 .role-indicator {
   font-weight: bold;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
   color: #4a9eff;
 }
 
 .role-indicator.host {
-  color: #4aff6e;
+  color: var(--c-primary);
+  border: 1px solid var(--c-primary-dim);
+  text-shadow: 0 0 5px var(--c-primary);
 }
 </style>

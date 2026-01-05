@@ -1,0 +1,134 @@
+/* Fantasy Design System */
+
+:root {
+  /* Colors - Fantasy Theme */
+  --c-primary: #ffd700;       /* Gold */
+  --c-primary-dim: #c5a000;
+  --c-secondary: #9d4edd;     /* Magic Purple */
+  --c-secondary-dark: #240046;
+  --c-bg-dark: #0a0a12;       /* Deep Night */
+  --c-bg-panel: rgba(20, 10, 30, 0.85); /* Glassy Dark Purple */
+  
+  --c-text-main: #f0f0f0;
+  --c-text-muted: #a0a0b0;
+  --c-text-gold: #ffd700;
+  
+  /* Danger / Success */
+  --c-danger: #ff4444;
+  --c-success: #44ff44;
+
+  /* Fonts */
+  --font-heading: 'Cinzel', serif;
+  --font-body: 'Lato', sans-serif;
+  
+  /* Borders & Shadows */
+  --border-gold: 1px solid rgba(255, 215, 0, 0.3);
+  --shadow-glow: 0 0 15px rgba(157, 78, 221, 0.4);
+  --shadow-gold: 0 0 10px rgba(255, 215, 0, 0.3);
+  
+  /* Transitions */
+  --trans-fast: 0.15s ease;
+  --trans-normal: 0.3s ease;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--c-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--c-bg-dark);
+  color: var(--c-text-main);
+}
+
+/* Animations */
+@keyframes fantasy-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes rune-glow {
+  0%, 100% { opacity: 0.8; text-shadow: 0 0 5px var(--c-secondary); }
+  50% { opacity: 1; text-shadow: 0 0 20px var(--c-primary); }
+}
+
+/* Common Components */
+
+/* Fantasy Button */
+.btn-fantasy {
+  position: relative;
+  background: linear-gradient(180deg, #3c096c 0%, #240046 100%);
+  border: 1px solid var(--c-primary);
+  color: var(--c-primary);
+  font-family: var(--font-heading);
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: var(--trans-fast);
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-fantasy::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(45deg, transparent 0%, rgba(255, 215, 0, 0.1) 50%, transparent 100%);
+  transform: translateX(-100%);
+  transition: 0.5s;
+}
+
+.btn-fantasy:hover {
+  box-shadow: 0 0 15px var(--c-secondary);
+  text-shadow: 0 0 8px var(--c-primary);
+  border-color: #ffe066;
+}
+
+.btn-fantasy:hover::before {
+  transform: translateX(100%);
+}
+
+.btn-fantasy:active {
+  transform: scale(0.98);
+}
+
+.btn-fantasy:disabled {
+  filter: grayscale(100%);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Fantasy Card */
+.card-fantasy {
+  background: var(--c-bg-panel);
+  border: var(--border-gold);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.card-fantasy::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 20px; height: 20px;
+  border-bottom: 2px solid var(--c-primary);
+  border-right: 2px solid var(--c-primary);
+}
+
+.card-fantasy::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 20px; height: 20px;
+  border-top: 2px solid var(--c-primary);
+  border-left: 2px solid var(--c-primary);
+}

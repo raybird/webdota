@@ -141,21 +141,31 @@ watch(() => props.skills, (newSkills) => {
   position: fixed;
   right: 20px;
   bottom: 40px;
-  width: 280px;
-  height: 420px;
-  pointer-events: auto;
+  width: 320px;
+  height: 320px;
+  pointer-events: none; /* 讓底圖不阻擋點擊，按鈕自己有 pointer-events: auto */
   z-index: 100;
+  
+  /* 技能底板裝飾 */
+  background: radial-gradient(circle at 100% 100%, rgba(30, 0, 60, 0.4) 0%, transparent 70%);
+  border-radius: 100% 0 0 0;
+  border-left: 1px solid rgba(255, 215, 0, 0.1);
+  border-top: 1px solid rgba(255, 215, 0, 0.1);
 }
 
 .skill-panel-empty {
   position: fixed;
   right: 20px;
-  bottom: 40px;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
+  bottom: 80px;
+  padding: 15px 25px;
+  background: var(--c-bg-panel);
+  border: 1px solid var(--c-primary-dim);
+  color: var(--c-text-gold);
+  font-family: var(--font-heading);
   border-radius: 8px;
   z-index: 100;
+  box-shadow: var(--shadow-glow);
+  animation: fantasy-float 3s ease-in-out infinite;
 }
 
 .key-hint {

@@ -7,6 +7,7 @@ import { CharacterService } from './services/CharacterService'
 import { GameService } from './services/GameService'
 import { NetworkManager } from './core/NetworkManager'
 import { eventBus } from './events/EventBus'
+import { audioManager } from './core/AudioManager'
 
 // Views
 import LobbyView from './views/LobbyView.vue'
@@ -32,6 +33,16 @@ import { provide } from 'vue'
 provide('roomService', roomService)
 provide('characterService', characterService)
 provide('gameService', gameService)
+provide('audioManager', audioManager)
+
+// 初始化音效 (需要使用者互動)
+const initAudio = () => {
+  audioManager.init()
+  audioManager.startBGM()
+  // 移除監聽，避免重複執行
+  window.removeEventListener('click', initAudio)
+  window.removeEventListener('keydown', initAudio)
+}
 
 // View State
 const currentView = computed(() => {
@@ -63,6 +74,10 @@ onMounted(() => {
     game: gameService,
     network: networkManager
   }
+  
+  // 首次互動初始化音效
+  window.addEventListener('click', initAudio)
+  window.addEventListener('keydown', initAudio)
 })
 </script>
 
