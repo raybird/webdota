@@ -333,6 +333,58 @@
                 1,
                 24
             ]
+        },
+        {
+            "type": "tower",
+            "team": "blue",
+            "position": [
+                -15,
+                0,
+                -15
+            ],
+            "config": {
+                "attackRange": 12,
+                "attackPower": 100
+            }
+        },
+        {
+            "type": "tower",
+            "team": "blue",
+            "position": [
+                -10,
+                0,
+                0
+            ],
+            "config": {
+                "attackRange": 10,
+                "attackPower": 80
+            }
+        },
+        {
+            "type": "tower",
+            "team": "red",
+            "position": [
+                15,
+                0,
+                15
+            ],
+            "config": {
+                "attackRange": 12,
+                "attackPower": 100
+            }
+        },
+        {
+            "type": "tower",
+            "team": "red",
+            "position": [
+                10,
+                0,
+                0
+            ],
+            "config": {
+                "attackRange": 10,
+                "attackPower": 80
+            }
         }
     ]
 }

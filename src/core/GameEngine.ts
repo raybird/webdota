@@ -8,12 +8,15 @@ import { PlayerManager } from './managers/PlayerManager';
 import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
+import { TowerManager } from './managers/TowerManager';
+import { CreepManager } from './managers/CreepManager';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
 import { SkillExecutor } from './combat/SkillExecutor';
 import { ProjectileManager } from './combat/ProjectileManager';
 import { MapManager, type MapConfig } from './map';
+import type { CombatEntity } from './entities/CombatEntity';
 import demoArenaMap from '../data/maps/demo_arena.json';
 
 /**
@@ -36,6 +39,8 @@ export class GameEngine {
     skillExecutor!: SkillExecutor;
     projectileManager!: ProjectileManager;
     mapManager!: MapManager;
+    towerManager!: TowerManager;
+    creepManager!: CreepManager;
 
     // Game Loop
 
@@ -96,6 +101,14 @@ export class GameEngine {
         this.effectManager = new EffectManager(this.app);
         this.skillExecutor = new SkillExecutor();
         this.projectileManager = new ProjectileManager(this.app);
+
+        // 7. Initialize Entity Managers
+        this.towerManager = new TowerManager(this.app, this.physicsWorld);
+        this.towerManager.setProjectileManager(this.projectileManager);
+        this.creepManager = new CreepManager(this.app, this.physicsWorld, this.mapManager);
+
+        // 8. Spawn Towers from Map Config
+        this.spawnTowersFromMap();
 
         // Find and set camera for RenderManager
 
@@ -202,8 +215,14 @@ export class GameEngine {
 
         this.currentFrame = 0;
 
-        // 清空現有玩家
+        // 清空現有實體
         this.playerManager.clearAll();
+        this.towerManager.clearAll();
+        this.creepManager.clearAll();
+        this.creepManager.resetWaveTimer();
+
+        // 重新生成塔
+        this.spawnTowersFromMap();
 
         // 從 roomStore 獲取所有連線玩家並生成 (強制依 ID 排序以確保所有客戶端一致)
         const players = [...this.roomStore.connectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
@@ -350,6 +369,11 @@ export class GameEngine {
                 player.update(dt);
             });
 
+            // 5. Update Entity Managers (Towers, Creeps)
+            const allCombatEntities = this.getAllCombatEntities();
+            this.towerManager.update(dt, allCombatEntities);
+            this.creepManager.update(dt, allCombatEntities);
+
             // 5. Broadcast State
             if (this.currentFrame % 3 === 0) { // 每 3 幀同步一次
                 const gameState = {
@@ -433,20 +457,60 @@ export class GameEngine {
             }
         });
 
-        // Update Hitboxes
-        const hits = this.hitboxManager.update(dt, this.playerManager.getAllPlayers());
+        // Update Hitboxes - 使用所有戰鬥實體
+        const allCombatEntities = this.getAllCombatEntities();
+        const hits = this.hitboxManager.update(dt, allCombatEntities);
         hits.forEach(hit => {
-            const target = this.playerManager.getPlayer(hit.targetId);
-            if (target) {
-                target.takeDamage(hit.damage);
+            // 嘗試在各個 Manager 中找到目標
+            const player = this.playerManager.getPlayer(hit.targetId);
+            if (player) {
+                player.takeDamage(hit.damage);
                 if (hit.knockback) {
-                    target.applyKnockback(hit.knockback);
+                    player.applyKnockback(hit.knockback);
                 }
+                return;
             }
+            // Tower 和 Creep 的傷害已由各自的 takeDamage 處理 (在 HitboxManager 或 tryAttack 中)
         });
 
         // Update Projectiles (投射物移動與碰撞)
-        this.projectileManager.update(dt, this.hitboxManager, this.playerManager.getAllPlayers());
+        this.projectileManager.update(dt, this.hitboxManager, allCombatEntities);
+    }
+
+    /**
+     * 取得所有戰鬥實體 (Player + Tower + Creep)
+     * 返回的陣列包含所有可攻擊的實體，用於 HitboxManager 和 ProjectileManager
+     */
+    private getAllCombatEntities(): CombatEntity[] {
+        // PlayerEntity 與 CombatEntity 使用不同的 ID 屬性 (playerId vs entityId)
+        // 但都有 getPosition() 和 isDead() 方法，使用 unknown 作為中間類型轉換
+        const players = Array.from(this.playerManager.getAllPlayers().values()) as unknown as CombatEntity[];
+        const towers = this.towerManager.getAllTowersAsEntities();
+        const creeps = this.creepManager.getAllCreepsAsEntities();
+        return [...players, ...towers, ...creeps];
+    }
+
+    /**
+     * 從地圖配置生成防禦塔
+     */
+    private spawnTowersFromMap(): void {
+        const towerEntities = this.mapManager.getEntitiesByType('tower');
+        towerEntities.forEach((entity, index) => {
+            const id = `tower_${entity.team}_${index}`;
+            const position = {
+                x: entity.position[0],
+                y: entity.position[1],
+                z: entity.position[2]
+            };
+            const config = entity.config || {};
+            this.towerManager.spawnTower(
+                id,
+                entity.team || 'neutral',
+                position,
+                config
+            );
+        });
+        console.log(`[GameEngine] Spawned ${towerEntities.length} towers from map config`);
     }
 
     useSkill(skillId: string) {

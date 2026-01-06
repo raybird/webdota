@@ -1,7 +1,16 @@
 import * as pc from 'playcanvas';
 import { HitboxManager } from './HitboxManager';
 import type { Skill } from './SkillManager';
-import type { PlayerEntity } from '../PlayerEntity';
+
+/**
+ * 可碰撞的實體介面
+ */
+interface CollidableEntity {
+    entityId?: string;
+    playerId?: string;
+    getPosition(): pc.Vec3;
+    isDead?(): boolean;
+}
 
 /**
  * 投射物介面
@@ -125,8 +134,13 @@ export class ProjectileManager {
     /**
      * 更新所有投射物（每幀呼叫）
      */
-    update(dt: number, hitboxManager: HitboxManager, players: Map<string, PlayerEntity>): void {
+    update(dt: number, hitboxManager: HitboxManager, entities: CollidableEntity[] | Map<string, CollidableEntity>): void {
         const toRemove: string[] = [];
+
+        // 將 Map 轉換為陣列
+        const entityList: CollidableEntity[] = Array.isArray(entities)
+            ? entities
+            : Array.from(entities.values());
 
         this.projectiles.forEach((proj, id) => {
             // 計算移動距離
@@ -149,8 +163,8 @@ export class ProjectileManager {
                 return;
             }
 
-            // 檢查碰撞（簡化版：檢查與玩家的距離）
-            const hitTarget = this.checkCollision(proj, players);
+            // 檢查碰撞（簡化版：檢查與實體的距離）
+            const hitTarget = this.checkCollision(proj, entityList);
             if (hitTarget) {
                 this.onProjectileHit(proj, hitTarget, hitboxManager);
                 toRemove.push(id);
@@ -165,18 +179,23 @@ export class ProjectileManager {
     /**
      * 檢查投射物碰撞
      */
-    private checkCollision(proj: Projectile, players: Map<string, PlayerEntity>): string | null {
+    private checkCollision(proj: Projectile, entities: CollidableEntity[]): string | null {
         const hitRadius = 0.8; // 投射物碰撞半徑
 
-        for (const [playerId, player] of players) {
+        for (const entity of entities) {
+            const entityId = entity.entityId || entity.playerId || '';
+
             // 不打自己
-            if (playerId === proj.ownerId) continue;
+            if (entityId === proj.ownerId) continue;
 
-            const playerPos = player.getPosition();
-            const distance = proj.position.distance(playerPos);
+            // 跳過死亡實體
+            if (entity.isDead && entity.isDead()) continue;
 
-            if (distance < hitRadius + 0.5) { // 玩家半徑約 0.5
-                return playerId;
+            const entityPos = entity.getPosition();
+            const distance = proj.position.distance(entityPos);
+
+            if (distance < hitRadius + 0.5) { // 實體半徑約 0.5
+                return entityId;
             }
         }
 

@@ -1,4 +1,5 @@
 import * as pc from 'playcanvas';
+import type { CombatEntity } from '../entities/CombatEntity';
 
 export interface AttackHitbox {
     id: string;             // 唯一 ID
@@ -53,11 +54,16 @@ export class HitboxManager {
     /**
      * 更新所有判定框
      * @param dt Delta time
-     * @param players 所有玩家實體 (用於碰撞檢測)
+     * @param targets 所有可攻擊目標 (CombatEntity Map 或陣列)
      * @returns 命中事件列表
      */
-    update(dt: number, players: Map<string, any>): Array<{ targetId: string, damage: number, knockback: pc.Vec3 }> {
+    update(dt: number, targets: Map<string, CombatEntity> | CombatEntity[]): Array<{ targetId: string, damage: number, knockback: pc.Vec3 }> {
         const hits: Array<{ targetId: string, damage: number, knockback: pc.Vec3 }> = [];
+
+        // 將目標轉換為統一格式
+        const targetEntries: Array<[string, CombatEntity]> = Array.isArray(targets)
+            ? targets.map(t => [t.entityId, t] as [string, CombatEntity])
+            : Array.from(targets.entries());
 
         // 過濾過期的 hitbox
         this.activeHitboxes = this.activeHitboxes.filter(hitbox => {
@@ -69,29 +75,32 @@ export class HitboxManager {
             }
 
             // 檢測碰撞
-            for (const [playerId, player] of players) {
+            for (const [entityId, entity] of targetEntries) {
                 // 忽略攻擊者自己
-                if (playerId === hitbox.ownerId) continue;
+                if (entityId === hitbox.ownerId) continue;
 
                 // 忽略已命中的目標 (避免同一招打多次)
-                if (hitbox.hitTargets.has(playerId)) continue;
+                if (hitbox.hitTargets.has(entityId)) continue;
+
+                // 忽略已死亡的目標
+                if (entity.isDead()) continue;
 
                 // 距離檢測
-                const playerPos = player.getPosition();
-                const distance = hitbox.position.distance(playerPos);
+                const entityPos = entity.getPosition();
+                const distance = hitbox.position.distance(entityPos);
 
-                // 假設玩家半徑為 0.5
+                // 假設實體半徑為 0.5
                 if (distance <= hitbox.radius + 0.5) {
                     // 命中！
-                    hitbox.hitTargets.add(playerId);
+                    hitbox.hitTargets.add(entityId);
                     hits.push({
-                        targetId: playerId,
+                        targetId: entityId,
                         damage: hitbox.damage,
                         knockback: hitbox.knockback
                     });
 
                     // 視覺回饋 (可選)
-                    // console.log(`Hit! ${hitbox.ownerId} -> ${playerId} (${hitbox.damage})`);
+                    // console.log(`Hit! ${hitbox.ownerId} -> ${entityId} (${hitbox.damage})`);
                 }
             }
 

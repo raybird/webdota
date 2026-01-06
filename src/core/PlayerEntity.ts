@@ -370,6 +370,13 @@ export class PlayerEntity {
     }
 
     /**
+     * 維查是否已死亡
+     */
+    isDead(): boolean {
+        return this.combatStats.currentHp <= 0;
+    }
+
+    /**
      * 獲取當前位置
      */
     getPosition(): pc.Vec3 {

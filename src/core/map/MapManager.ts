@@ -357,4 +357,12 @@ export class MapManager {
             maxZ: halfH
         };
     }
+
+    /**
+     * 取得指定類型的地圖實體
+     */
+    getEntitiesByType(type: MapEntity['type']): MapEntity[] {
+        if (!this.currentMapConfig) return [];
+        return this.currentMapConfig.entities.filter(e => e.type === type);
+    }
 }
