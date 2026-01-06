@@ -1,6 +1,6 @@
 import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
-import { NetworkManager, type PlayerInput } from './NetworkManager';
+import { NetworkManager, type PlayerInput, type GameState } from './NetworkManager';
 import { HostManager } from './HostManager';
 import { HitboxManager } from './combat/HitboxManager';
 import { UIManager } from './UIManager';
@@ -13,6 +13,8 @@ import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
 import { SkillExecutor } from './combat/SkillExecutor';
 import { ProjectileManager } from './combat/ProjectileManager';
+import { MapManager, type MapConfig } from './map';
+import demoArenaMap from '../data/maps/demo_arena.json';
 
 /**
  * 遊戲引擎核心
@@ -33,6 +35,7 @@ export class GameEngine {
     effectManager!: EffectManager;
     skillExecutor!: SkillExecutor;
     projectileManager!: ProjectileManager;
+    mapManager!: MapManager;
 
     // Game Loop
 
@@ -75,10 +78,16 @@ export class GameEngine {
         this.app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
         this.app.setCanvasResolution(pc.RESOLUTION_AUTO);
 
-        // 3. Create Scene
+        // 3. Initialize MapManager first (before createScene which needs it)
+        this.mapManager = new MapManager(this.app, this.physicsWorld);
+
+        // 4. Create Scene (camera, light)
         this.createScene();
 
-        // 4. Initialize Managers
+        // 5. Load map
+        this.mapManager.loadMap(demoArenaMap as unknown as MapConfig);
+
+        // 6. Initialize Managers
         this.uiManager = new UIManager(this.app);
         this.hitboxManager = new HitboxManager(this.app);
         this.playerManager = new PlayerManager(this.app, this.physicsWorld, this.uiManager);
@@ -130,20 +139,6 @@ export class GameEngine {
         });
         light.setEulerAngles(45, 0, 0);
         this.app.root.addChild(light);
-
-        // Ground (Visual) - 擴大地板尺寸以滿版
-        const ground = new pc.Entity('Ground');
-        ground.addComponent('render', { type: 'box' });
-        ground.setLocalScale(100, 0.1, 100);  // 100x100 滿版地板
-        const material = new pc.StandardMaterial();
-        material.diffuse = new pc.Color(0.15, 0.25, 0.15);  // 深綠色
-        material.update();
-        if (ground.render) ground.render.material = material;
-        this.app.root.addChild(ground);
-
-        // Ground (Physics) - 對應擴大
-        const groundColliderDesc = RAPIER.ColliderDesc.cuboid(50.0, 0.05, 50.0);
-        this.physicsWorld.createCollider(groundColliderDesc);
     }
 
     private setupEventListeners() {
@@ -165,7 +160,7 @@ export class GameEngine {
             this.playerManager.removePlayer(peerId);
         };
 
-        this.networkManager.onGameState = (state: any) => {
+        this.networkManager.onGameState = (state: GameState) => {
             this.handleGameState(state);
         };
 
@@ -255,7 +250,7 @@ export class GameEngine {
         console.log('[GameEngine] Game started with', players.length, 'players');
     }
 
-    private handleGameState(state: any) {
+    private handleGameState(state: GameState) {
         // 同步 Host 的幀數
         if (state.frame !== undefined) {
             this.currentFrame = state.frame;
@@ -397,7 +392,8 @@ export class GameEngine {
             if (player) {
                 // Movement
                 const speed = player.combatStats.moveSpeed;
-                const moveDir = { x: input.moveX, y: 0, z: input.moveY };
+                // 注意：moveY 需要取反，因為在俯視角下 W(前進) 應該往 Z 負方向移動
+                const moveDir = { x: input.moveX, y: 0, z: -input.moveY };
 
                 if (moveDir.x !== 0 || moveDir.z !== 0) {
                     const currentPos = player.rigidBody.translation();

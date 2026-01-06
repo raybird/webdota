@@ -1,6 +1,7 @@
 import * as pc from 'playcanvas';
 import { HitboxManager } from './HitboxManager';
 import type { Skill } from './SkillManager';
+import type { PlayerEntity } from '../PlayerEntity';
 
 /**
  * 投射物介面
@@ -25,6 +26,8 @@ export class ProjectileManager {
     private app: pc.Application;
     private projectiles: Map<string, Projectile> = new Map();
     private nextId: number = 0;
+    /** 材質快取 (使用顏色 hex 作為 key) */
+    private materialCache: Map<string, pc.StandardMaterial> = new Map();
 
     constructor(app: pc.Application) {
         this.app = app;
@@ -95,22 +98,34 @@ export class ProjectileManager {
     }
 
     /**
-     * 創建發光材質
+     * 創建發光材質 (使用快取)
      */
     private createGlowMaterial(color: pc.Color): pc.StandardMaterial {
+        // 使用顏色的 hex 值作為 key
+        const colorKey = `${color.r.toFixed(2)}_${color.g.toFixed(2)}_${color.b.toFixed(2)}`;
+
+        // 檢查快取中是否已有此材質
+        const cachedMaterial = this.materialCache.get(colorKey);
+        if (cachedMaterial) {
+            return cachedMaterial;
+        }
+
+        // 建立新材質並存入快取
         const material = new pc.StandardMaterial();
         material.diffuse = color;
         material.emissive = color;
         material.emissiveIntensity = 2;
         material.useLighting = false;
         material.update();
+
+        this.materialCache.set(colorKey, material);
         return material;
     }
 
     /**
      * 更新所有投射物（每幀呼叫）
      */
-    update(dt: number, hitboxManager: HitboxManager, players: Map<string, any>): void {
+    update(dt: number, hitboxManager: HitboxManager, players: Map<string, PlayerEntity>): void {
         const toRemove: string[] = [];
 
         this.projectiles.forEach((proj, id) => {
@@ -150,7 +165,7 @@ export class ProjectileManager {
     /**
      * 檢查投射物碰撞
      */
-    private checkCollision(proj: Projectile, players: Map<string, any>): string | null {
+    private checkCollision(proj: Projectile, players: Map<string, PlayerEntity>): string | null {
         const hitRadius = 0.8; // 投射物碰撞半徑
 
         for (const [playerId, player] of players) {

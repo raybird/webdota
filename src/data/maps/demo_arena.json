@@ -1,0 +1,338 @@
+{
+    "id": "demo_arena",
+    "name": "試煉場 Demo Arena",
+    "size": {
+        "w": 60,
+        "h": 60
+    },
+    "environment": {
+        "skyColor": [
+            0.05,
+            0.05,
+            0.15
+        ],
+        "ambientIntensity": 1.2,
+        "groundColor": [
+            0.15,
+            0.25,
+            0.15
+        ]
+    },
+    "materials": {
+        "wall_stone": {
+            "color": [
+                0.4,
+                0.4,
+                0.45
+            ],
+            "roughness": 0.8
+        },
+        "pillar_dark": {
+            "color": [
+                0.25,
+                0.25,
+                0.3
+            ],
+            "roughness": 0.6
+        },
+        "obstacle_wood": {
+            "color": [
+                0.5,
+                0.35,
+                0.2
+            ],
+            "roughness": 0.7
+        },
+        "highlight_blue": {
+            "color": [
+                0.2,
+                0.4,
+                0.8
+            ],
+            "emissive": [
+                0.1,
+                0.2,
+                0.4
+            ]
+        },
+        "highlight_red": {
+            "color": [
+                0.8,
+                0.3,
+                0.2
+            ],
+            "emissive": [
+                0.4,
+                0.15,
+                0.1
+            ]
+        }
+    },
+    "blocks": [
+        {
+            "id": "wall_north",
+            "type": "box",
+            "position": [
+                0,
+                2,
+                -28
+            ],
+            "scale": [
+                56,
+                4,
+                2
+            ],
+            "material": "wall_stone"
+        },
+        {
+            "id": "wall_south",
+            "type": "box",
+            "position": [
+                0,
+                2,
+                28
+            ],
+            "scale": [
+                56,
+                4,
+                2
+            ],
+            "material": "wall_stone"
+        },
+        {
+            "id": "wall_east",
+            "type": "box",
+            "position": [
+                28,
+                2,
+                0
+            ],
+            "scale": [
+                2,
+                4,
+                56
+            ],
+            "material": "wall_stone"
+        },
+        {
+            "id": "wall_west",
+            "type": "box",
+            "position": [
+                -28,
+                2,
+                0
+            ],
+            "scale": [
+                2,
+                4,
+                56
+            ],
+            "material": "wall_stone"
+        },
+        {
+            "id": "pillar_center",
+            "type": "cylinder",
+            "position": [
+                0,
+                3,
+                0
+            ],
+            "scale": [
+                3,
+                6,
+                3
+            ],
+            "material": "pillar_dark"
+        },
+        {
+            "id": "pillar_nw",
+            "type": "cylinder",
+            "position": [
+                -12,
+                2,
+                -12
+            ],
+            "scale": [
+                2,
+                4,
+                2
+            ],
+            "material": "pillar_dark"
+        },
+        {
+            "id": "pillar_ne",
+            "type": "cylinder",
+            "position": [
+                12,
+                2,
+                -12
+            ],
+            "scale": [
+                2,
+                4,
+                2
+            ],
+            "material": "pillar_dark"
+        },
+        {
+            "id": "pillar_sw",
+            "type": "cylinder",
+            "position": [
+                -12,
+                2,
+                12
+            ],
+            "scale": [
+                2,
+                4,
+                2
+            ],
+            "material": "pillar_dark"
+        },
+        {
+            "id": "pillar_se",
+            "type": "cylinder",
+            "position": [
+                12,
+                2,
+                12
+            ],
+            "scale": [
+                2,
+                4,
+                2
+            ],
+            "material": "pillar_dark"
+        },
+        {
+            "id": "cover_box_1",
+            "type": "box",
+            "position": [
+                -18,
+                1,
+                0
+            ],
+            "scale": [
+                4,
+                2,
+                6
+            ],
+            "material": "obstacle_wood"
+        },
+        {
+            "id": "cover_box_2",
+            "type": "box",
+            "position": [
+                18,
+                1,
+                0
+            ],
+            "scale": [
+                4,
+                2,
+                6
+            ],
+            "material": "obstacle_wood"
+        },
+        {
+            "id": "cover_box_3",
+            "type": "box",
+            "position": [
+                0,
+                1,
+                -18
+            ],
+            "scale": [
+                6,
+                2,
+                4
+            ],
+            "material": "obstacle_wood"
+        },
+        {
+            "id": "cover_box_4",
+            "type": "box",
+            "position": [
+                0,
+                1,
+                18
+            ],
+            "scale": [
+                6,
+                2,
+                4
+            ],
+            "material": "obstacle_wood"
+        },
+        {
+            "id": "blue_base_marker",
+            "type": "box",
+            "position": [
+                -22,
+                0.1,
+                -22
+            ],
+            "scale": [
+                8,
+                0.2,
+                8
+            ],
+            "material": "highlight_blue",
+            "isCollider": false
+        },
+        {
+            "id": "red_base_marker",
+            "type": "box",
+            "position": [
+                22,
+                0.1,
+                22
+            ],
+            "scale": [
+                8,
+                0.2,
+                8
+            ],
+            "material": "highlight_red",
+            "isCollider": false
+        }
+    ],
+    "entities": [
+        {
+            "type": "spawn_point",
+            "team": "blue",
+            "position": [
+                -22,
+                1,
+                -22
+            ]
+        },
+        {
+            "type": "spawn_point",
+            "team": "blue",
+            "position": [
+                -20,
+                1,
+                -24
+            ]
+        },
+        {
+            "type": "spawn_point",
+            "team": "red",
+            "position": [
+                22,
+                1,
+                22
+            ]
+        },
+        {
+            "type": "spawn_point",
+            "team": "red",
+            "position": [
+                20,
+                1,
+                24
+            ]
+        }
+    ]
+}

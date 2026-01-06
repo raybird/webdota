@@ -15,10 +15,19 @@ export interface PlayerInput {
     };
 }
 
+export interface PlayerState {
+    id: string;
+    pos: { x: number; y: number; z: number };
+    rot: { x: number; y: number; z: number; w: number };
+    stats: { hp: number; energy: number };
+}
+
 export interface GameState {
     frame: number;
     timestamp: number;
     checksum?: string;
+    players: PlayerState[];
+    isGameStarted: boolean;
 }
 
 export class NetworkManager {
@@ -43,7 +52,7 @@ export class NetworkManager {
     onCharacterSelected?: (peerId: string, characterId: string) => void;
     onGameStartCountdown?: (seconds: number) => void;
     onGameStarted?: () => void;
-    onGameState?: (state: any) => void;
+    onGameState?: (state: GameState) => void;
     onRoomCode?: (code: string, hostId: string) => void;
     onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string }> };
     onRoomState?: (players: Array<{ id: string; isReady: boolean; characterId?: string }>) => void;
@@ -249,7 +258,7 @@ export class NetworkManager {
     /**
      * 發送遊戲狀態給指定玩家 (用於初始同步)
      */
-    sendGameState(state: any, targetPeerId: string) {
+    sendGameState(state: GameState, targetPeerId: string) {
         const conn = this.connections.get(targetPeerId);
         if (conn) {
             conn.send({
@@ -346,7 +355,7 @@ export class NetworkManager {
     /**
      * 廣播遊戲狀態 (Host Only)
      */
-    broadcastGameState(state: any) {
+    broadcastGameState(state: GameState) {
         const message = {
             type: 'game_state',
             state
