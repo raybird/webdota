@@ -5,6 +5,7 @@
 import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type { MapConfig, MapBlock, MapEntity, SpawnPoint, MaterialConfig } from './MapData';
+import { TextureGenerator } from '../../utils/TextureGenerator';
 
 export class MapManager {
     private app: pc.Application;
@@ -14,10 +15,12 @@ export class MapManager {
     private materials: Map<string, pc.StandardMaterial> = new Map();
     private spawnPoints: SpawnPoint[] = [];
     private currentMapConfig: MapConfig | null = null;
+    private textureGenerator: TextureGenerator;
 
     constructor(app: pc.Application, physicsWorld: RAPIER.World) {
         this.app = app;
         this.physicsWorld = physicsWorld;
+        this.textureGenerator = new TextureGenerator(app);
     }
 
     /**
@@ -115,6 +118,29 @@ export class MapManager {
                 material.emissive = new pc.Color(config.emissive[0], config.emissive[1], config.emissive[2]);
             }
 
+            // 根據 textureType 生成程式化紋理
+            if (config.textureType) {
+                let texture: pc.Texture | null = null;
+                switch (config.textureType) {
+                    case 'grid':
+                        texture = this.textureGenerator.generateGrid(
+                            name,
+                            config.color,
+                            [config.color[0] * 0.7, config.color[1] * 0.7, config.color[2] * 0.7]
+                        );
+                        break;
+                    case 'noise':
+                        texture = this.textureGenerator.generateNoise(name, config.color);
+                        break;
+                    case 'solid':
+                        texture = this.textureGenerator.generateSolid(name, config.color);
+                        break;
+                }
+                if (texture) {
+                    material.diffuseMap = texture;
+                }
+            }
+
             material.update();
             this.materials.set(name, material);
         }
@@ -167,6 +193,9 @@ export class MapManager {
                 renderType = 'cylinder';
                 break;
             case 'ramp':
+                // Ramp 使用 Box 並透過旋轉來模擬斜坡效果
+                renderType = 'box';
+                break;
             case 'box':
             default:
                 renderType = 'box';
@@ -181,6 +210,9 @@ export class MapManager {
 
         if (block.rotation) {
             entity.setEulerAngles(block.rotation[0], block.rotation[1], block.rotation[2]);
+        } else if (block.type === 'ramp') {
+            // 預設斜坡傾斜 30 度
+            entity.setEulerAngles(-30, 0, 0);
         }
 
         // 套用材質
@@ -213,6 +245,30 @@ export class MapManager {
                 );
                 break;
             case 'ramp':
+                // Ramp 使用 convexHull 建立三角柱碰撞體
+                // 定義斜坡的頂點 (三角柱)
+                const hw = block.scale[0] / 2; // half width
+                const hh = block.scale[1] / 2; // half height
+                const hd = block.scale[2] / 2; // half depth
+                const vertices = new Float32Array([
+                    // 底面 (矩形)
+                    -hw, -hh, -hd,
+                    hw, -hh, -hd,
+                    hw, -hh, hd,
+                    -hw, -hh, hd,
+                    // 頂面 (斜面頂端，只有兩個點)
+                    -hw, hh, hd,
+                    hw, hh, hd
+                ]);
+                const hullCollider = RAPIER.ColliderDesc.convexHull(vertices);
+                if (hullCollider) {
+                    colliderDesc = hullCollider;
+                } else {
+                    // Fallback to box if convex hull fails
+                    console.warn('[MapManager] Convex hull creation failed for ramp, using box fallback');
+                    colliderDesc = RAPIER.ColliderDesc.cuboid(hw, hh, hd);
+                }
+                break;
             case 'box':
             default:
                 colliderDesc = RAPIER.ColliderDesc.cuboid(

@@ -247,6 +247,65 @@ export class ProjectileManager {
     }
 
     /**
+     * 由塔或其他實體使用的簡化投射物生成
+     * @param position 起始位置
+     * @param direction 方向
+     * @param speed 速度
+     * @param damage 傷害
+     * @param ownerId 擁有者 ID
+     * @param targetTeam 目標隊伍（用於區分敵我）
+     */
+    spawnProjectile(
+        position: pc.Vec3,
+        direction: pc.Vec3,
+        speed: number,
+        damage: number,
+        ownerId: string,
+        _targetTeam: 'red' | 'blue'
+    ): string {
+        const id = `proj_${this.nextId++}`;
+        const normalizedDir = direction.clone().normalize();
+
+        // 創建視覺實體
+        const entity = new pc.Entity(`TowerProjectile_${id}`);
+        entity.addComponent('render', {
+            type: 'sphere',
+            material: this.createGlowMaterial(new pc.Color(1, 0.8, 0.2))
+        });
+        entity.setLocalScale(0.4, 0.4, 0.4);
+        entity.setPosition(position);
+        this.app.root.addChild(entity);
+
+        // 使用簡化的 Skill 物件
+        const fakeSkill: Skill = {
+            id: 'tower_attack',
+            name: 'Tower Attack',
+            type: 'basic',
+            damage,
+            range: 15,
+            cooldown: 2,
+            projectileSpeed: speed,
+            aoe: 0.5
+        };
+
+        const projectile: Projectile = {
+            id,
+            ownerId,
+            skill: fakeSkill,
+            position: position.clone(),
+            direction: normalizedDir,
+            speed,
+            maxRange: 15,
+            traveledDistance: 0,
+            entity
+        };
+
+        this.projectiles.set(id, projectile);
+        console.log(`[ProjectileManager] Spawned tower projectile ${id}`);
+        return id;
+    }
+
+    /**
      * 清除所有投射物
      */
     clearAll(): void {

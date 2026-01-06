@@ -36,6 +36,7 @@ export interface MaterialConfig {
     roughness?: number;  // 0-1, default 0.5
     metalness?: number;  // 0-1, default 0
     emissive?: [number, number, number]; // 自發光顏色
+    textureType?: 'grid' | 'noise' | 'solid'; // 程式化紋理類型
 }
 
 export interface MapBlock {
