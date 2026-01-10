@@ -3,19 +3,26 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { GameService } from '../services/GameService'
 import { eventBus } from '../events/EventBus'
 import { useGameStore } from '../stores/gameStore'
-import { useRoomStore } from '../stores/roomStore'
 import SkillPanel from '../components/SkillPanel.vue'
 import VirtualJoystick from '../components/VirtualJoystick.vue'
+import EntityStatus from '../components/game/EntityStatus.vue'
+import GameOverOverlay from '../components/game/GameOverOverlay.vue'
+import Minimap from '../components/game/Minimap.vue'
+import { useRoomStore } from '../stores/roomStore'
 
 const gameStore = useGameStore()
 const roomStore = useRoomStore()
+
+// 遊戲結束狀態
+const isGameOver = ref(false)
+const winnerTeam = ref<'red' | 'blue' | null>(null)
+const gameOverReason = ref('')
 
 const props = defineProps<{
   gameService: GameService
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-const skillPanelRef = ref<InstanceType<typeof SkillPanel> | null>(null)
 const currentCooldowns = ref<Map<string, number>>(new Map())
 
 // 技能配置
@@ -50,11 +57,72 @@ const handleJoystickEnd = () => {
 
 const animationFrameId = ref<number>(0)
 
+// 取得所有可見實體 (用於渲染血量條)
+const allEntities = ref<any[]>([])
+
+// 小地圖專用資料
+const minimapEntities = ref<Array<{
+  id: string
+  type: 'player' | 'tower' | 'creep' | 'base'
+  team: 'red' | 'blue' | 'neutral'
+  position: { x: number; z: number }
+}>>([])
+
+const updateEntities = () => {
+  if (props.gameService.gameEngine) {
+    // 取得塔、小兵、主堡
+    const towers = props.gameService.gameEngine.towerManager?.getAllTowersAsEntities() || []
+    const creeps = props.gameService.gameEngine.creepManager?.getAllCreepsAsEntities() || []
+    const bases = props.gameService.gameEngine.baseManager?.getAllBasesAsEntities() || []
+    const players = props.gameService.gameEngine.playerManager?.getAllPlayers() || new Map()
+    
+    allEntities.value = [
+      ...towers.map((e: any) => ({ entity: e, type: 'tower' })),
+      ...creeps.map((e: any) => ({ entity: e, type: 'creep' })),
+      ...bases.map((e: any) => ({ entity: e, type: 'base' }))
+    ]
+
+    // 更新小地圖資料
+    const minimapData: typeof minimapEntities.value = []
+    
+    // 加入塔
+    towers.forEach((t: any) => {
+      const pos = t.getPosition()
+      minimapData.push({ id: t.entityId, type: 'tower', team: t.team, position: { x: pos.x, z: pos.z } })
+    })
+    // 加入主堡
+    bases.forEach((b: any) => {
+      const pos = b.getPosition()
+      minimapData.push({ id: b.entityId, type: 'base', team: b.team, position: { x: pos.x, z: pos.z } })
+    })
+    // 加入小兵
+    creeps.forEach((c: any) => {
+      const pos = c.getPosition()
+      minimapData.push({ id: c.entityId, type: 'creep', team: c.team, position: { x: pos.x, z: pos.z } })
+    })
+    // 加入玩家
+    players.forEach((p: any, id: string) => {
+      const pos = p.getPosition()
+      minimapData.push({ id, type: 'player', team: p.team || 'neutral', position: { x: pos.x, z: pos.z } })
+    })
+
+    minimapEntities.value = minimapData
+  }
+}
+
 onMounted(async () => {
   // 監聽遊戲開始事件以更新技能
   eventBus.on('GAME_STARTED', refreshSkills)
   
   // 監聽角色選擇事件 (如果有的話，或者重試機制)
+  // 監聽遊戲結束事件
+  eventBus.on('GAME_OVER', (event) => {
+    isGameOver.value = true
+    winnerTeam.value = event.winnerTeam
+    gameOverReason.value = event.reason
+    console.log('[GameView] GAME OVER:', event)
+  })
+
   // 簡單起見，設定一個定時器檢查技能是否已載入
   const checkInterval = setInterval(() => {
     if (skills.value.length === 0) {
@@ -69,12 +137,13 @@ onMounted(async () => {
     await props.gameService.init(canvasRef.value)
     props.gameService.startGame()
     
-    // init 完成後才啟動冷卻更新循環
-    const updateCooldowns = () => {
+    // init 完成後才啟動冷卻與實體更新循環
+    const updateLoop = () => {
       currentCooldowns.value = props.gameService.getCooldowns()
-      animationFrameId.value = requestAnimationFrame(updateCooldowns)
+      updateEntities()
+      animationFrameId.value = requestAnimationFrame(updateLoop)
     }
-    updateCooldowns()
+    updateLoop()
   }
 })
 
@@ -114,6 +183,15 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <!-- 右上角：小地圖 -->
+      <div class="minimap-area">
+        <Minimap
+          :map-size="{ w: 60, h: 60 }"
+          :entities="minimapEntities"
+          :local-player-id="roomStore.myPeerId"
+        />
+      </div>
+
       <!-- 左下角：虛擬搖桿 (僅在觸控裝置顯示) -->
       <div class="joystick-area">
         <VirtualJoystick 
@@ -131,6 +209,25 @@ onUnmounted(() => {
           @skill-press="handleSkillPress"
         />
       </div>
+
+      <!-- 螢幕空間 UI 層：血量條 -->
+      <div class="entity-ui-layer">
+        <EntityStatus
+          v-for="item in allEntities"
+          :key="`${item.type}_${item.entity.entityId}`"
+          :app="gameService.gameEngine.app"
+          :entity="item.entity"
+          :type="item.type"
+        />
+      </div>
+
+      <!-- 遊戲結束覆蓋層 -->
+      <GameOverOverlay
+        :is-visible="isGameOver"
+        :winner-team="winnerTeam"
+        :reason="gameOverReason"
+        @back-to-lobby="gameService.leaveRoom()"
+      />
     </div>
   </div>
 </template>
@@ -238,5 +335,21 @@ onUnmounted(() => {
   color: var(--c-primary);
   border: 1px solid var(--c-primary-dim);
   text-shadow: 0 0 5px var(--c-primary);
+}
+
+.entity-ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.minimap-area {
+  position: absolute;
+  top: 20px;
+  right: 20px;
 }
 </style>

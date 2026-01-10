@@ -101,6 +101,7 @@ export type GameEvent =
     | PlayerDamagedEvent
     | PlayerHealedEvent
     | SkillEffectEvent
+    | GameOverEvent
 
 export type SkillEffectEvent = {
     type: 'SKILL_EFFECT'
@@ -109,3 +110,11 @@ export type SkillEffectEvent = {
     position: { x: number, y: number, z: number }
     direction: { x: number, y: number, z: number }
 }
+
+// 遊戲結束事件
+export type GameOverEvent = {
+    type: 'GAME_OVER'
+    winnerTeam: 'red' | 'blue'
+    reason: 'base_destroyed' | 'surrender' | 'timeout'
+}
+

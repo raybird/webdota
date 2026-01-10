@@ -9,8 +9,8 @@ import { NetworkManager } from '../core/NetworkManager'
 export class GameService {
     private gameStore = useGameStore()
     private networkManager: NetworkManager
-    // 這裡未來會引用 GameEngine，但為了避免循環依賴，我們暫時不直接引用
-    private gameEngine: any
+    // 改為 public 以供 UI (如 GameView) 存取引擎管理器
+    public gameEngine: any
 
     constructor(networkManager: NetworkManager) {
         this.networkManager = networkManager
@@ -119,6 +119,23 @@ export class GameService {
     setMobileInput(x: number, y: number) {
         if (this.gameEngine && this.gameEngine.inputManager) {
             this.gameEngine.inputManager.setMobileInput(x, y)
+        }
+    }
+
+    /**
+     * 離開房間
+     */
+    leaveRoom() {
+        if (this.gameEngine) {
+            this.gameEngine.app?.destroy()
+            this.gameEngine = null
+        }
+        const roomStore = (window as any).roomStore // 或使用 EventBus 通知 RoomView
+        if (roomStore && roomStore.leaveRoom) {
+            roomStore.leaveRoom()
+        } else {
+            // 回落機制：透過事件總線通知
+            eventBus.emit({ type: 'ROOM_LEFT' })
         }
     }
 }

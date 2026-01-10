@@ -4,6 +4,7 @@ import type { Skill } from './SkillManager';
 import { HitboxManager } from './HitboxManager';
 import { EffectManager } from '../EffectManager';
 import { ProjectileManager } from './ProjectileManager';
+import type { SoundManager } from '../SoundManager';
 
 /**
  * 技能執行器
@@ -20,8 +21,14 @@ export class SkillExecutor {
         direction: pc.Vec3,
         hitboxManager: HitboxManager,
         effectManager: EffectManager,
-        projectileManager?: ProjectileManager
+        projectileManager?: ProjectileManager,
+        soundManager?: SoundManager
     ) {
+        // 0. 播放技能音效
+        if (soundManager) {
+            soundManager.playSkillSound(skill.id);
+        }
+
         // 1. 播放特效
         effectManager.playSkillEffect(skill.id, caster.getPosition(), direction);
 

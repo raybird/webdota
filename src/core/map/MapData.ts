@@ -50,7 +50,7 @@ export interface MapBlock {
 }
 
 export interface MapEntity {
-    type: 'spawn_point' | 'tower' | 'creep_camp' | 'objective';
+    type: 'spawn_point' | 'tower' | 'creep_camp' | 'objective' | 'base';
     team?: 'red' | 'blue' | 'neutral';
     position: [number, number, number];
     rotation?: [number, number, number];

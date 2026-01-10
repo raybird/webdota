@@ -9,6 +9,7 @@ import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
 import { TowerManager } from './managers/TowerManager';
+import { BaseManager } from './managers/BaseManager';
 import { CreepManager } from './managers/CreepManager';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
@@ -16,6 +17,7 @@ import { eventBus } from '../events/EventBus';
 import { SkillExecutor } from './combat/SkillExecutor';
 import { ProjectileManager } from './combat/ProjectileManager';
 import { MapManager, type MapConfig } from './map';
+import { SoundManager } from './SoundManager';
 import type { CombatEntity } from './entities/CombatEntity';
 import demoArenaMap from '../data/maps/demo_arena.json';
 
@@ -41,6 +43,8 @@ export class GameEngine {
     mapManager!: MapManager;
     towerManager!: TowerManager;
     creepManager!: CreepManager;
+    baseManager!: BaseManager;
+    soundManager!: SoundManager;
 
     // Game Loop
 
@@ -106,9 +110,18 @@ export class GameEngine {
         this.towerManager = new TowerManager(this.app, this.physicsWorld);
         this.towerManager.setProjectileManager(this.projectileManager);
         this.creepManager = new CreepManager(this.app, this.physicsWorld, this.mapManager);
+        this.baseManager = new BaseManager(this.app, this.physicsWorld);
 
         // 8. Spawn Towers from Map Config
         this.spawnTowersFromMap();
+
+        // 9. Initialize SoundManager
+        this.soundManager = new SoundManager(this.app);
+
+        // 10. Setup event listeners for sound
+        eventBus.on('GAME_OVER', () => {
+            this.soundManager.playGameOverSound();
+        });
 
         // Find and set camera for RenderManager
 
@@ -219,10 +232,12 @@ export class GameEngine {
         this.playerManager.clearAll();
         this.towerManager.clearAll();
         this.creepManager.clearAll();
+        this.baseManager.clearAll();
         this.creepManager.resetWaveTimer();
 
-        // 重新生成塔
+        // 重新生成塔與主堡
         this.spawnTowersFromMap();
+        this.spawnBasesFromMap();
 
         // 從 roomStore 獲取所有連線玩家並生成 (強制依 ID 排序以確保所有客戶端一致)
         const players = [...this.roomStore.connectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
@@ -369,10 +384,11 @@ export class GameEngine {
                 player.update(dt);
             });
 
-            // 5. Update Entity Managers (Towers, Creeps)
+            // 5. Update Entity Managers (Towers, Creeps, Bases)
             const allCombatEntities = this.getAllCombatEntities();
             this.towerManager.update(dt, allCombatEntities);
             this.creepManager.update(dt, allCombatEntities);
+            this.baseManager.update(dt, allCombatEntities);
 
             // 5. Broadcast State
             if (this.currentFrame % 3 === 0) { // 每 3 幀同步一次
@@ -448,7 +464,8 @@ export class GameEngine {
                             direction,
                             this.hitboxManager,
                             this.effectManager,
-                            this.projectileManager
+                            this.projectileManager,
+                            this.soundManager
                         );
 
                         console.log(`[GameEngine] ${input.playerId.substring(0, 8)} used ${skill.name}`);
@@ -487,7 +504,8 @@ export class GameEngine {
         const players = Array.from(this.playerManager.getAllPlayers().values()) as unknown as CombatEntity[];
         const towers = this.towerManager.getAllTowersAsEntities();
         const creeps = this.creepManager.getAllCreepsAsEntities();
-        return [...players, ...towers, ...creeps];
+        const bases = this.baseManager.getAllBasesAsEntities();
+        return [...players, ...towers, ...creeps, ...bases];
     }
 
     /**
@@ -511,6 +529,29 @@ export class GameEngine {
             );
         });
         console.log(`[GameEngine] Spawned ${towerEntities.length} towers from map config`);
+    }
+
+    /**
+     * 從地圖配置生成主堡
+     */
+    private spawnBasesFromMap(): void {
+        const baseEntities = this.mapManager.getEntitiesByType('base');
+        baseEntities.forEach((entity, index) => {
+            const id = `base_${entity.team}_${index}`;
+            const position = {
+                x: entity.position[0],
+                y: entity.position[1],
+                z: entity.position[2]
+            };
+            const config = entity.config || {};
+            this.baseManager.spawnBase(
+                id,
+                entity.team || 'neutral',
+                position,
+                config
+            );
+        });
+        console.log(`[GameEngine] Spawned ${baseEntities.length} bases from map config`);
     }
 
     useSkill(skillId: string) {

@@ -97,7 +97,8 @@ const handlePointerMove = (clientX: number, clientY: number) => {
   
   // 標準化為 -1 到 1 的範圍
   const moveX = knobX.value / props.maxDistance
-  const moveY = knobY.value / props.maxDistance // Y 軸不反轉
+  // Y 軸反轉：螢幕座標向下為正，但遊戲世界向前（Z-）對應搖桿向上（螢幕Y-）
+  const moveY = -knobY.value / props.maxDistance
   
   emit('move', moveX, moveY)
 }

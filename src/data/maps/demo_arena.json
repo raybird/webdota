@@ -385,6 +385,32 @@
                 "attackRange": 10,
                 "attackPower": 80
             }
+        },
+        {
+            "type": "base",
+            "team": "blue",
+            "position": [
+                -22,
+                0,
+                -22
+            ],
+            "config": {
+                "maxHp": 5000,
+                "attackRange": 8
+            }
+        },
+        {
+            "type": "base",
+            "team": "red",
+            "position": [
+                22,
+                0,
+                22
+            ],
+            "config": {
+                "maxHp": 5000,
+                "attackRange": 8
+            }
         }
     ]
 }
