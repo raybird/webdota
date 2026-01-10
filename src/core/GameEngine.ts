@@ -109,7 +109,7 @@ export class GameEngine {
         // 7. Initialize Entity Managers
         this.towerManager = new TowerManager(this.app, this.physicsWorld);
         this.towerManager.setProjectileManager(this.projectileManager);
-        this.creepManager = new CreepManager(this.app, this.physicsWorld, this.mapManager);
+        this.creepManager = new CreepManager(this.app, this.physicsWorld, this.mapManager, this.uiManager);
         this.baseManager = new BaseManager(this.app, this.physicsWorld);
 
         // 8. Spawn Towers from Map Config
@@ -418,6 +418,9 @@ export class GameEngine {
             }
         }
 
+        // Update UI for all players
+        this.uiManager.updateAll(this.playerManager.getAllPlayers());
+
         this.currentFrame++;
         this.gameStore.setFrame(this.currentFrame);
     }
@@ -481,13 +484,33 @@ export class GameEngine {
             // 嘗試在各個 Manager 中找到目標
             const player = this.playerManager.getPlayer(hit.targetId);
             if (player) {
-                player.takeDamage(hit.damage);
+                player.takeDamage(hit.damage, hit.attackerId);
                 if (hit.knockback) {
                     player.applyKnockback(hit.knockback);
                 }
                 return;
             }
-            // Tower 和 Creep 的傷害已由各自的 takeDamage 處理 (在 HitboxManager 或 tryAttack 中)
+
+            // 檢查是否命中小兵
+            const creep = this.creepManager.getAllCreeps().get(hit.targetId);
+            if (creep) {
+                creep.takeDamage(hit.damage, hit.attackerId);
+                return;
+            }
+
+            // 檢查是否命中防禦塔
+            const tower = this.towerManager.getAllTowers().get(hit.targetId);
+            if (tower) {
+                tower.takeDamage(hit.damage, hit.attackerId);
+                return;
+            }
+
+            // 檢查是否命中主堡
+            const base = this.baseManager.getAllBases().get(hit.targetId);
+            if (base) {
+                base.takeDamage(hit.damage);
+                return;
+            }
         });
 
         // Update Projectiles (投射物移動與碰撞)

@@ -8,6 +8,7 @@ import VirtualJoystick from '../components/VirtualJoystick.vue'
 import EntityStatus from '../components/game/EntityStatus.vue'
 import GameOverOverlay from '../components/game/GameOverOverlay.vue'
 import Minimap from '../components/game/Minimap.vue'
+import Shop from '../components/game/Shop.vue'
 import { useRoomStore } from '../stores/roomStore'
 
 const gameStore = useGameStore()
@@ -53,6 +54,17 @@ const handleJoystickMove = (x: number, y: number) => {
 
 const handleJoystickEnd = () => {
   props.gameService.setMobileInput(0, 0)
+}
+
+// Shop keyboard shortcut
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'b' || e.key === 'B') {
+    gameStore.toggleShop()
+  }
+}
+
+const toggleShop = () => {
+  gameStore.toggleShop()
 }
 
 const animationFrameId = ref<number>(0)
@@ -141,15 +153,21 @@ onMounted(async () => {
     const updateLoop = () => {
       currentCooldowns.value = props.gameService.getCooldowns()
       updateEntities()
+      // 同步庫存狀態
+      props.gameService.syncInventory()
       animationFrameId.value = requestAnimationFrame(updateLoop)
     }
     updateLoop()
   }
+
+  // 監聯 Shop 快捷鍵
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
   // 清理資源
   cancelAnimationFrame(animationFrameId.value)
+  window.removeEventListener('keydown', handleKeyDown)
   props.gameService.destroy()
 })
 </script>
@@ -168,6 +186,16 @@ onUnmounted(() => {
             {{ roomStore.isHost ? '♔ HOST' : '♙ CLIENT' }}
           </div>
         </div>
+        
+        <!-- Team Indicator -->
+        <div class="team-banner" 
+             :class="{ 
+               'team-red': roomStore.myPlayer?.team === 'red',
+               'team-blue': roomStore.myPlayer?.team === 'blue'
+             }">
+           {{ roomStore.myPlayer?.team === 'red' ? '🔴 RED TEAM' : roomStore.myPlayer?.team === 'blue' ? '🔵 BLUE TEAM' : '⚪ SPECTATOR' }}
+        </div>
+
         <div class="hud-content">
           <div class="info-row">
             <span class="label">PLAYERS:</span>
@@ -180,7 +208,12 @@ onUnmounted(() => {
           <div class="cooldown-debug">
             CDs: {{ Array.from(currentCooldowns.entries()).map(([k, v]) => `${k}:${v.toFixed(1)}`).join(', ') }}
           </div>
+          <div class="gold-display">
+            <span class="gold-icon">💰</span>
+            <span class="gold-value">{{ gameStore.gold }}</span>
+          </div>
         </div>
+        <button class="shop-btn" @click="toggleShop">🏪 商店 (B)</button>
       </div>
 
       <!-- 右上角：小地圖 -->
@@ -228,6 +261,9 @@ onUnmounted(() => {
         :reason="gameOverReason"
         @back-to-lobby="gameService.leaveRoom()"
       />
+
+      <!-- 商店 -->
+      <Shop />
     </div>
   </div>
 </template>
@@ -337,6 +373,32 @@ onUnmounted(() => {
   text-shadow: 0 0 5px var(--c-primary);
 }
 
+.team-banner {
+  text-align: center;
+  font-family: var(--font-heading);
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin: 8px 0;
+  padding: 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #aaa;
+  border: 1px solid #555;
+  text-shadow: 0 2px 2px rgba(0,0,0,0.8);
+}
+
+.team-banner.team-red {
+  color: #ff6b6b;
+  border-color: #d63031;
+  background: linear-gradient(90deg, rgba(214,48,49,0.2) 0%, rgba(214,48,49,0.0) 50%, rgba(214,48,49,0.2) 100%);
+}
+
+.team-banner.team-blue {
+  color: #54a0ff;
+  border-color: #0984e3;
+  background: linear-gradient(90deg, rgba(9,132,227,0.2) 0%, rgba(9,132,227,0.0) 50%, rgba(9,132,227,0.2) 100%);
+}
+
 .entity-ui-layer {
   position: absolute;
   top: 0;
@@ -351,5 +413,45 @@ onUnmounted(() => {
   position: absolute;
   top: 20px;
   right: 20px;
+}
+
+.gold-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.gold-icon {
+  font-size: 1rem;
+}
+
+.gold-value {
+  font-weight: bold;
+  color: #ffd700;
+  font-size: 1rem;
+}
+
+.shop-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #2d4059 0%, #3a506b 100%);
+  border: 1px solid #4a6572;
+  border-radius: 8px;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.shop-btn:hover {
+  background: linear-gradient(135deg, #3a506b 0%, #4a6572 100%);
+  border-color: #ffd700;
+  color: #ffd700;
 }
 </style>

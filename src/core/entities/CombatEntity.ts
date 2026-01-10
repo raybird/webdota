@@ -23,6 +23,9 @@ export abstract class CombatEntity {
     hpBarEntity: pc.Entity | null = null;
     hpBarFillEntity: pc.Entity | null = null;
 
+    // 最後攻擊者 ID (用於擊殺獎勵)
+    lastAttackerId: string | null = null;
+
     constructor(
         entityId: string,
         team: Team,
@@ -51,9 +54,14 @@ export abstract class CombatEntity {
     /**
      * 受到傷害
      */
-    takeDamage(amount: number): number {
+    takeDamage(amount: number, attackerId?: string): number {
         const actualDamage = this.combatStats.takeDamage(amount);
-        console.log(`[CombatEntity] ${this.entityId.substring(0, 8)} took ${actualDamage} damage. HP: ${this.combatStats.currentHp}/${this.combatStats.maxHp}`);
+
+        if (attackerId) {
+            this.lastAttackerId = attackerId;
+        }
+
+        console.log(`[CombatEntity] ${this.entityId.substring(0, 8)} took ${actualDamage} damage from ${attackerId || 'unknown'}. HP: ${this.combatStats.currentHp}/${this.combatStats.maxHp}`);
         this.updateHpBar();
         return actualDamage;
     }

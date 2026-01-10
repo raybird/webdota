@@ -7,6 +7,8 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { CreepEntity } from '../entities/CreepEntity';
 import { CombatEntity, type Team } from '../entities/CombatEntity';
 import type { MapManager } from '../map/MapManager';
+import type { UIManager } from '../UIManager';
+import { useRoomStore } from '../../stores/roomStore';
 
 export interface CreepSpawnConfig {
     maxHp?: number;
@@ -14,6 +16,7 @@ export interface CreepSpawnConfig {
     moveSpeed?: number;
     attackRange?: number;
     attackCooldown?: number;
+    colorOverride?: pc.Color;
 }
 
 export interface WaveConfig {
@@ -25,6 +28,7 @@ export class CreepManager {
     private app: pc.Application;
     private physicsWorld: RAPIER.World;
     private mapManager: MapManager;
+    private uiManager: UIManager;
     private creeps: Map<string, CreepEntity> = new Map();
 
     // 波次計時器
@@ -41,10 +45,11 @@ export class CreepManager {
         waveIntervalSeconds: 30
     };
 
-    constructor(app: pc.Application, physicsWorld: RAPIER.World, mapManager: MapManager) {
+    constructor(app: pc.Application, physicsWorld: RAPIER.World, mapManager: MapManager, uiManager: UIManager) {
         this.app = app;
         this.physicsWorld = physicsWorld;
         this.mapManager = mapManager;
+        this.uiManager = uiManager;
 
         // 計算基地位置 (使用出生點的平均位置)
         this.redBasePosition = this.calculateBasePosition('red');
@@ -138,8 +143,23 @@ export class CreepManager {
         targetPosition?: pc.Vec3
     ): CreepEntity {
         if (this.creeps.has(id)) {
-            console.warn(`[CreepManager] Creep ${id} already exists`);
+            // console.warn(`[CreepManager] Creep ${id} already exists`);
             return this.creeps.get(id)!;
+        }
+
+        // 判斷是否為敵方小兵
+        const roomStore = useRoomStore();
+        const myTeam = roomStore.myPlayer?.team;
+        const creepTeam = team;
+
+        // 敵方判斷：只要我有隊伍，且小兵隊伍跟我不同，就是敵人
+        const isEnemy = (myTeam === 'red' || myTeam === 'blue') &&
+            (creepTeam === 'red' || creepTeam === 'blue') &&
+            creepTeam !== myTeam;
+
+        if (isEnemy) {
+            config.colorOverride = new pc.Color(0.5, 0.5, 0.5);
+            // console.log(`[CreepManager] Creep ${id} is ENEMY, setting color to GRAY`);
         }
 
         const creep = new CreepEntity(
@@ -161,6 +181,12 @@ export class CreepManager {
         }
 
         this.creeps.set(id, creep);
+
+        // 建立 UI
+        const teamStr = team as 'red' | 'blue' | 'neutral';
+        const ui = this.uiManager.createEntityUI(id, teamStr);
+        creep.setUIReferences(ui.hpBarEntity, ui.hpBarFillEntity);
+
         return creep;
     }
 
@@ -171,6 +197,7 @@ export class CreepManager {
         const creep = this.creeps.get(id);
         if (creep) {
             creep.destroy();
+            this.uiManager.removePlayerUI(id); // Reuse removal logic
             this.creeps.delete(id);
         }
     }
@@ -196,6 +223,15 @@ export class CreepManager {
 
             // 檢查是否死亡
             if (creep.isDead()) {
+                // 處理擊殺獎勵
+                if (creep.lastAttackerId) {
+                    const attacker = allTargets.find(t => t.entityId === creep.lastAttackerId);
+                    // 檢查攻擊者是否為玩家 (擁有 giveGold 方法)
+                    if (attacker && 'giveGold' in attacker && typeof (attacker as any).giveGold === 'function') {
+                        (attacker as any).giveGold(25);
+                        console.log(`[CreepManager] Awarded 25 gold to ${attacker.entityId} for killing ${id}`);
+                    }
+                }
                 creepsToRemove.push(id);
                 return;
             }

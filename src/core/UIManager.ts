@@ -195,6 +195,64 @@ export class UIManager {
     }
 
     /**
+     * 為非玩家實體建立簡化 UI（僅血條）
+     * @param entityId 實體 ID
+     * @param team 隊伍 (用於顏色)
+     */
+    createEntityUI(entityId: string, team: 'red' | 'blue' | 'neutral'): { hpBarEntity: pc.Entity, hpBarFillEntity: pc.Entity } {
+        const ENTITY_HP_BAR_WIDTH = 80;
+        const ENTITY_HP_BAR_HEIGHT = 10;
+
+        const hpBarEntity = new pc.Entity(`HPBar_${entityId}`);
+        hpBarEntity.setLocalScale(0.01, 0.01, 0.01);
+
+        // 背景
+        const hpBarBg = new pc.Entity('HPBar_Background');
+        hpBarBg.addComponent('element', {
+            type: 'image',
+            anchor: new pc.Vec4(0.5, 0.5, 0.5, 0.5),
+            pivot: new pc.Vec2(0.5, 0.5),
+            width: ENTITY_HP_BAR_WIDTH,
+            height: ENTITY_HP_BAR_HEIGHT,
+            color: new pc.Color(0.2, 0.2, 0.2),
+            opacity: 0.7
+        });
+
+        // 填充 (根據隊伍染色)
+        const fillColor = team === 'red' ? new pc.Color(0.9, 0.3, 0.3)
+            : team === 'blue' ? new pc.Color(0.3, 0.3, 0.9)
+                : new pc.Color(0.7, 0.7, 0.7);
+
+        const hpBarFill = new pc.Entity('HPBar_Fill');
+        hpBarFill.addComponent('element', {
+            type: 'image',
+            anchor: new pc.Vec4(0, 0.5, 0, 0.5),
+            pivot: new pc.Vec2(0, 0.5),
+            width: ENTITY_HP_BAR_WIDTH,
+            height: ENTITY_HP_BAR_HEIGHT,
+            color: fillColor,
+            opacity: 1.0
+        });
+        hpBarFill.setLocalPosition(-ENTITY_HP_BAR_WIDTH / 2, 0, 0);
+
+        hpBarEntity.addChild(hpBarBg);
+        hpBarEntity.addChild(hpBarFill);
+        this.app.root.addChild(hpBarEntity);
+
+        // Store in playerUIs map for update (reusing structure)
+        this.playerUIs.set(entityId, {
+            playerId: entityId,
+            playerName: '',
+            hpBarEntity,
+            hpBarFillEntity: hpBarFill,
+            energyBarFillEntity: hpBarFill, // Dummy, won't be used
+            nameTextEntity: hpBarBg // Dummy
+        });
+
+        return { hpBarEntity, hpBarFillEntity: hpBarFill };
+    }
+
+    /**
      * 更新玩家血條位置（跟隨角色）
      */
     updatePlayerUIPosition(playerId: string, position: pc.Vec3) {

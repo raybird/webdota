@@ -3,9 +3,15 @@ import { computed } from 'vue'
 import { useRoomStore } from '../../stores/roomStore'
 import { getCharacter } from '../../data/characters'
 
+const props = defineProps<{
+  players?: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }>
+  teamColor?: 'red' | 'blue'
+  title?: string
+}>()
+
 const roomStore = useRoomStore()
 
-const players = computed(() => roomStore.connectedPlayers)
+const displayPlayers = computed(() => props.players || roomStore.connectedPlayers)
 const myPeerId = computed(() => roomStore.myPeerId)
 
 const getCharacterIcon = (characterId?: string) => {
@@ -22,11 +28,13 @@ const getCharacterName = (characterId?: string) => {
 </script>
 
 <template>
-  <div class="player-list">
-    <h3>已連線玩家 ({{ players.length }})</h3>
+  <div class="player-list" :class="teamColor">
+    <h3 :style="{ color: teamColor === 'red' ? '#ff4444' : (teamColor === 'blue' ? '#4444ff' : '#ff0') }">
+      {{ title || `已連線玩家 (${displayPlayers.length})` }}
+    </h3>
     <div class="player-grid">
       <div 
-        v-for="player in players" 
+        v-for="player in displayPlayers" 
         :key="player.id" 
         class="player-item"
         :class="{ 'is-me': player.id === myPeerId, 'is-ready': player.isReady }"
@@ -52,10 +60,24 @@ const getCharacterName = (characterId?: string) => {
 
 <style scoped>
 .player-list {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
   padding: 1rem;
   border-radius: 8px;
   width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.player-list.red {
+  background: linear-gradient(180deg, rgba(50, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+.player-list.blue {
+  background: linear-gradient(180deg, rgba(0, 0, 50, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+  border-color: rgba(0, 0, 255, 0.3);
 }
 
 .player-grid {

@@ -9,7 +9,7 @@ export const SKILLS: Record<string, Skill> = {
         type: 'basic',
         cooldown: 0.5,
         damage: 10,
-        range: 2.0,
+        range: 2.5,
         knockback: 0.5,
         animation: 'attack_basic'
     },

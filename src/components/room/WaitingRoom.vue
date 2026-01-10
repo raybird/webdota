@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
+import { computed, ref } from 'vue'
+import PlayerList from './PlayerList.vue'
+import CharacterSelector from './CharacterSelector.vue'
 import { useRoomStore } from '../../stores/roomStore'
-import { useCharacterStore } from '../../stores/characterStore'
 import { RoomService } from '../../services/RoomService'
 import { GameService } from '../../services/GameService'
-import { CharacterService } from '../../services/CharacterService'
-import { getAllCharacters, getCharacter } from '../../data/characters'
 
 const props = defineProps<{
   roomService: RoomService
@@ -13,36 +12,26 @@ const props = defineProps<{
 }>()
 
 const roomStore = useRoomStore()
-const characterStore = useCharacterStore()
-const characterService = inject<CharacterService>('characterService')
+// CharacterService 已移至 CharacterSelector 使用
 
-const characters = getAllCharacters()
+const showCopied = ref(false)
+
+// characters 已移至 CharacterSelector
 const isHost = computed(() => roomStore.isHost)
 const amIReady = computed(() => roomStore.amIReady)
 const allPlayersReady = computed(() => roomStore.allPlayersReady)
 const countdown = computed(() => roomStore.countdown)
 const roomCode = computed(() => roomStore.roomCode)
 const players = computed(() => roomStore.connectedPlayers)
-const myPeerId = computed(() => roomStore.myPeerId)
+const redPlayers = computed(() => players.value.filter(p => p.team === 'red'))
+const bluePlayers = computed(() => players.value.filter(p => p.team === 'blue'))
 
-// 選中的角色
-const selectedCharacterId = computed(() => characterStore.selectedCharacterId)
-const selectedCharacter = computed(() => getCharacter(selectedCharacterId.value))
-
-// 複製提示
-const showCopied = ref(false)
-
-// 玩家選擇的角色
-const getPlayerCharacter = (characterId?: string) => {
-  if (!characterId) return null
-  return getCharacter(characterId)
-}
-
-const selectCharacter = (id: string) => {
-  if (characterService) {
-    characterService.selectCharacter(id)
-  }
-}
+// 相關邏輯已移至 CharacterSelector 或不再需要
+// const characters = getAllCharacters()
+// const selectedCharacterId = computed(() => characterStore.selectedCharacterId)
+// const selectedCharacter = computed(() => getCharacter(selectedCharacterId.value))
+// const myPeerId = computed(() => roomStore.myPeerId)
+// ... functions ...
 
 const toggleReady = () => {
   props.roomService.setReady(!amIReady.value)
@@ -87,66 +76,52 @@ const copyRoomCode = async () => {
 
     <!-- 主區域 -->
     <main class="main">
-      <!-- 左側：玩家 1P -->
-      <aside class="p1-area">
-        <div class="p-label">1P</div>
-        <div class="p-portrait" v-if="selectedCharacter" :style="{ backgroundColor: selectedCharacter.appearance.color }">
-          <span class="p-icon">{{ selectedCharacter.icon }}</span>
-        </div>
-        <div class="p-portrait p-empty" v-else>?</div>
-        <div class="p-name">{{ selectedCharacter?.name || '---' }}</div>
-        <div class="p-status" :class="{ ready: amIReady }">{{ amIReady ? 'READY' : '...' }}</div>
+      <!-- 左側：紅隊 -->
+      <aside class="team-panel red-team">
+        <PlayerList 
+          :players="redPlayers" 
+          team-color="red" 
+          title="🔴 RED TEAM" 
+        />
       </aside>
 
       <!-- 中央：角色選擇 -->
-      <section class="center">
-        <div class="chars">
-          <div 
-            v-for="char in characters" 
-            :key="char.id"
-            class="char"
-            :class="{ sel: selectedCharacterId === char.id }"
-            @click="selectCharacter(char.id)"
-          >
-            <div class="char-icon" :style="{ backgroundColor: char.appearance.color }">{{ char.icon }}</div>
-            <div class="char-name">{{ char.name }}</div>
-          </div>
+      <section class="center-panel">
+        <div class="selector-container">
+          <CharacterSelector />
         </div>
 
         <!-- 倒數 -->
-        <div v-if="countdown > 0" class="countdown">
+        <div v-if="countdown > 0" class="countdown-overlay">
           <div class="cd-num">{{ countdown }}</div>
         </div>
 
         <!-- 按鈕 -->
-        <div class="btns">
+        <div class="control-bar">
           <button class="btn btn-leave" @click="leaveRoom">離開</button>
+          
+          <div class="status-indicator">
+            <div class="status-dot" :class="{ ready: amIReady }"></div>
+            {{ amIReady ? '已準備' : '準備中' }}
+          </div>
+
           <button class="btn btn-ready" :class="{ on: amIReady }" @click="toggleReady">
             {{ amIReady ? '取消' : '準備' }}
           </button>
-          <button v-if="isHost" class="btn btn-start" :disabled="!allPlayersReady" @click="startGame">開始</button>
+          
+          <button v-if="isHost" class="btn btn-start" :disabled="!allPlayersReady" @click="startGame">
+            開始遊戲
+          </button>
         </div>
       </section>
 
-      <!-- 右側：玩家列表 -->
-      <aside class="players">
-        <div class="players-title">連線 ({{ players.length }})</div>
-        <div class="players-list">
-          <div 
-            v-for="(p, i) in players" 
-            :key="p.id"
-            class="player"
-            :class="{ me: p.id === myPeerId, rdy: p.isReady }"
-          >
-            <span class="player-idx">P{{ i + 1 }}</span>
-            <div class="player-avatar" v-if="getPlayerCharacter(p.characterId)" :style="{ backgroundColor: getPlayerCharacter(p.characterId)?.appearance.color }">
-              {{ getPlayerCharacter(p.characterId)?.icon }}
-            </div>
-            <div class="player-avatar player-empty" v-else>?</div>
-            <span class="player-char">{{ getPlayerCharacter(p.characterId)?.name || '---' }}</span>
-            <span class="player-status">{{ p.isReady ? '✓' : '...' }}</span>
-          </div>
-        </div>
+      <!-- 右側：藍隊 -->
+      <aside class="team-panel blue-team">
+        <PlayerList 
+          :players="bluePlayers" 
+          team-color="blue" 
+          title="🔵 BLUE TEAM" 
+        />
       </aside>
     </main>
   </div>
@@ -210,171 +185,135 @@ const copyRoomCode = async () => {
   text-shadow: 0 0 5px var(--c-primary);
 }
 
-/* 主區域 */
+/* 佈局調整 - 強制水平三欄 */
 .main {
   flex: 1;
   display: flex;
+  flex-direction: row;
   padding: 0.5rem;
   gap: 0.5rem;
-  min-height: 0; /* 重要：允許flex子項縮小 */
   overflow: hidden;
+  min-height: 0;
 }
 
-/* 左側 1P */
-.p1-area {
-  width: 140px;
+.team-panel {
+  width: 180px;
+  min-width: 150px;
+  max-width: 200px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  padding-top: 2rem;
-}
-
-.p-label {
-  font-size: 1.5rem;
-  color: var(--c-primary);
-  text-shadow: 0 0 5px var(--c-primary);
-}
-
-.p-portrait {
-  width: 120px;
-  height: 140px;
-  border: 3px solid var(--c-primary);
-  box-shadow: 0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: #1a1a1a;
-  position: relative;
   overflow: hidden;
 }
 
-.p-portrait::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.p-icon {
-  font-size: 3.5rem;
-}
-
-.p-empty {
-  font-size: 2rem;
-  color: #444;
-  background: rgba(0,0,0,0.5);
-}
-
-.p-name {
-  font-size: 0.9rem;
-}
-
-.p-status {
-  font-size: 0.8rem;
-  color: #666;
-  padding: 0.2rem 0.5rem;
-  background: rgba(0,0,0,0.5);
-  border-radius: 4px;
-}
-
-.p-status.ready {
-  color: #0f0;
-}
-
-/* 中央區 */
-.center {
+.center-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* 角色網格 */
-.chars {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  width: 100%;
-  max-width: 400px;
-  padding: 1rem;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  overflow-y: auto;
-  max-height: 60vh;
-  backdrop-filter: blur(5px);
-}
-
-.char {
-  aspect-ratio: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border: 2px solid transparent;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
-  background: rgba(255,255,255,0.05);
-  padding: 4px;
-  transition: all 0.2s;
+  overflow: hidden;
   position: relative;
+  min-width: 300px;
 }
 
-.char:hover {
-  border-color: rgba(255, 215, 0, 0.5);
-  transform: translateY(-2px);
-  background: rgba(255,255,255,0.1);
+.selector-container {
+  flex: 1;
+  padding: 0.5rem;
+  overflow: auto;
 }
 
-.char.sel {
-  border-color: var(--c-primary);
-  box-shadow: 0 0 15px var(--c-primary);
-  background: rgba(255, 215, 0, 0.1);
+.control-bar {
+  display: flex;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  background: rgba(0, 0, 0, 0.4);
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn {
+  padding: 0.5rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-leave {
+  background: transparent;
+  border-color: #666;
+  color: #ccc;
+}
+
+.btn-leave:hover {
+  border-color: #fff;
+  color: #fff;
+}
+
+.btn-ready {
+  background: var(--c-secondary-dark, #3a0a4a);
+  border-color: var(--c-secondary, #9d4edd);
+  color: var(--c-secondary, #9d4edd);
+}
+
+.btn-ready:hover, .btn-ready.on {
+  background: var(--c-secondary, #9d4edd);
+  color: #fff;
+}
+
+.btn-start {
+  background: linear-gradient(135deg, #ffd700, #b8860b);
+  color: #000;
+  border-color: #fff;
+}
+
+.btn-start:hover:not(:disabled) {
   transform: scale(1.05);
-  z-index: 2;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
 
-.char-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: #aaa;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.status-dot.ready {
+  background: #0f0;
+  box-shadow: 0 0 8px #0f0;
+}
+
+.countdown-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
-}
-
-.char-name {
-  font-size: 0.55rem;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  text-align: center;
-}
-
-/* 倒數 */
-.countdown {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.9);
-  border: 3px solid #f00;
-  border-radius: 8px;
-  padding: 1rem 2rem;
-  z-index: 10;
+  z-index: 20;
 }
 
 .cd-num {
-  font-size: 4rem;
+  font-size: 5rem;
   color: #ff0;
   animation: pulse 1s infinite;
 }
@@ -383,181 +322,17 @@ const copyRoomCode = async () => {
   50% { transform: scale(1.1); }
 }
 
-/* 按鈕區 */
-.btns {
-  display: flex;
-  gap: 1.5rem;
-  margin-top: auto;
-  padding: 1.5rem 0;
-  flex-wrap: wrap;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.btn {
-  padding: 0.8rem 2rem;
-  font-size: 1rem;
-  font-family: var(--font-heading);
-  font-weight: bold;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  filter: grayscale(100%);
-}
-
-.btn-leave {
-  background: transparent;
-  border: 1px solid #666;
-  color: #ccc;
-}
-
-.btn-leave:hover {
-  border-color: #fff;
-  color: #fff;
-  background: rgba(255,255,255,0.1);
-}
-
-.btn-ready {
-  background: var(--c-secondary-dark);
-  border: 1px solid var(--c-secondary);
-  color: var(--c-secondary);
-  box-shadow: 0 0 10px rgba(157, 78, 221, 0.2);
-}
-
-.btn-ready:hover {
-  background: var(--c-secondary);
-  color: white;
-  box-shadow: 0 0 20px var(--c-secondary);
-}
-
-.btn-ready.on {
-  background: var(--c-success);
-  border-color: #fff;
-  color: #000;
-  box-shadow: 0 0 20px var(--c-success);
-}
-
-.btn-start {
-  background: linear-gradient(135deg, var(--c-primary), #b8860b);
-  color: #000;
-  border: 1px solid #fff;
-  font-weight: 800;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-}
-
-.btn-start:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
-}
-
-/* 右側玩家列表 */
-.players {
-  width: 140px;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  min-height: 0;
-}
-
-.players-title {
-  font-size: 0.8rem;
-  color: #ff0;
-  text-align: center;
-  padding-bottom: 0.25rem;
-  border-bottom: 2px solid #ff0;
-  flex-shrink: 0;
-}
-
-.players-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  overflow-y: auto;
-  padding-top: 0.25rem;
-}
-
-.player {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid #333;
-  border-radius: 4px;
-  font-size: 0.7rem;
-}
-
-.player.me {
-  border-color: #0ff;
-  background: rgba(0,255,255,0.1);
-}
-
-.player.rdy {
-  border-color: #0f0;
-}
-
-.player-idx {
-  color: #ff0;
-  font-weight: bold;
-  width: 20px;
-}
-
-.player-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-}
-
-.player-empty {
-  background: #222;
-  color: #444;
-}
-
-.player-char {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.player-status {
-  color: #0f0;
-}
-
-/* 響應式 */
+/* 響應式 - 只在極窄螢幕才堆疊 */
 @media (max-width: 600px) {
-  .p1-area {
-    display: none;
+  .main {
+    flex-direction: column;
+    overflow-y: auto;
   }
   
-  .players {
-    width: 100px;
-  }
-  
-  .chars {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-height: 500px) {
-  .p-portrait {
-    height: 80px;
-  }
-  
-  .chars {
-    max-height: 40vh;
+  .team-panel {
+    width: 100%;
+    max-width: none;
+    height: 120px;
   }
 }
 </style>

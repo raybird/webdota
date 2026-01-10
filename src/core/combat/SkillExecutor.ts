@@ -219,7 +219,7 @@ export class SkillExecutor {
 
         hitboxManager.createHitbox(
             position,
-            skill.aoe || skill.range * 0.5,
+            skill.aoe || skill.range * 0.75, // 提高範圍乘數以改善命中判定
             skill.damage,
             direction.clone().mulScalar(skill.knockback || 0),
             caster.playerId,

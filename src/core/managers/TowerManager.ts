@@ -7,12 +7,14 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { TowerEntity } from '../entities/TowerEntity';
 import { CombatEntity, type Team } from '../entities/CombatEntity';
 import type { ProjectileManager } from '../combat/ProjectileManager';
+import { useRoomStore } from '../../stores/roomStore';
 
 export interface TowerSpawnConfig {
     maxHp?: number;
     attackPower?: number;
     attackRange?: number;
     attackCooldown?: number;
+    colorOverride?: pc.Color;
 }
 
 export class TowerManager {
@@ -48,6 +50,21 @@ export class TowerManager {
             console.warn(`[TowerManager] Tower ${id} already exists`);
             return this.towers.get(id)!;
         }
+
+        // 判斷是否為敵方塔
+        const roomStore = useRoomStore();
+        const myTeam = roomStore.myPlayer?.team;
+        const towerTeam = team;
+
+        const isEnemy = (myTeam === 'red' || myTeam === 'blue') &&
+            (towerTeam === 'red' || towerTeam === 'blue') &&
+            towerTeam !== myTeam;
+
+        if (isEnemy) {
+            config.colorOverride = new pc.Color(0.5, 0.5, 0.5);
+            // console.log(`[TowerManager] Tower ${id} is ENEMY, setting color to GRAY`);
+        }
+
 
         const tower = new TowerEntity(
             id,

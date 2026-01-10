@@ -87,6 +87,48 @@ export class GameService {
         this.gameStore.setMana(mana)
         this.gameStore.setMaxMana(maxMana)
     }
+
+    /**
+     * 購買物品
+     */
+    buyItem(itemId: string): boolean {
+        if (!this.gameEngine) return false
+        const localPlayer = this.gameEngine.playerManager.getPlayer(this.networkManager.peerId)
+        if (!localPlayer) return false
+
+        const success = localPlayer.buyItem(itemId)
+        if (success) {
+            this.syncInventory()
+        }
+        return success
+    }
+
+    /**
+     * 出售物品
+     */
+    sellItem(slotIndex: number): boolean {
+        if (!this.gameEngine) return false
+        const localPlayer = this.gameEngine.playerManager.getPlayer(this.networkManager.peerId)
+        if (!localPlayer) return false
+
+        const success = localPlayer.inventoryManager.sellItem(slotIndex)
+        if (success) {
+            this.syncInventory()
+        }
+        return success
+    }
+
+    /**
+     * 同步庫存狀態到 Store
+     */
+    syncInventory() {
+        if (!this.gameEngine) return
+        const localPlayer = this.gameEngine.playerManager.getPlayer(this.networkManager.peerId)
+        if (!localPlayer) return
+
+        this.gameStore.setGold(localPlayer.getGold())
+        this.gameStore.setInventory(localPlayer.inventoryManager.getItems())
+    }
     /**
      * 初始化遊戲引擎
      */

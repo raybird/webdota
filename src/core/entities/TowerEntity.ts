@@ -12,6 +12,7 @@ interface TowerConfig {
     attackPower?: number;
     attackRange?: number;
     attackCooldown?: number;
+    colorOverride?: pc.Color;
 }
 
 export class TowerEntity extends CombatEntity {
@@ -40,7 +41,7 @@ export class TowerEntity extends CombatEntity {
         this.attackCooldown = config.attackCooldown ?? 2;
 
         // 建立視覺模型
-        this.createVisuals(position);
+        this.createVisuals(position, config);
 
         // 建立物理碰撞體 (靜態)
         this.createCollider(position);
@@ -56,7 +57,7 @@ export class TowerEntity extends CombatEntity {
         this.projectileManager = pm;
     }
 
-    private createVisuals(position: { x: number; y: number; z: number }) {
+    private createVisuals(position: { x: number; y: number; z: number }, config: TowerConfig) {
         this.entity.setPosition(position.x, position.y, position.z);
 
         // 塔底座 (大圓柱)
@@ -64,7 +65,7 @@ export class TowerEntity extends CombatEntity {
         base.addComponent('render', { type: 'cylinder' });
         base.setLocalScale(2, 0.5, 2);
         base.setLocalPosition(0, -0.25, 0);
-        this.applyMaterial(base, this.getTeamColor(0.3));
+        this.applyMaterial(base, this.getTeamColor(0.3, config.colorOverride));
         this.entity.addChild(base);
 
         // 塔身 (細長圓柱)
@@ -72,7 +73,7 @@ export class TowerEntity extends CombatEntity {
         body.addComponent('render', { type: 'cylinder' });
         body.setLocalScale(1, 3, 1);
         body.setLocalPosition(0, 1.5, 0);
-        this.applyMaterial(body, this.getTeamColor(0.5));
+        this.applyMaterial(body, this.getTeamColor(0.5, config.colorOverride));
         this.entity.addChild(body);
 
         // 塔頂 (球體)
@@ -80,11 +81,18 @@ export class TowerEntity extends CombatEntity {
         top.addComponent('render', { type: 'sphere' });
         top.setLocalScale(1.5, 1.5, 1.5);
         top.setLocalPosition(0, 3.5, 0);
-        this.applyMaterial(top, this.getTeamColor(0.8));
+        this.applyMaterial(top, this.getTeamColor(0.8, config.colorOverride));
         this.entity.addChild(top);
     }
 
-    private getTeamColor(brightness: number): pc.Color {
+    private getTeamColor(brightness: number, override?: pc.Color): pc.Color {
+        if (override) {
+            return new pc.Color(
+                override.r * brightness,
+                override.g * brightness,
+                override.b * brightness
+            );
+        }
         if (this.team === 'red') {
             return new pc.Color(brightness, brightness * 0.2, brightness * 0.2);
         } else if (this.team === 'blue') {

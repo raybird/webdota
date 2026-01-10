@@ -1,20 +1,84 @@
+import type { ItemStats } from '../../types/Item';
+
 export class CombatStats {
-    maxHp: number = 1000;
+    // Base stats (from character)
+    baseMaxHp: number = 1000;
     currentHp: number = 1000;
     maxEnergy: number = 100;
     currentEnergy: number = 50;  // 初始給 50 能量，讓玩家可以立即使用技能
 
-    attackPower: number = 50;
-    defense: number = 10;
-    moveSpeed: number = 5;
+    baseAttackPower: number = 50;
+    baseDefense: number = 10;
+    baseMoveSpeed: number = 5;
+    baseCooldownReduction: number = 0;
+    baseHpRegen: number = 1.0;
+
+    // Item modifiers (set externally by InventoryManager)
+    private itemModifiers: ItemStats = {};
 
     // 狀態管理 (狀態名稱 -> 到期時間戳)
     private states: Map<string, number> = new Map();
 
-    constructor(config?: Partial<CombatStats>) {
+    constructor(config?: {
+        maxHp?: number;
+        currentHp?: number;
+        maxEnergy?: number;
+        currentEnergy?: number;
+        attackPower?: number;
+        defense?: number;
+        moveSpeed?: number;
+    }) {
         if (config) {
-            Object.assign(this, config);
+            if (config.maxHp !== undefined) this.baseMaxHp = config.maxHp;
+            if (config.currentHp !== undefined) this.currentHp = config.currentHp;
+            if (config.maxEnergy !== undefined) this.maxEnergy = config.maxEnergy;
+            if (config.currentEnergy !== undefined) this.currentEnergy = config.currentEnergy;
+            if (config.attackPower !== undefined) this.baseAttackPower = config.attackPower;
+            if (config.defense !== undefined) this.baseDefense = config.defense;
+            if (config.moveSpeed !== undefined) this.baseMoveSpeed = config.moveSpeed;
         }
+    }
+
+    /**
+     * Set item modifiers (called by PlayerEntity when inventory changes)
+     */
+    setItemModifiers(modifiers: ItemStats): void {
+        this.itemModifiers = modifiers;
+    }
+
+    /**
+     * Get effective max HP (base + items)
+     */
+    get maxHp(): number {
+        return this.baseMaxHp + (this.itemModifiers.maxHp || 0);
+    }
+
+    /**
+     * Get effective attack power (base + items)
+     */
+    get attackPower(): number {
+        return this.baseAttackPower + (this.itemModifiers.attackPower || 0);
+    }
+
+    /**
+     * Get effective defense (base + items)
+     */
+    get defense(): number {
+        return this.baseDefense + (this.itemModifiers.defense || 0);
+    }
+
+    /**
+     * Get effective move speed (base + items)
+     */
+    get moveSpeed(): number {
+        return this.baseMoveSpeed + (this.itemModifiers.moveSpeed || 0);
+    }
+
+    /**
+     * Get cooldown reduction (from items only, 0-1)
+     */
+    get cooldownReduction(): number {
+        return Math.min(0.4, this.baseCooldownReduction + (this.itemModifiers.cooldownReduction || 0));
     }
 
     /**
@@ -114,7 +178,14 @@ export class CombatStats {
     }
 
     /**
-     * 更新狀態 (清理過期狀態 + 能量回復)
+     * Get HP regen (base + items)
+     */
+    get hpRegen(): number {
+        return (this.baseHpRegen || 1.0) + (this.itemModifiers.hpRegen || 0);
+    }
+
+    /**
+     * 更新狀態 (清理過期狀態 + 能量回復 + 生命回復)
      */
     update(dt: number) {
         const now = Date.now();
@@ -126,5 +197,10 @@ export class CombatStats {
 
         // 自然回復能量 (每秒 10 點)
         this.addEnergy(10 * dt);
+
+        // 生命回復 (只有在未死亡時)
+        if (this.currentHp > 0 && this.currentHp < this.maxHp) {
+            this.currentHp = Math.min(this.maxHp, this.currentHp + this.hpRegen * dt);
+        }
     }
 }

@@ -12,6 +12,7 @@ interface CreepConfig {
     moveSpeed?: number;
     attackRange?: number;
     attackCooldown?: number;
+    colorOverride?: pc.Color;
 }
 
 export class CreepEntity extends CombatEntity {
@@ -40,7 +41,7 @@ export class CreepEntity extends CombatEntity {
         this.attackCooldown = config.attackCooldown ?? 1;
 
         // 建立視覺模型
-        this.createVisuals(position);
+        this.createVisuals(position, config);
 
         // 建立物理碰撞體
         this.createCollider(position);
@@ -49,7 +50,7 @@ export class CreepEntity extends CombatEntity {
         console.log(`[CreepEntity] Created creep ${entityId} for team ${team} at (${position.x}, ${position.y}, ${position.z})`);
     }
 
-    private createVisuals(position: { x: number; y: number; z: number }) {
+    private createVisuals(position: { x: number; y: number; z: number }, config: CreepConfig) {
         this.entity.setPosition(position.x, position.y, position.z);
 
         // 身體 (小方塊)
@@ -57,7 +58,7 @@ export class CreepEntity extends CombatEntity {
         body.addComponent('render', { type: 'box' });
         body.setLocalScale(0.6, 0.8, 0.6);
         body.setLocalPosition(0, 0.4, 0);
-        this.applyMaterial(body, this.getTeamColor(0.6));
+        this.applyMaterial(body, this.getTeamColor(0.6, config.colorOverride));
         this.entity.addChild(body);
 
         // 頭部 (小球)
@@ -65,11 +66,20 @@ export class CreepEntity extends CombatEntity {
         head.addComponent('render', { type: 'sphere' });
         head.setLocalScale(0.4, 0.4, 0.4);
         head.setLocalPosition(0, 1, 0);
-        this.applyMaterial(head, this.getTeamColor(0.8));
+        this.applyMaterial(head, this.getTeamColor(0.8, config.colorOverride));
         this.entity.addChild(head);
     }
 
-    private getTeamColor(brightness: number): pc.Color {
+    private getTeamColor(brightness: number, override?: pc.Color): pc.Color {
+        if (override) {
+            // 如果有 override，根據亮度調整
+            return new pc.Color(
+                override.r * brightness,
+                override.g * brightness,
+                override.b * brightness
+            );
+        }
+
         if (this.team === 'red') {
             return new pc.Color(brightness, brightness * 0.3, brightness * 0.3);
         } else if (this.team === 'blue') {
@@ -157,9 +167,9 @@ export class CreepEntity extends CombatEntity {
 
         const dist = this.getPosition().distance(target.getPosition());
         if (dist <= this.attackRange) {
-            target.takeDamage(this.combatStats.attackPower);
+            target.takeDamage(this.combatStats.attackPower, this.entityId);
             this.cooldownTimer = this.attackCooldown;
-            console.log(`[CreepEntity] ${this.entityId} attacked ${target.entityId}`);
+            // console.log(`[CreepEntity] ${this.entityId} attacked ${target.entityId}`);
             return true;
         }
         return false;

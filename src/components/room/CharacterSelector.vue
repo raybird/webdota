@@ -90,36 +90,41 @@ const selectCharacter = (id: string) => {
 <style scoped>
 .character-selector {
   background: rgba(0, 0, 0, 0.3);
-  padding: 1rem;
+  padding: 0.5rem;
   border-radius: 8px;
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
+  margin: 0 0 0.5rem;
   text-align: center;
+  font-size: 1rem;
+  color: var(--c-primary, #ffd700);
 }
 
 .char-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
   overflow-y: auto;
+  max-height: 120px;
 }
 
 .char-card {
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid transparent;
-  border-radius: 8px;
-  padding: 0.5rem;
+  border-radius: 6px;
+  padding: 0.3rem;
   cursor: pointer;
   text-align: center;
   position: relative;
   transition: all 0.2s;
+  width: 60px;
 }
 
 .char-card:hover {
@@ -133,19 +138,22 @@ h3 {
 }
 
 .char-icon {
-  width: 50px;
-  height: 50px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  margin: 0 auto 0.5rem;
+  font-size: 1.2rem;
+  margin: 0 auto 0.2rem;
 }
 
 .char-name {
-  font-size: 0.9rem;
+  font-size: 0.6rem;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .char-check {
@@ -165,21 +173,23 @@ h3 {
 
 .char-info {
   background: rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  border-radius: 8px;
-  margin-top: auto;
+  padding: 0.5rem;
+  border-radius: 6px;
+  flex: 1;
+  overflow: auto;
 }
 
 .char-info h4 {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.3rem;
   color: #42b883;
+  font-size: 0.9rem;
 }
 
 .char-desc {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   color: #aaa;
-  margin-bottom: 1rem;
-  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
 }
 
 .stat-row {

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import type { Item } from '../types/Item'
 
 /**
  * 遊戲狀態管理
@@ -12,6 +13,11 @@ export const useGameStore = defineStore('game', () => {
     const maxHealth = ref(100)
     const mana = ref(100)
     const maxMana = ref(100)
+
+    // 裝備系統狀態
+    const gold = ref(0)
+    const inventory = ref<(Item | null)[]>([null, null, null, null, null, null])
+    const isShopOpen = ref(false)
 
     // Actions
     function startGame() {
@@ -43,6 +49,27 @@ export const useGameStore = defineStore('game', () => {
         maxMana.value = value
     }
 
+    // Equipment System Actions
+    function setGold(value: number) {
+        gold.value = value
+    }
+
+    function setInventory(items: (Item | null)[]) {
+        inventory.value = items
+    }
+
+    function toggleShop() {
+        isShopOpen.value = !isShopOpen.value
+    }
+
+    function openShop() {
+        isShopOpen.value = true
+    }
+
+    function closeShop() {
+        isShopOpen.value = false
+    }
+
     function reset() {
         isGameStarted.value = false
         currentFrame.value = 0
@@ -50,6 +77,9 @@ export const useGameStore = defineStore('game', () => {
         maxHealth.value = 100
         mana.value = 100
         maxMana.value = 100
+        gold.value = 0
+        inventory.value = [null, null, null, null, null, null]
+        isShopOpen.value = false
     }
 
     return {
@@ -60,6 +90,9 @@ export const useGameStore = defineStore('game', () => {
         maxHealth,
         mana,
         maxMana,
+        gold,
+        inventory,
+        isShopOpen,
 
         // Actions
         startGame,
@@ -69,6 +102,12 @@ export const useGameStore = defineStore('game', () => {
         setMaxHealth,
         setMana,
         setMaxMana,
+        setGold,
+        setInventory,
+        toggleShop,
+        openShop,
+        closeShop,
         reset
     }
 })
+

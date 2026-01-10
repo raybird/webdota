@@ -30,9 +30,30 @@ export class RoomService {
 
     private initListeners() {
         // 監聽網路事件
+        // 監聽網路事件
         this.networkManager.onPeerJoined = (peerId) => {
-            this.roomStore.addPlayer({ id: peerId, isReady: false, characterId: undefined })
+            let team: 'red' | 'blue' | 'neutral' = 'neutral';
+
+            // Host 負責分配隊伍
+            if (this.roomStore.isHost) {
+                const redCount = this.roomStore.connectedPlayers.filter(p => p.team === 'red').length;
+                const blueCount = this.roomStore.connectedPlayers.filter(p => p.team === 'blue').length;
+                team = redCount <= blueCount ? 'red' : 'blue';
+            }
+
+            this.roomStore.addPlayer({ id: peerId, isReady: false, characterId: undefined, team })
             eventBus.emit({ type: 'PLAYER_JOINED', playerId: peerId })
+
+            // Host 廣播更新後的房間狀態
+            if (this.roomStore.isHost) {
+                const players = this.roomStore.connectedPlayers.map(p => ({
+                    id: p.id,
+                    isReady: p.isReady,
+                    characterId: p.characterId,
+                    team: p.team
+                }));
+                this.networkManager.broadcastRoomState(players);
+            }
         }
 
         this.networkManager.onPeerLeft = (peerId) => {
@@ -77,7 +98,8 @@ export class RoomService {
                 players: this.roomStore.connectedPlayers.map(p => ({
                     id: p.id,
                     isReady: p.isReady,
-                    characterId: p.characterId
+                    characterId: p.characterId,
+                    team: p.team
                 }))
             }
         }
@@ -91,13 +113,17 @@ export class RoomService {
                     this.roomStore.addPlayer({
                         id: p.id,
                         isReady: p.isReady,
-                        characterId: p.characterId
+                        characterId: p.characterId,
+                        team: p.team
                     })
                 } else {
                     // 更新已存在玩家的狀態
                     this.roomStore.updatePlayerReady(p.id, p.isReady)
                     if (p.characterId) {
                         this.roomStore.updatePlayerCharacter(p.id, p.characterId)
+                    }
+                    if (p.team) {
+                        this.roomStore.updatePlayerTeam(p.id, p.team)
                     }
                 }
                 // 同時同步到 characterStore
@@ -144,7 +170,8 @@ export class RoomService {
         this.roomStore.setHost(true)
         this.roomStore.setMyPeerId(roomCode)  // roomCode 就是 peerId
         this.roomStore.setRoomCode(roomCode)
-        this.roomStore.addPlayer({ id: roomCode, isReady: false, characterId: undefined })
+        // Host 預設為紅隊
+        this.roomStore.addPlayer({ id: roomCode, isReady: false, characterId: undefined, team: 'red' })
 
         eventBus.emit({ type: 'ROOM_CREATED', roomId: roomCode, roomCode })
         return roomCode

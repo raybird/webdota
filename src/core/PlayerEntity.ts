@@ -3,6 +3,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 
 import { CombatStats } from './combat/CombatStats';
 import { SkillManager } from './combat/SkillManager';
+import { InventoryManager } from './managers/InventoryManager';
 import { getCharacter } from '../data/characters';
 import { getSkill } from '../data/skills';
 
@@ -10,10 +11,17 @@ export class PlayerEntity {
     playerId: string;
     entity: pc.Entity;
     rigidBody: RAPIER.RigidBody;
+    team: 'red' | 'blue' | 'neutral'; // 新增隊伍屬性
+
+    // 為了與 CombatEntity 相容，提供 entityId getter
+    get entityId(): string {
+        return this.playerId;
+    }
 
     // 戰鬥系統
     combatStats: CombatStats;
     skillManager: SkillManager;
+    inventoryManager: InventoryManager;
     private app: pc.Application; // 保存 App 引用以存取 Updated Loop
 
     // UI 實體
@@ -26,6 +34,7 @@ export class PlayerEntity {
     constructor(
         playerId: string,
         characterId: string, // 新增 characterId
+        team: 'red' | 'blue' | 'neutral', // 新增 team
         app: pc.Application,
         physicsWorld: RAPIER.World,
         position: { x: number; y: number; z: number },
@@ -33,6 +42,7 @@ export class PlayerEntity {
     ) {
         this.app = app; // 儲存 App 引用
         this.playerId = playerId;
+        this.team = team;
 
         // 獲取角色資料
         const character = getCharacter(characterId);
@@ -69,6 +79,9 @@ export class PlayerEntity {
         }
 
         this.skillManager = new SkillManager(skills);
+
+        // 初始化裝備管理器 (初始金幣 500)
+        this.inventoryManager = new InventoryManager(500);
 
         // 建立根實體（不包含渲染組件，只作為容器）
         this.entity = new pc.Entity(`Player_${playerId}`);
@@ -183,6 +196,9 @@ export class PlayerEntity {
      * 更新邏輯 (由 GameEngine 呼叫)
      */
     update(dt: number) {
+        // 同步裝備加成到戰鬥屬性
+        this.combatStats.setItemModifiers(this.inventoryManager.getTotalStats());
+
         // 更新屬性 (能量回復、狀態檢查)
         this.combatStats.update(dt);
 
@@ -220,11 +236,48 @@ export class PlayerEntity {
     /**
      * 受到傷害
      */
-    takeDamage(amount: number) {
+    takeDamage(amount: number, attackerId?: string) {
+        // 使用 CombatStats 計算實際傷害 (已包含防禦減免)
         const actualDamage = this.combatStats.takeDamage(amount);
-        console.log(`[PlayerEntity] ${this.playerId.substring(0, 8)} took ${actualDamage} damage. HP: ${this.combatStats.currentHp}/${this.combatStats.maxHp}`);
 
+        console.log(`[PlayerEntity] ${this.playerId} took ${actualDamage} damage from ${attackerId || 'unknown'}. HP: ${this.combatStats.currentHp}/${this.combatStats.maxHp}`);
+
+        // 視覺回饋：受傷閃爍
+        this.playHitEffect();
+
+        // 播放受傷動畫
+        if (!this.isDead()) {
+            this.playAnimation('Damage');
+        } else {
+            this.playAnimation('Death');
+            console.log(`[PlayerEntity] ${this.playerId} died!`);
+        }
+
+        // 更新血條
         this.updateHpBar();
+    }
+
+    /**
+     * 播放受傷特效 (閃爍)
+     */
+    private playHitEffect() {
+        if (!this.entity || !this.entity.children) return;
+
+        const children = this.entity.children.filter(c => (c as pc.Entity).render) as pc.Entity[];
+        children.forEach(child => {
+            if (child.render) {
+                const material = child.render.material as pc.StandardMaterial | undefined;
+                if (material && material.emissive) {
+                    const originalEmissive = material.emissive.clone();
+                    material.emissive = new pc.Color(1, 0, 0); // Red flash
+                    material.update();
+                    setTimeout(() => {
+                        material.emissive = originalEmissive;
+                        material.update();
+                    }, 100);
+                }
+            }
+        });
     }
 
     /**
@@ -442,6 +495,27 @@ export class PlayerEntity {
         this.entity.setRotation(rot.x, rot.y, rot.z, rot.w);
 
         // HP Bar 的位置更新已由 UIManager 統一處理
+    }
+
+    /**
+     * 購買物品
+     */
+    buyItem(itemId: string): boolean {
+        return this.inventoryManager.buyItem(itemId);
+    }
+
+    /**
+     * 給予金幣
+     */
+    giveGold(amount: number): void {
+        this.inventoryManager.addGold(amount);
+    }
+
+    /**
+     * 獲取當前金幣
+     */
+    getGold(): number {
+        return this.inventoryManager.getGold();
     }
 
     /**

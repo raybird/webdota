@@ -14,6 +14,7 @@ export const useRoomStore = defineStore('room', () => {
         id: string
         isReady: boolean
         characterId?: string
+        team?: 'red' | 'blue' | 'neutral'
     }[]>([])
     const countdown = ref(0)
 
@@ -45,7 +46,7 @@ export const useRoomStore = defineStore('room', () => {
         roomCode.value = code
     }
 
-    function addPlayer(player: { id: string; isReady: boolean; characterId?: string }) {
+    function addPlayer(player: { id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }) {
         const normalizedId = player.id.toUpperCase()
         const existingIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
         if (existingIndex === -1) {
@@ -69,7 +70,8 @@ export const useRoomStore = defineStore('room', () => {
             connectedPlayers.value[playerIndex] = {
                 id: player.id,
                 isReady,
-                characterId: player.characterId
+                characterId: player.characterId,
+                team: player.team
             }
         } else {
             // 玩家不存在，新增
@@ -85,11 +87,24 @@ export const useRoomStore = defineStore('room', () => {
             connectedPlayers.value[playerIndex] = {
                 id: player.id,
                 isReady: player.isReady,
-                characterId
+                characterId,
+                team: player.team
             }
         } else {
             // 玩家不存在，新增
             connectedPlayers.value.push({ id: normalizedId, isReady: false, characterId })
+        }
+    }
+
+    function updatePlayerTeam(playerId: string, team: 'red' | 'blue' | 'neutral') {
+        const normalizedId = playerId.toUpperCase()
+        const playerIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
+        if (playerIndex !== -1) {
+            const player = connectedPlayers.value[playerIndex]!
+            connectedPlayers.value[playerIndex] = {
+                ...player,
+                team
+            }
         }
     }
 
@@ -129,6 +144,7 @@ export const useRoomStore = defineStore('room', () => {
         removePlayer,
         updatePlayerReady,
         updatePlayerCharacter,
+        updatePlayerTeam,
         setCountdown,
         clearRoom
     }

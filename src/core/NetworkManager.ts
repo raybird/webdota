@@ -54,8 +54,8 @@ export class NetworkManager {
     onGameStarted?: () => void;
     onGameState?: (state: GameState) => void;
     onRoomCode?: (code: string, hostId: string) => void;
-    onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string }> };
-    onRoomState?: (players: Array<{ id: string; isReady: boolean; characterId?: string }>) => void;
+    onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }> };
+    onRoomState?: (players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }>) => void;
 
     constructor() {
         // Peer 會在 createRoom 或 joinRoom 時初始化
@@ -359,6 +359,17 @@ export class NetworkManager {
         const message = {
             type: 'game_state',
             state
+        };
+        this.connections.forEach(conn => conn.send(message));
+    }
+
+    /**
+     * 廣播房間狀態 (Host Only)
+     */
+    broadcastRoomState(players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }>) {
+        const message = {
+            type: 'room_state',
+            players
         };
         this.connections.forEach(conn => conn.send(message));
     }

@@ -5,6 +5,7 @@ import { UIManager } from '../UIManager';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useRoomStore } from '../../stores/roomStore';
 import { getCharacter } from '../../data/characters';
+import type { Team } from '../entities/CombatEntity';
 
 /**
  * 玩家管理器
@@ -54,7 +55,6 @@ export class PlayerManager {
         }
 
         // 獲取角色顏色和名稱 - 優先從 roomStore 讀取以確保同步
-        let color = new pc.Color(Math.random(), Math.random(), Math.random());
         let characterName = 'Player'; // 預設名稱
 
         // 從 roomStore 取得角色資訊（確保同步）- 使用大寫比較
@@ -62,6 +62,7 @@ export class PlayerManager {
         const playerInfo = roomStore.connectedPlayers.find(p => p.id.toUpperCase() === normalizedId);
 
         let characterId = playerInfo?.characterId;
+        const playerTeam = playerInfo?.team || 'neutral';
 
         // 如果 roomStore 沒資料（可能是比賽剛開始同步延遲），嘗試從 characterStore 補救
         if (!characterId) {
@@ -69,24 +70,47 @@ export class PlayerManager {
             console.warn(`[PlayerManager] Player ${normalizedId} characterId not found in roomStore, falling back to characterStore: ${characterId}`);
         }
 
-        if (characterId) {
-            const character = getCharacter(characterId);
-            if (character) {
-                color = new pc.Color().fromString(character.appearance.color);
-                // characterName = character.name; // 我們現在改用 Player ID
-                console.log(`[PlayerManager] Using character ${characterId} for ${playerId}: color=${character.appearance.color}`);
-            }
+        // 根據隊伍設定顏色 (強制與敵我識別)
+        let color: pc.Color;
+        const myTeam = roomStore.myPlayer?.team;
+
+        // 判斷是否為敵方：自己有隊伍、對方有隊伍、且隊伍不同
+        const isEnemy = (myTeam === 'red' || myTeam === 'blue') &&
+            (playerTeam === 'red' || playerTeam === 'blue') &&
+            playerTeam !== myTeam;
+
+        if (isEnemy) {
+            color = new pc.Color(0.5, 0.5, 0.5); // 敵方顯示為灰色
+            console.log(`[PlayerManager] Player ${normalizedId} is ENEMY (Local: ${myTeam}, Remote: ${playerTeam}), setting color to GRAY`);
+        } else if (playerTeam === 'red') {
+            color = new pc.Color(0.9, 0.3, 0.3); // 紅隊 - 鮮明紅色
+        } else if (playerTeam === 'blue') {
+            color = new pc.Color(0.3, 0.3, 0.9); // 藍隊 - 鮮明藍色
         } else {
-            console.error(`[PlayerManager] Player ${playerId} has no characterId! Using default warrior.`);
-            characterId = 'warrior';
-            color = new pc.Color(0.8, 0.2, 0.2); // 預設紅色
+            // Neutral 或未分配隊伍時使用角色顏色
+            if (characterId) {
+                const character = getCharacter(characterId);
+                if (character) {
+                    color = new pc.Color().fromString(character.appearance.color);
+                } else {
+                    color = new pc.Color(0.7, 0.7, 0.7);
+                }
+            } else {
+                color = new pc.Color(0.7, 0.7, 0.7);
+            }
         }
 
-        console.log(`[PlayerManager] Spawning player ${normalizedId} with CharacterID: ${characterId}, Color: r=${color.r}, g=${color.g}, b=${color.b}`);
+        if (!characterId) {
+            console.error(`[PlayerManager] Player ${playerId} has no characterId! Using default warrior.`);
+            characterId = 'warrior';
+        }
+
+        console.log(`[PlayerManager] Spawning player ${normalizedId} Team=${playerTeam} CharacterID: ${characterId}, Color: r=${color.r.toFixed(2)}, g=${color.g.toFixed(2)}, b=${color.b.toFixed(2)}`);
 
         const player = new PlayerEntity(
             normalizedId, // 使用大寫 ID
             characterId || 'warrior', // Pass characterId
+            playerTeam as Team, // Pass team
             this.app,
             this.physicsWorld,
             { x, y: 1, z },

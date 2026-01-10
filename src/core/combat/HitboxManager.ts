@@ -57,8 +57,8 @@ export class HitboxManager {
      * @param targets 所有可攻擊目標 (CombatEntity Map 或陣列)
      * @returns 命中事件列表
      */
-    update(dt: number, targets: Map<string, CombatEntity> | CombatEntity[]): Array<{ targetId: string, damage: number, knockback: pc.Vec3 }> {
-        const hits: Array<{ targetId: string, damage: number, knockback: pc.Vec3 }> = [];
+    update(dt: number, targets: Map<string, CombatEntity> | CombatEntity[]): Array<{ targetId: string, damage: number, knockback: pc.Vec3, attackerId: string }> {
+        const hits: Array<{ targetId: string, damage: number, knockback: pc.Vec3, attackerId: string }> = [];
 
         // 將目標轉換為統一格式
         const targetEntries: Array<[string, CombatEntity]> = Array.isArray(targets)
@@ -88,6 +88,7 @@ export class HitboxManager {
                 // 距離檢測
                 const entityPos = entity.getPosition();
                 const distance = hitbox.position.distance(entityPos);
+                // console.log(`[Hitbox] ${hitbox.ownerId} -> ${entityId}: dist=${distance.toFixed(2)}, radius=${hitbox.radius}`);
 
                 // 假設實體半徑為 0.5
                 if (distance <= hitbox.radius + 0.5) {
@@ -96,11 +97,12 @@ export class HitboxManager {
                     hits.push({
                         targetId: entityId,
                         damage: hitbox.damage,
-                        knockback: hitbox.knockback
+                        knockback: hitbox.knockback,
+                        attackerId: hitbox.ownerId // 傳遞攻擊者 ID
                     });
 
                     // 視覺回饋 (可選)
-                    // console.log(`Hit! ${hitbox.ownerId} -> ${entityId} (${hitbox.damage})`);
+                    console.log(`Hit! ${hitbox.ownerId} -> ${entityId} (${hitbox.damage})`);
                 }
             }
 
