@@ -216,15 +216,14 @@ export class ECSPlayerManager {
     /**
      * 使用技能 (委託給 SkillComponent)
      */
-    useSkill(playerId: string, skillId: string): boolean {
+    useSkill(playerId: string, skillId: string): import('../combat/SkillManager').Skill | null {
         const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return false;
+        if (!entityId) return null;
 
         const skillComp = this.world.getComponent<SkillComponent>(entityId, ComponentType.SKILL);
-        if (!skillComp) return false;
+        if (!skillComp) return null;
 
-        const skill = skillComp.useSkill(skillId);
-        return skill !== null;
+        return skillComp.useSkill(skillId);
     }
 
     /**

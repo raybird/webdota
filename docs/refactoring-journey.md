@@ -404,6 +404,58 @@ const currentView = computed(() => {
 ---
 
 ### Phase 6: 整合與測試 (2-3 小時)
+... (保留原文) ...
+
+---
+
+### Phase 7: ECS 架構遷移 (ECS Migration)
+
+**背景**:
+隨著遊戲開發進行，需要支援大量單位（如小兵海 Creep Waves）和複雜技能系統。傳統的物件導向（OOP）繼承方式（`PlayerEntity`, `CreepEntity`）導致邏輯分散且難以擴展。
+
+**目標**:
+將遊戲核心重構為 Entity-Component-System (ECS) 架構，以提升性能和可維護性。
+
+#### 7.1 架構設計
+
+**思考**:
+> 如何在不破壞現有功能的前提下引入 ECS?
+
+**決策**:
+- 採用混合模式：`GameEngine` 保留，但將邏輯核心轉交給 ECS World。
+- 漸進式遷移：先從小兵 (Creep) 開始，再到塔 (Tower)，最後是玩家 (Player)。
+
+#### 7.2 實作 ECS 核心
+
+**組件設計 (Components)**:
+- 純數據容器，例如 `HealthComponent` 只存 HP，`PhysicsComponent` 只存剛體引用。
+
+**系統設計 (Systems)**:
+- `MovementSystem`: 統一處理所有實體移動。
+- `CombatSystem`: 統一處理所有傷害判定。
+- `SkillSystem`: 處理冷卻與技能狀態。
+
+#### 7.3 遷移過程 (Creep -> Tower -> Player)
+
+1. **Creep**: 成功將 `CreepManager` 重構為 `ECSCreepManager`，與 ECS 系統對接。
+2. **Tower**: 建立 `ECSTowerManager`，將防禦塔納入 ECS。
+3. **Player (最具挑戰性)**:
+   - 移除 `PlayerEntity` class。
+   - 將輸入處理 (`InputManager`) 對接到 `ECSPlayerManager`。
+   - 技能執行器 (`SkillExecutor`) 重寫為 `ECSSkillExecutor`，完全依賴 ECS 組件。
+
+**遇到的挑戰**:
+- **初始化順序**: ECS World 必須在所有 Managers 之前初始化，否則 World 為 undefined。
+- **類型依賴**: 舊的 `RenderManager` 依賴 `PlayerEntity` 類別，需徹底解耦。
+
+**成果**:
+- 成功移除所有 Legacy Entity 類別。
+- 遊戲核心邏輯更加統一，易於測試。
+- 為未來功能（如狀態效果、複雜技能）奠定堅實基礎。
+
+---
+
+### Phase 8: 整合與測試 (Ongoing)
 
 **目標**: 修復所有編譯錯誤,確保功能正常
 

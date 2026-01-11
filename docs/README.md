@@ -80,7 +80,11 @@ webdota/
 │   ├── services/           # 業務邏輯
 │   ├── stores/             # 狀態管理
 │   ├── events/             # 事件系統
-│   ├── core/               # 核心引擎
+│   ├── core/               # 核心引擎 (ECS)
+│   │   ├── ecs/            # ECS 核心與 Systems
+│   │   ├── managers/       # ECS Managers
+│   │   ├── GameEngine.ts   # 遊戲主程式
+│   │   └── NetworkManager.ts # 網路管理
 │   ├── types/              # 類型定義
 │   └── data/               # 靜態數據
 └── README.md               # 專案 README
@@ -116,7 +120,7 @@ webdota/
 
 ---
 
-**最後更新**: 2025-12-03  
+**最後更新**: 2026-01-11  
 **維護者**: WebDota Team
 
 🎮 **Happy Coding!**

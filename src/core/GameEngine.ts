@@ -14,7 +14,6 @@ import { ECSCreepManager } from './managers/ECSCreepManager';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
-import { SkillExecutor } from './combat/SkillExecutor';
 import { ProjectileManager } from './combat/ProjectileManager';
 import { MapManager, type MapConfig } from './map';
 import { SoundManager } from './SoundManager';
@@ -53,7 +52,7 @@ export class GameEngine {
     inputManager!: InputManager;
     renderManager!: RenderManager;
     effectManager!: EffectManager;
-    skillExecutor!: SkillExecutor;
+    // skillExecutor 已被 ecsSkillExecutor 取代
     projectileManager!: ProjectileManager;
     mapManager!: MapManager;
     towerManager!: ECSTowerManager;
@@ -124,7 +123,7 @@ export class GameEngine {
         this.inputManager = new InputManager();
         this.renderManager = new RenderManager(this.app);
         this.effectManager = new EffectManager(this.app);
-        this.skillExecutor = new SkillExecutor();
+        // this.skillExecutor = new SkillExecutor(); // Removed
         this.projectileManager = new ProjectileManager(this.app);
 
         // 7. Initialize ECS World and Systems (MUST be before Entity Managers)
@@ -515,11 +514,22 @@ export class GameEngine {
 
             // Skills - 使用 ECSPlayerManager.useSkill
             if (input.skillUsed && input.skillDirection) {
-                const skillUsed = this.playerManager.useSkill(playerId, input.skillUsed);
-                if (skillUsed) {
-                    // 技能成功使用，但 ECS 版 useSkill 不返回 skill 物件
-                    // 改用 ECSSkillExecutor 處理或簡化
-                    console.log(`[GameEngine] ${playerId.substring(0, 8)} used skill ${input.skillUsed} (ECS)`);
+                const skill = this.playerManager.useSkill(playerId, input.skillUsed);
+                if (skill) {
+                    const direction = new pc.Vec3(input.skillDirection.x, 0, input.skillDirection.z);
+
+                    // 使用 ECSSkillExecutor 執行複雜技能邏輯
+                    this.ecsSkillExecutor.executeSkill(
+                        skill,
+                        playerId,
+                        direction,
+                        this.ecsWorld,
+                        this.effectManager,
+                        this.projectileManager,
+                        this.soundManager
+                    );
+
+                    console.log(`[GameEngine] ${playerId.substring(0, 8)} used skill ${input.skillUsed}`);
                 }
             }
         });

@@ -63,8 +63,11 @@ Web MOBA 遊戲技術文件
 ### 3D 渲染引擎
 - **PlayCanvas Engine**
   - WebGL 渲染
-  - 內建 Entity-Component 系統
-  - 原因：專為 Web 設計、性能優異、社群活躍
+  - 核心渲染引擎
+  - 原因：性能優異、社群活躍
+- **自研 ECS 架構**
+  - Entity-Component-System
+  - 原因：解耦邏輯與數據、高性能大量單位（Creeps）處理、易於測試與擴展
 
 ### 物理引擎
 - **Rapier3D**
@@ -93,27 +96,37 @@ Web MOBA 遊戲技術文件
 
 ## 🧩 核心模組
 
-### 1. GameApp.ts (遊戲核心)
-**職責：**
-- 遊戲主迴圈（固定 60 FPS）
-- 玩家實體管理
-- 輸入收集與處理
-- 物理模擬驅動
+### 1. ECS (Entity Component System) 核心
+**架構核心：**
+遊戲邏輯完全由 ECS 驅動。GameEngine 僅作為協調器，初始化 World 並驅動 update loop。
 
-**關鍵方法：**
-```typescript
-gameLoop(dt: number)      // 每幀渲染
-fixedUpdate(dt: number)   // 固定時間步長更新
-spawnPlayer(id: string)   // 生成玩家
-collectInput()            // 收集本地輸入
-processInputs(inputs)     // 處理所有玩家輸入
-```
+**組成：**
+- **World**: 實體與系統的容器，負責調度 Systems 更新。
+- **Entities**: 純 ID (string)，無邏輯，僅作為組件的鍵值。
+- **Components**: 純數據容器
+  - `PhysicsComponent`: 剛體與碰撞體
+  - `HealthComponent`: 生命值與狀態
+  - `SkillComponent`: 技能冷卻與能量
+  - `InputComponent`: 輸入緩存
+  - `RenderComponent`: 模型引用
+- **Systems**: 邏輯處理者
+  - `MovementSystem`: 處理物理移動
+  - `CombatSystem`: 處理傷害判定
+  - `SkillSystem`: 處理技能執行與冷卻
+  - `RenderSystem`: 同步物理位置到渲染模型
+
+**GameEngine 職責變更：**
+- 初始化 ECS World
+- 註冊 Systems
+- 在 `fixedUpdate` 中呼叫 `world.update(dt)`
 
 **資料流：**
 ```
-User Input → collectInput() → broadcastInput() 
-→ fixedUpdate() → processInputs() → physics.step() 
-→ syncVisuals()
+User Input → ECSPlayerManager (InputComponent)
+→ PlayerInputSystem (Update Velocity)
+→ MovementSystem (Apply Physics)
+→ Physics Engine (Step)
+→ ECSRenderSystem (Sync to Visuals)
 ```
 
 ---
@@ -141,28 +154,18 @@ User Input → collectInput() → broadcastInput()
 
 ---
 
-### 3. PlayerEntity.ts (玩家實體)
-**職責：**
-- 玩家視覺表現（模型、血條）
-- 物理 Body 管理
-- 屬性系統（HP、攻擊力、防禦）
-- 移動邏輯
+### 3. ECS Entities (實體)
+**所有遊戲物件皆為 ECS Entity：**
+- **Player**: 由 `ECSPlayerManager` 管理。包含 Input, Skill, Stats, Physics 組件。
+- **Creep**: 由 `ECSCreepManager` 管理。大量生成的 AI 單位。
+- **Tower**: 由 `ECSTowerManager` 管理。防禦塔。
 
-**組成：**
-```typescript
-interface PlayerStats {
-  hp: number
-  maxHp: number
-  attack: number
-  defense: number
-  moveSpeed: number
-}
-```
+**ECS Managers 職責：**
+- 負責 Entity 的生命週期 (Create/Destroy)
+- 提供對外的查詢 API (例如 `getPlayer(id)`)
+- 作為 GameEngine 與 ECS World 之間的橋樑
 
-**視覺元素：**
-- 3D 方塊模型（PlayCanvas Entity）
-- Rapier RigidBody（物理碰撞）
-- 頭頂血條（World Space UI）
+**不再使用傳統 OOP Entity 類別 (如 PlayerEntity, CreepEntity)。**
 
 ---
 
