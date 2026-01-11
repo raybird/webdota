@@ -30,15 +30,15 @@ export class CreepEntity extends CombatEntity {
         config: CreepConfig = {}
     ) {
         super(entityId, team, app, physicsWorld, {
-            maxHp: config.maxHp ?? 300,
-            currentHp: config.maxHp ?? 300,
-            attackPower: config.attackPower ?? 20,
-            defense: 5,
-            moveSpeed: config.moveSpeed ?? 3
+            maxHp: config.maxHp ?? 200,      // 降低 HP 讓小兵更容易殺
+            currentHp: config.maxHp ?? 200,
+            attackPower: config.attackPower ?? 5,  // 大幅降低攻擊力 (20 -> 5)
+            defense: 2,                            // 降低防禦
+            moveSpeed: config.moveSpeed ?? 2.5     // 稍微降低移動速度
         });
 
         this.attackRange = config.attackRange ?? 1.5;
-        this.attackCooldown = config.attackCooldown ?? 1;
+        this.attackCooldown = config.attackCooldown ?? 2;  // 增加攻擊間隔 (1s -> 2s)
 
         // 建立視覺模型
         this.createVisuals(position, config);

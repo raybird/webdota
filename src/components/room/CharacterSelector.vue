@@ -212,4 +212,63 @@ h3 {
   height: 100%;
   border-radius: 3px;
 }
+
+/* 手機版優化 */
+@media (max-width: 768px) {
+  .character-selector {
+    padding: 0.3rem;
+  }
+  
+  h3 {
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .char-grid {
+    max-height: none;
+    flex: 0 0 auto;
+    gap: 0.4rem;
+  }
+  
+  .char-card {
+    width: 55px;
+    padding: 0.25rem;
+  }
+  
+  .char-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  
+  .char-name {
+    font-size: 0.55rem;
+  }
+  
+  .char-info {
+    padding: 0.4rem;
+  }
+  
+  .char-info h4 {
+    font-size: 0.85rem;
+  }
+  
+  .char-desc {
+    font-size: 0.7rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .stat-row {
+    font-size: 0.75rem;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .stat-bar {
+    height: 5px;
+  }
+}
 </style>

@@ -225,6 +225,11 @@ onUnmounted(() => {
         />
       </div>
 
+      <!-- 浮動商店按鈕 (手機用) -->
+      <button class="floating-shop-btn" @click="toggleShop">
+        🏪
+      </button>
+
       <!-- 左下角：虛擬搖桿 (僅在觸控裝置顯示) -->
       <div class="joystick-area">
         <VirtualJoystick 
@@ -413,6 +418,32 @@ onUnmounted(() => {
   position: absolute;
   top: 20px;
   right: 20px;
+}
+
+.floating-shop-btn {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2d4059 0%, #1a1a2e 100%);
+  border: 2px solid #ffd700;
+  font-size: 1.8rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 215, 0, 0.3);
+  transition: all 0.2s;
+  z-index: 100;
+}
+
+.floating-shop-btn:hover {
+  transform: translateX(-50%) scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.floating-shop-btn:active {
+  transform: translateX(-50%) scale(0.95);
 }
 
 .gold-display {

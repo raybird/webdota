@@ -170,6 +170,7 @@ export class SkillExecutor {
                 skill.damage,
                 direction.clone().mulScalar(skill.knockback || 0),
                 caster.playerId,
+                caster.team,
                 0.2
             );
         }, travelTime * 1000);
@@ -197,6 +198,7 @@ export class SkillExecutor {
                 skill.damage,
                 direction.clone().mulScalar(skill.knockback || 0),
                 caster.playerId,
+                caster.team,
                 0.2
             );
         }, delay * 1000);
@@ -214,8 +216,11 @@ export class SkillExecutor {
      */
     private createInstantHitbox(skill: Skill, caster: PlayerEntity, direction: pc.Vec3, hitboxManager: HitboxManager) {
         const position = caster.getPosition();
+        console.log(`[SkillExecutor] Before offset: caster pos=(${position.x.toFixed(1)},${position.y.toFixed(1)},${position.z.toFixed(1)}), dir=(${direction.x.toFixed(2)},${direction.z.toFixed(2)})`);
         // 根據技能範圍調整 Hitbox 位置 (稍微前方)
         position.add(direction.clone().mulScalar(1.0));
+        console.log(`[SkillExecutor] After offset: hitbox pos=(${position.x.toFixed(1)},${position.y.toFixed(1)},${position.z.toFixed(1)})`);
+
 
         hitboxManager.createHitbox(
             position,
@@ -223,6 +228,7 @@ export class SkillExecutor {
             skill.damage,
             direction.clone().mulScalar(skill.knockback || 0),
             caster.playerId,
+            caster.team,
             0.2
         );
     }

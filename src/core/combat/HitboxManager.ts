@@ -8,6 +8,7 @@ export interface AttackHitbox {
     damage: number;         // 傷害
     knockback: pc.Vec3;     // 擊退向量
     ownerId: string;        // 攻擊者 ID
+    ownerTeam: 'red' | 'blue' | 'neutral'; // 攻擊者隊伍
     duration: number;       // 剩餘時間 (秒)
     hitTargets: Set<string>; // 已命中的目標 ID
 
@@ -32,6 +33,7 @@ export class HitboxManager {
         damage: number,
         knockback: pc.Vec3,
         ownerId: string,
+        ownerTeam: 'red' | 'blue' | 'neutral' = 'neutral',
         duration: number = 0.2
     ) {
         const hitbox: AttackHitbox = {
@@ -41,6 +43,7 @@ export class HitboxManager {
             damage: damage,
             knockback: knockback.clone(),
             ownerId: ownerId,
+            ownerTeam: ownerTeam,
             duration: duration,
             hitTargets: new Set()
         };
@@ -49,6 +52,7 @@ export class HitboxManager {
         // this.createDebugVisual(hitbox);
 
         this.activeHitboxes.push(hitbox);
+        console.log(`[HitboxManager] Created hitbox: owner=${ownerId.substring(0, 6)}, team=${ownerTeam}, pos=(${position.x.toFixed(1)},${position.z.toFixed(1)}), radius=${radius.toFixed(1)}`);
     }
 
     /**
@@ -85,13 +89,27 @@ export class HitboxManager {
                 // 忽略已死亡的目標
                 if (entity.isDead()) continue;
 
+                // 忽略同隊目標 (防止友軍傷害)
+                if (entity.team === hitbox.ownerTeam && hitbox.ownerTeam !== 'neutral') continue;
+
                 // 距離檢測
                 const entityPos = entity.getPosition();
                 const distance = hitbox.position.distance(entityPos);
-                // console.log(`[Hitbox] ${hitbox.ownerId} -> ${entityId}: dist=${distance.toFixed(2)}, radius=${hitbox.radius}`);
+
+                const limit = hitbox.radius + 0.5;
+                const isHit = distance <= limit;
+
+                // 詳細 Debug
+                if (distance < limit * 1.5) { // 只顯示附近的
+                    console.log(`[Hitbox-Check] ID:${hitbox.id.substring(0, 4)} Owner:${hitbox.ownerId.substring(0, 4)}(${hitbox.ownerTeam}) vs Target:${entityId.substring(0, 8)}(${entity.team})`);
+                    console.log(`  Values: dist=${distance}, radius=${hitbox.radius}, limit=${limit}`);
+                    console.log(`  Types: dist=${typeof distance}, radius=${typeof hitbox.radius}`);
+                    console.log(`  Result: isHit=${isHit}`);
+                }
 
                 // 假設實體半徑為 0.5
-                if (distance <= hitbox.radius + 0.5) {
+                if (isHit) {
+                    console.log(`[Hitbox-Success] Entering hit block!`);
                     // 命中！
                     hitbox.hitTargets.add(entityId);
                     hits.push({

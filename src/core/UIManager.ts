@@ -349,6 +349,36 @@ export class UIManager {
     }
 
     /**
+     * 更新所有實體 UI（小兵、塔、主堡）
+     */
+    updateEntities(entities: Array<{ entityId: string; getPosition: () => pc.Vec3; combatStats: any }>) {
+        const ENTITY_HP_BAR_WIDTH = 80; // 與 createEntityUI 一致
+
+        for (const entity of entities) {
+            const ui = this.playerUIs.get(entity.entityId);
+            if (!ui) continue;
+
+            // 更新位置
+            const pos = entity.getPosition();
+            ui.hpBarEntity.setPosition(pos.x, pos.y + 1.5, pos.z);
+
+            // Billboard
+            const camera = this.app.root.findByName('Camera');
+            if (camera) {
+                ui.hpBarEntity.lookAt(camera.getPosition());
+                const rot = ui.hpBarEntity.getEulerAngles();
+                ui.hpBarEntity.setEulerAngles(0, rot.y, 0);
+            }
+
+            // 更新血量
+            if (entity.combatStats && ui.hpBarFillEntity.element) {
+                const hpPercent = Math.max(0, Math.min(1, entity.combatStats.currentHp / entity.combatStats.maxHp));
+                ui.hpBarFillEntity.element.width = ENTITY_HP_BAR_WIDTH * hpPercent;
+            }
+        }
+    }
+
+    /**
      * 顯示傷害飄字 (3D Billboard + Always On Top)
      */
     showDamageText(position: pc.Vec3, damage: number, isCritical: boolean = false) {

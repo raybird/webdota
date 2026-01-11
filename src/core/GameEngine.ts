@@ -421,6 +421,12 @@ export class GameEngine {
         // Update UI for all players
         this.uiManager.updateAll(this.playerManager.getAllPlayers());
 
+        // Update UI for all entities (creeps, towers, bases)
+        const allEntities = this.getAllCombatEntities().filter(e =>
+            !this.playerManager.getPlayer(e.entityId) // Exclude players (already updated above)
+        );
+        this.uiManager.updateEntities(allEntities);
+
         this.currentFrame++;
         this.gameStore.setFrame(this.currentFrame);
     }
@@ -494,6 +500,7 @@ export class GameEngine {
             // 檢查是否命中小兵
             const creep = this.creepManager.getAllCreeps().get(hit.targetId);
             if (creep) {
+                console.log(`[GameEngine] Processing HIT on creep ${hit.targetId}`);
                 creep.takeDamage(hit.damage, hit.attackerId);
                 return;
             }

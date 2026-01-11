@@ -322,17 +322,72 @@ const copyRoomCode = async () => {
   50% { transform: scale(1.1); }
 }
 
-/* 響應式 - 只在極窄螢幕才堆疊 */
-@media (max-width: 600px) {
+/* 響應式 - 手機版優化 */
+@media (max-width: 768px) {
+  .header {
+    padding: 0.5rem 1rem;
+  }
+  
+  .title {
+    font-size: 1.5rem;
+  }
+  
+  .room-code-box {
+    padding: 0.3rem 0.8rem;
+    gap: 0.5rem;
+  }
+  
+  .code-value {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+  }
+  
+  .code-label, .code-hint {
+    font-size: 0.7rem;
+  }
+  
   .main {
     flex-direction: column;
     overflow-y: auto;
+    padding: 0.5rem;
+    gap: 0.5rem;
   }
   
   .team-panel {
     width: 100%;
     max-width: none;
-    height: 120px;
+    min-width: auto;
+    height: auto;
+    min-height: 60px;
+    max-height: 100px;
+  }
+  
+  .center-panel {
+    flex: 1;
+    min-width: auto;
+    min-height: 300px;
+  }
+  
+  .selector-container {
+    padding: 0.3rem;
+  }
+  
+  .control-bar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .status-indicator {
+    width: 100%;
+    justify-content: center;
+    order: -1;
+    font-size: 0.9rem;
   }
 }
 </style>

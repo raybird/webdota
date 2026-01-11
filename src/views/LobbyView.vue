@@ -246,9 +246,20 @@ const joinRoom = async () => {
 }
 
 @media (max-width: 768px) {
+  .lobby-view {
+    align-items: flex-start;
+    padding: 1rem 0;
+    overflow-y: auto;
+  }
+  
+  .lobby-container {
+    padding: 0 1rem;
+    animation: none;
+  }
+  
   .lobby-actions {
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
   }
   
   .divider {
@@ -256,12 +267,52 @@ const joinRoom = async () => {
   }
   
   .game-title {
-    font-size: 3rem;
+    font-size: 2rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
   }
   
   .rune-circle {
-    width: 400px;
-    height: 400px;
+    display: none;
+  }
+  
+  .action-card {
+    padding: 1.2rem;
+  }
+  
+  .action-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .action-card p {
+    font-size: 0.85rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .input-fantasy {
+    font-size: 1.3rem;
+    padding: 1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  
+  .join-form {
+    gap: 0.6rem;
+  }
+  
+  .btn-fantasy {
+    padding: 0.9rem;
+    font-size: 1rem;
+    min-height: 48px; /* Touch-friendly minimum */
+  }
+  
+  .main-btn, .secondary-btn {
+    min-height: 48px;
   }
 }
 </style>

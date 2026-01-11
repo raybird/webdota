@@ -1,0 +1,225 @@
+# WebDota ECS 與 Rapier Sensor 重構計畫
+
+日期: 2026-01-11
+
+## 目標
+
+1. **ECS 架構**: 將現有 OOP 實體系統改為 Entity-Component-System
+2. **Rapier Sensor**: 取代自製 HitboxManager，使用 Rapier 原生碰撞事件
+3. **維持 P2P**: 網路架構不變
+
+---
+
+## Phase 1: ECS 核心架構
+
+### 1.1 目錄結構
+
+```
+src/core/ecs/
+├── World.ts           # ECS 世界管理
+├── Entity.ts          # Entity = ID only
+├── Component.ts       # Component 基底
+├── System.ts          # System 基底
+├── components/        # 所有 Components
+│   ├── TransformComponent.ts
+│   ├── HealthComponent.ts
+│   ├── TeamComponent.ts
+│   ├── CombatComponent.ts
+│   ├── SkillComponent.ts
+│   ├── RenderComponent.ts
+│   └── PhysicsComponent.ts
+└── systems/           # 所有 Systems
+    ├── MovementSystem.ts
+    ├── CombatSystem.ts
+    ├── RenderSystem.ts
+    └── HealthSystem.ts
+```
+
+### 1.2 核心類別
+
+#### [NEW] Entity.ts
+
+```typescript
+// Entity 只是一個 ID
+export type EntityId = string;
+
+export function createEntity(): EntityId {
+    return crypto.randomUUID();
+}
+```
+
+#### [NEW] Component.ts
+
+```typescript
+export interface Component {
+    readonly type: string;
+}
+
+// Component 存放在 Map<EntityId, Component>
+```
+
+#### [NEW] World.ts
+
+```typescript
+export class World {
+    private entities: Set<EntityId> = new Set();
+    private components: Map<string, Map<EntityId, Component>> = new Map();
+    private systems: System[] = [];
+
+    createEntity(): EntityId { ... }
+    addComponent<T extends Component>(entityId: EntityId, component: T): void { ... }
+    getComponent<T extends Component>(entityId: EntityId, type: string): T | undefined { ... }
+    query(...componentTypes: string[]): EntityId[] { ... }
+    update(dt: number): void { ... }
+}
+```
+
+### 1.3 Components 定義
+
+| Component | 欄位 | 用於 |
+|-----------|------|------|
+| `TransformComponent` | position, rotation | 所有實體 |
+| `HealthComponent` | currentHp, maxHp, isDead | 可被攻擊的實體 |
+| `TeamComponent` | team: 'red' \| 'blue' \| 'neutral' | 需判定敵我 |
+| `CombatComponent` | attackPower, defense, attackRange | 可攻擊的實體 |
+| `RenderComponent` | pcEntity: pc.Entity | 需要渲染的實體 |
+| `PhysicsComponent` | rigidBody: RAPIER.RigidBody, collider | 有物理碰撞 |
+
+---
+
+## Phase 2: Rapier Sensor 整合
+
+### 2.1 技能判定 Sensor
+
+取代 `HitboxManager.createHitbox()`：
+
+```typescript
+export class SkillHitbox {
+    static create(
+        world: RAPIER.World,
+        position: { x: number, y: number, z: number },
+        radius: number,
+        ownerId: EntityId,
+        ownerTeam: Team
+    ): RAPIER.Collider {
+        const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
+            .setTranslation(position.x, position.y, position.z);
+        const rigidBody = world.createRigidBody(rigidBodyDesc);
+
+        const colliderDesc = RAPIER.ColliderDesc.ball(radius)
+            .setSensor(true)
+            .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS)
+            .setActiveCollisionTypes(
+                RAPIER.ActiveCollisionTypes.DEFAULT |
+                RAPIER.ActiveCollisionTypes.KINEMATIC_FIXED |
+                RAPIER.ActiveCollisionTypes.KINEMATIC_KINEMATIC
+            );
+
+        const collider = world.createCollider(colliderDesc, rigidBody);
+        
+        // 儲存 metadata (用 userData 或外部 Map)
+        colliderMetadata.set(collider.handle, { ownerId, ownerTeam, damage: 50 });
+        
+        return collider;
+    }
+}
+```
+
+### 2.2 碰撞事件處理
+
+```typescript
+// 在 GameEngine 或 CombatSystem 中
+const eventQueue = new RAPIER.EventQueue(true);
+
+update(dt: number) {
+    this.physicsWorld.step(eventQueue);
+
+    eventQueue.drainIntersectionEvents((handle1, handle2, started) => {
+        if (started) {
+            const meta1 = colliderMetadata.get(handle1);
+            const meta2 = colliderMetadata.get(handle2);
+            
+            // 判斷是技能 hitbox 還是實體
+            if (meta1?.isHitbox && meta2?.entityId) {
+                this.handleHit(meta1, meta2);
+            }
+        }
+    });
+}
+```
+
+---
+
+## Phase 3: 遷移現有實體
+
+### 3.1 PlayerEntity → ECS
+
+```diff
+- const player = new PlayerEntity(id, characterId, team, app, physicsWorld, position, color);
++ const playerId = world.createEntity();
++ world.addComponent(playerId, new TransformComponent(position));
++ world.addComponent(playerId, new HealthComponent(1000));
++ world.addComponent(playerId, new TeamComponent(team));
++ world.addComponent(playerId, new CombatComponent({ attackPower: 50 }));
++ world.addComponent(playerId, new RenderComponent(createPlayerVisual(app, color)));
++ world.addComponent(playerId, new PhysicsComponent(createRigidBody(physicsWorld, position)));
+```
+
+### 3.2 CreepEntity → ECS
+
+同上模式，只是參數不同。
+
+### 3.3 TowerEntity → ECS
+
+同上模式。
+
+---
+
+## 檔案變更總覽
+
+| 操作 | 路徑 | 說明 |
+|------|------|------|
+| [NEW] | `src/core/ecs/World.ts` | ECS 世界管理 |
+| [NEW] | `src/core/ecs/Entity.ts` | Entity ID 工具 |
+| [NEW] | `src/core/ecs/Component.ts` | Component 基底 |
+| [NEW] | `src/core/ecs/System.ts` | System 基底 |
+| [NEW] | `src/core/ecs/components/*.ts` | 所有 Components |
+| [NEW] | `src/core/ecs/systems/*.ts` | 所有 Systems |
+| [MODIFY] | `src/core/GameEngine.ts` | 整合 ECS World |
+| [DELETE] | `src/core/combat/HitboxManager.ts` | 由 Rapier Sensor 取代 |
+| [DEPRECATE] | `src/core/PlayerEntity.ts` | 遷移完成後刪除 |
+| [DEPRECATE] | `src/core/entities/*.ts` | 遷移完成後刪除 |
+
+---
+
+## 風險與緩解
+
+| 風險 | 影響 | 緩解措施 |
+|-----|------|---------|
+| 大規模重寫 | 可能引入新 bug | 分階段：先建 ECS，再遷移 |
+| 學習曲線 | 開發變慢 | 文件化 ECS 使用範例 |
+| 遺漏 edge case | 功能回歸 | 遷移時對比原始碼 |
+
+---
+
+## 執行順序
+
+```mermaid
+gantt
+    title ECS 重構路線圖
+    dateFormat YYYY-MM-DD
+    section Phase 1
+    ECS Core (World/Entity/Component) :a1, 2026-01-12, 2d
+    Components 定義                   :a2, after a1, 2d
+    Systems 定義                      :a3, after a2, 2d
+    section Phase 2
+    Rapier Sensor 整合               :b1, after a3, 3d
+    刪除 HitboxManager               :b2, after b1, 1d
+    section Phase 3
+    遷移 PlayerEntity                :c1, after b2, 2d
+    遷移 CreepEntity                 :c2, after c1, 1d
+    遷移 TowerEntity                 :c3, after c2, 1d
+    清理舊程式碼                      :c4, after c3, 1d
+```
+
+**預估總工時**: 2-3 週
