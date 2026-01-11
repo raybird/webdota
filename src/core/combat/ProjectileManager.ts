@@ -215,6 +215,7 @@ export class ProjectileManager {
             proj.skill.damage,
             proj.direction.clone().mulScalar(proj.skill.knockback || 0),
             proj.ownerId,
+            'neutral', // ownerTeam - projectiles don't have team info currently
             0.1
         );
 
@@ -236,6 +237,7 @@ export class ProjectileManager {
                 proj.skill.damage,
                 proj.direction.clone().mulScalar(proj.skill.knockback || 0),
                 proj.ownerId,
+                'neutral', // ownerTeam - projectiles don't have team info currently
                 0.2
             );
         }

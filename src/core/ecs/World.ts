@@ -42,9 +42,9 @@ export class World {
     }
 
     /**
-     * 立即刪除 Entity（通常由 World 內部呼叫）
+     * 刪除 Entity 並移除其所有 Component
      */
-    private destroyEntity(entityId: EntityId): void {
+    destroyEntity(entityId: EntityId): void {
         // 移除所有 Component
         for (const componentMap of this.components.values()) {
             componentMap.delete(entityId);

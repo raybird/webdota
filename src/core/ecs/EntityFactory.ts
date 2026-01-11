@@ -44,11 +44,13 @@ export interface PlayerConfig {
 export interface CreepConfig {
     team: Team;
     position: { x: number; y: number; z: number };
+    targetPosition?: { x: number; y: number; z: number };
     maxHp?: number;
     attackPower?: number;
     moveSpeed?: number;
     attackRange?: number;
     attackCooldown?: number;
+    isEnemy?: boolean;
 }
 
 /**

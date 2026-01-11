@@ -1,3 +1,2 @@
 export { CombatEntity, type Team } from './CombatEntity';
-export { TowerEntity } from './TowerEntity';
-export { CreepEntity } from './CreepEntity';
+// TowerEntity and CreepEntity removed - migrated to ECS

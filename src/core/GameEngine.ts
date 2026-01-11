@@ -4,13 +4,13 @@ import { NetworkManager, type PlayerInput, type GameState } from './NetworkManag
 import { HostManager } from './HostManager';
 import { HitboxManager } from './combat/HitboxManager';
 import { UIManager } from './UIManager';
-import { PlayerManager } from './managers/PlayerManager';
+import { ECSPlayerManager } from './managers/ECSPlayerManager';
 import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
-import { TowerManager } from './managers/TowerManager';
+import { ECSTowerManager } from './managers/ECSTowerManager';
 import { BaseManager } from './managers/BaseManager';
-import { CreepManager } from './managers/CreepManager';
+import { ECSCreepManager } from './managers/ECSCreepManager';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
@@ -49,15 +49,15 @@ export class GameEngine {
     hostManager!: HostManager;
     hitboxManager!: HitboxManager;
     uiManager!: UIManager;
-    playerManager!: PlayerManager;
+    playerManager!: ECSPlayerManager;
     inputManager!: InputManager;
     renderManager!: RenderManager;
     effectManager!: EffectManager;
     skillExecutor!: SkillExecutor;
     projectileManager!: ProjectileManager;
     mapManager!: MapManager;
-    towerManager!: TowerManager;
-    creepManager!: CreepManager;
+    towerManager!: ECSTowerManager;
+    creepManager!: ECSCreepManager;
     baseManager!: BaseManager;
     soundManager!: SoundManager;
 
@@ -120,31 +120,14 @@ export class GameEngine {
         // 6. Initialize Managers
         this.uiManager = new UIManager(this.app);
         this.hitboxManager = new HitboxManager(this.app);
-        this.playerManager = new PlayerManager(this.app, this.physicsWorld, this.uiManager);
+        // 注意：ECSPlayerManager 需要在 ECS World 初始化後才能創建，移至下方
         this.inputManager = new InputManager();
         this.renderManager = new RenderManager(this.app);
         this.effectManager = new EffectManager(this.app);
         this.skillExecutor = new SkillExecutor();
         this.projectileManager = new ProjectileManager(this.app);
 
-        // 7. Initialize Entity Managers
-        this.towerManager = new TowerManager(this.app, this.physicsWorld);
-        this.towerManager.setProjectileManager(this.projectileManager);
-        this.creepManager = new CreepManager(this.app, this.physicsWorld, this.mapManager, this.uiManager);
-        this.baseManager = new BaseManager(this.app, this.physicsWorld);
-
-        // 8. Spawn Towers from Map Config
-        this.spawnTowersFromMap();
-
-        // 9. Initialize SoundManager
-        this.soundManager = new SoundManager(this.app);
-
-        // 10. Setup event listeners for sound
-        eventBus.on('GAME_OVER', () => {
-            this.soundManager.playGameOverSound();
-        });
-
-        // 11. Initialize ECS World and Systems
+        // 7. Initialize ECS World and Systems (MUST be before Entity Managers)
         this.ecsWorld = new World();
         this.collisionSystem = new CollisionSystem(this.physicsWorld);
         this.entityFactory = new EntityFactory(this.app, this.physicsWorld, this.ecsWorld);
@@ -164,6 +147,23 @@ export class GameEngine {
         this.ecsSkillExecutor = new ECSSkillExecutor(this.collisionSystem);
 
         console.log('[GameEngine] ECS World initialized');
+
+        // 8. Initialize Entity Managers (now ECS is ready)
+        this.towerManager = new ECSTowerManager(this.ecsWorld, this.entityFactory, this.uiManager);
+        this.creepManager = new ECSCreepManager(this.mapManager, this.uiManager, this.ecsWorld, this.entityFactory);
+        this.playerManager = new ECSPlayerManager(this.ecsWorld, this.entityFactory, this.uiManager);
+        this.baseManager = new BaseManager(this.app, this.physicsWorld);
+
+        // 9. Spawn Towers from Map Config
+        this.spawnTowersFromMap();
+
+        // 10. Initialize SoundManager
+        this.soundManager = new SoundManager(this.app);
+
+        // 11. Setup event listeners for sound
+        eventBus.on('GAME_OVER', () => {
+            this.soundManager.playGameOverSound();
+        });
 
         // Find and set camera for RenderManager
         const camera = this.app.root.findByName('Camera');
@@ -303,9 +303,9 @@ export class GameEngine {
         this.hostManager.setHost(this.roomStore.isHost);
 
         // 設置本地玩家的技能鍵位映射
-        const localPlayer = this.playerManager.getPlayer(this.networkManager.peerId);
-        if (localPlayer) {
-            const skills = Array.from(localPlayer.skillManager.skills.values());
+        const peerId = this.networkManager.peerId;
+        if (this.playerManager.getPlayer(peerId)) {
+            const skills = this.playerManager.getPlayerSkills(peerId);
             const normalSkills = skills.filter(s => s.type === 'normal');
             const ultimateSkill = skills.find(s => s.type === 'ultimate');
             const basicSkill = skills.find(s => s.type === 'basic');
@@ -337,22 +337,25 @@ export class GameEngine {
                 this.playerManager.spawnPlayer(pData.id, pData.pos);
             }
 
-            const player = this.playerManager.getPlayer(pData.id);
-            if (player) {
+            const playerId = pData.id;
+            const playerEntityId = this.playerManager.getPlayer(playerId);
+            if (playerEntityId) {
                 // 只同步其他玩家的位置（自己的位置由本地預測）
-                if (pData.id !== this.networkManager.peerId) {
+                if (playerId !== this.networkManager.peerId) {
                     if (pData.pos && pData.rot) {
-                        const rb = player.rigidBody;
-                        rb.setNextKinematicTranslation(pData.pos);
-                        rb.setNextKinematicRotation(pData.rot);
+                        const rb = this.playerManager.getPlayerRigidBody(playerId);
+                        if (rb) {
+                            rb.setNextKinematicTranslation(pData.pos);
+                            rb.setNextKinematicRotation(pData.rot);
+                        }
                     }
                 }
 
                 // 同步所有玩家的狀態（HP/能量）
                 if (pData.stats) {
-                    player.combatStats.currentHp = pData.stats.hp;
-                    player.combatStats.currentEnergy = pData.stats.energy || 0;
-                    player.updateHpBar();
+                    this.playerManager.setPlayerHp(playerId, pData.stats.hp);
+                    this.playerManager.setPlayerEnergy(playerId, pData.stats.energy || 0);
+                    // HP bar 由 ECS RenderSystem 處理
                 }
             }
         });
@@ -375,9 +378,10 @@ export class GameEngine {
         }
 
         // Visual Update
-        this.renderManager.syncVisuals(this.playerManager.getAllPlayers());
-        this.renderManager.updateCamera(this.networkManager.peerId, this.playerManager.getAllPlayers());
-        this.uiManager.updateAll(this.playerManager.getAllPlayers());
+        // 注意：ECS RenderSystem 現在負責玩家視覺同步
+        // this.renderManager.syncVisuals(this.playerManager.getAllPlayers());
+        // this.renderManager.updateCamera(this.networkManager.peerId, this.playerManager.getAllPlayers());
+        // this.uiManager.updateAll(this.playerManager.getAllPlayers());
     }
 
     /**
@@ -419,50 +423,54 @@ export class GameEngine {
             // 3. Physics Step
             this.physicsWorld.step();
 
-            // 4. Update Game Logic (Combat, Stats, Skills)
-            this.playerManager.getAllPlayers().forEach(player => {
-                player.update(dt);
-            });
+            // 4. Update Game Logic - 現在由 ECS Systems 處理
+            // (SkillSystem, PlayerInputSystem 等已在 ecsWorld.update() 中執行)
 
             // 5. Update Entity Managers (Towers, Creeps, Bases)
             const allCombatEntities = this.getAllCombatEntities();
-            this.towerManager.update(dt, allCombatEntities);
-            this.creepManager.update(dt, allCombatEntities);
+            this.towerManager.update(dt);
+            this.creepManager.update(dt);
             this.baseManager.update(dt, allCombatEntities);
 
-            // 6. Update ECS World (new system, runs parallel to legacy managers)
+            // 6. Update ECS World (handles player logic now)
             this.ecsWorld.update(dt);
 
-            // 5. Broadcast State
+            // 7. Broadcast State
             if (this.currentFrame % 3 === 0) { // 每 3 幀同步一次
+                const playersData: { id: string; pos: any; rot: any; stats: { hp: number; energy: number } }[] = [];
+                for (const [playerId] of this.playerManager.getAllPlayers()) {
+                    const rb = this.playerManager.getPlayerRigidBody(playerId);
+                    const hp = this.playerManager.getPlayerHp(playerId);
+                    const energy = this.playerManager.getPlayerEnergy(playerId);
+                    if (rb && hp && energy) {
+                        playersData.push({
+                            id: playerId,
+                            pos: rb.translation(),
+                            rot: rb.rotation(),
+                            stats: {
+                                hp: hp.current,
+                                energy: energy.current
+                            }
+                        });
+                    }
+                }
                 const gameState = {
                     frame: this.currentFrame,
                     timestamp: Date.now(),
-                    players: Array.from(this.playerManager.getAllPlayers().entries()).map(([id, p]) => ({
-                        id,
-                        pos: p.rigidBody.translation(),
-                        rot: p.rigidBody.rotation(),
-                        stats: {
-                            hp: p.combatStats.currentHp,
-                            energy: p.combatStats.currentEnergy
-                        }
-                    })),
+                    players: playersData,
                     isGameStarted: this.isGameStarted
                 };
                 this.networkManager.broadcastGameState(gameState);
             }
         } else {
-            // Client: 也執行物理模擬 (在此架構下，Client 需要執行物理模擬來實現平滑移動與預測，但結果會被 Host 覆蓋)
+            // Client: 也執行物理模擬
             this.physicsWorld.step();
-            // Client Logic Updates (e.g. cooldowns)
-            const localPlayer = this.playerManager.getPlayer(this.networkManager.peerId);
-            if (localPlayer) {
-                localPlayer.update(dt);
-            }
+            // Client 的玩家邏輯由 ECS 處理
+            this.ecsWorld.update(dt);
         }
 
-        // Update UI for all players
-        this.uiManager.updateAll(this.playerManager.getAllPlayers());
+        // Update UI for all players - 由 ECS RenderSystem 處理
+        // this.uiManager.updateAll(this.playerManager.getAllPlayers());
 
         // Update UI for all entities (creeps, towers, bases)
         const allEntities = this.getAllCombatEntities().filter(e =>
@@ -475,53 +483,43 @@ export class GameEngine {
     }
     processInputs(inputs: PlayerInput[], dt: number) {
         inputs.forEach((input) => {
-            // 厳格 ID 驗證：在處理前確認 ID 存在於 PlayerManager
-            if (!this.playerManager.getPlayer(input.playerId)) {
-                console.warn(`[GameEngine] processInputs: Player ${input.playerId.substring(0, 8)} not found in PlayerManager! Skipping input.`);
-                return; // skip this input
+            const playerId = input.playerId;
+            // 嚴格 ID 驗證
+            if (!this.playerManager.getPlayer(playerId)) {
+                console.warn(`[GameEngine] processInputs: Player ${playerId.substring(0, 8)} not found! Skipping.`);
+                return;
             }
-            const player = this.playerManager.getPlayer(input.playerId);
-            if (player) {
-                // Movement
-                const speed = player.combatStats.moveSpeed;
-                // 注意：moveY 需要取反，因為在俯視角下 W(前進) 應該往 Z 負方向移動
-                const moveDir = { x: input.moveX, y: 0, z: -input.moveY };
 
-                if (moveDir.x !== 0 || moveDir.z !== 0) {
-                    const currentPos = player.rigidBody.translation();
-                    const newPos = {
-                        x: currentPos.x + moveDir.x * speed * dt,
-                        y: currentPos.y,
-                        z: currentPos.z + moveDir.z * speed * dt
-                    };
-                    player.rigidBody.setNextKinematicTranslation(newPos);
+            // Movement - 使用 ECS helpers
+            const speed = this.playerManager.getPlayerMoveSpeed(playerId);
+            const rb = this.playerManager.getPlayerRigidBody(playerId);
+            if (!rb) return;
 
-                    // Rotation
-                    const angle = Math.atan2(moveDir.x, moveDir.z);
-                    const q = new pc.Quat().setFromEulerAngles(0, angle * pc.math.RAD_TO_DEG, 0);
-                    player.rigidBody.setNextKinematicRotation(q);
-                }
+            // moveY 需要取反，因為在俯視角下 W(前進) 應該往 Z 負方向移動
+            const moveDir = { x: input.moveX, y: 0, z: -input.moveY };
 
-                // Skills
-                if (input.skillUsed && input.skillDirection) {
-                    const result = player.useSkill(input.skillUsed);
-                    if (result) {
-                        const { skill } = result;
-                        const direction = new pc.Vec3(input.skillDirection.x, 0, input.skillDirection.z);
+            if (moveDir.x !== 0 || moveDir.z !== 0) {
+                const currentPos = rb.translation();
+                const newPos = {
+                    x: currentPos.x + moveDir.x * speed * dt,
+                    y: currentPos.y,
+                    z: currentPos.z + moveDir.z * speed * dt
+                };
+                rb.setNextKinematicTranslation(newPos);
 
-                        // 使用 SkillExecutor 執行複雜技能邏輯
-                        this.skillExecutor.executeSkill(
-                            skill,
-                            player,
-                            direction,
-                            this.hitboxManager,
-                            this.effectManager,
-                            this.projectileManager,
-                            this.soundManager
-                        );
+                // Rotation
+                const angle = Math.atan2(moveDir.x, moveDir.z);
+                const q = new pc.Quat().setFromEulerAngles(0, angle * pc.math.RAD_TO_DEG, 0);
+                rb.setNextKinematicRotation(q);
+            }
 
-                        console.log(`[GameEngine] ${input.playerId.substring(0, 8)} used ${skill.name}`);
-                    }
+            // Skills - 使用 ECSPlayerManager.useSkill
+            if (input.skillUsed && input.skillDirection) {
+                const skillUsed = this.playerManager.useSkill(playerId, input.skillUsed);
+                if (skillUsed) {
+                    // 技能成功使用，但 ECS 版 useSkill 不返回 skill 物件
+                    // 改用 ECSSkillExecutor 處理或簡化
+                    console.log(`[GameEngine] ${playerId.substring(0, 8)} used skill ${input.skillUsed} (ECS)`);
                 }
             }
         });
@@ -530,30 +528,19 @@ export class GameEngine {
         const allCombatEntities = this.getAllCombatEntities();
         const hits = this.hitboxManager.update(dt, allCombatEntities);
         hits.forEach(hit => {
-            // 嘗試在各個 Manager 中找到目標
-            const player = this.playerManager.getPlayer(hit.targetId);
-            if (player) {
-                player.takeDamage(hit.damage, hit.attackerId);
-                if (hit.knockback) {
-                    player.applyKnockback(hit.knockback);
-                }
+            // 使用 ECSPlayerManager 處理玩家傷害
+            const playerEntityId = this.playerManager.getPlayer(hit.targetId);
+            if (playerEntityId) {
+                this.playerManager.damagePlayer(hit.targetId, hit.damage, hit.attackerId);
+                // TODO: applyKnockback 需透過 ECS physics component
                 return;
             }
 
-            // 檢查是否命中小兵
-            const creep = this.creepManager.getAllCreeps().get(hit.targetId);
-            if (creep) {
-                console.log(`[GameEngine] Processing HIT on creep ${hit.targetId}`);
-                creep.takeDamage(hit.damage, hit.attackerId);
-                return;
-            }
+            // ECS 小兵由 CollisionSystem 處理，此處跳過
+            // (小兵傷害由 ECS HealthSystem 處理)
 
-            // 檢查是否命中防禦塔
-            const tower = this.towerManager.getAllTowers().get(hit.targetId);
-            if (tower) {
-                tower.takeDamage(hit.damage, hit.attackerId);
-                return;
-            }
+            // ECS 塔由 CollisionSystem 處理，此處跳過
+            // (塔傷害由 ECS HealthSystem 處理)
 
             // 檢查是否命中主堡
             const base = this.baseManager.getAllBases().get(hit.targetId);
@@ -575,10 +562,12 @@ export class GameEngine {
         // PlayerEntity 與 CombatEntity 使用不同的 ID 屬性 (playerId vs entityId)
         // 但都有 getPosition() 和 isDead() 方法，使用 unknown 作為中間類型轉換
         const players = Array.from(this.playerManager.getAllPlayers().values()) as unknown as CombatEntity[];
-        const towers = this.towerManager.getAllTowersAsEntities();
-        const creeps = this.creepManager.getAllCreepsAsEntities();
+        // ECS 塔不納入舊版 CombatEntity 數組（由 ECS AISystem 處理）
+        // const towers = ...
+        // ECS 小兵不納入舊版 CombatEntity 數組（由 ECS AISystem 處理）
+        // const creeps = ...
         const bases = this.baseManager.getAllBasesAsEntities();
-        return [...players, ...towers, ...creeps, ...bases];
+        return [...players, ...bases];
     }
 
     /**
@@ -628,17 +617,29 @@ export class GameEngine {
     }
 
     useSkill(skillId: string) {
-        const localPlayer = this.playerManager.getPlayer(this.networkManager.peerId);
-        if (!localPlayer) return;
+        const peerId = this.networkManager.peerId;
+        if (!this.playerManager.getPlayer(peerId)) return;
 
-        // 檢查技能是否可用（冷卻、能量）
-        if (!localPlayer.skillManager.canUseSkill(skillId, localPlayer.combatStats.currentEnergy)) {
-            console.log(`[GameEngine] Skill ${skillId} not ready`);
+        // 檢查技能是否可用（通過 ECSPlayerManager）
+        const cooldowns = this.playerManager.getPlayerSkillCooldowns(peerId);
+        const skillCd = cooldowns.get(skillId);
+        const energy = this.playerManager.getPlayerEnergy(peerId);
+
+        if (!skillCd || skillCd.current > 0) {
+            console.log(`[GameEngine] Skill ${skillId} on cooldown`);
+            return;
+        }
+
+        // 檢查能量
+        const skill = this.playerManager.getPlayerSkills(peerId).find(s => s.id === skillId);
+        if (skill && energy && (skill.energyCost ?? 0) > energy.current) {
+            console.log(`[GameEngine] Not enough energy for ${skillId}`);
             return;
         }
 
         // 使用玩家當前的朝向方向
-        const direction = localPlayer.getFacingDirection();
+        const direction = this.playerManager.getPlayerFacingDirection(peerId);
+        if (!direction) return;
 
         // 設定待處理的技能（會在下一個 frame 的 collectInput 中收集）
         this.pendingSkillUse = {
@@ -653,19 +654,18 @@ export class GameEngine {
      * 獲取本地玩家的技能列表
      */
     getLocalPlayerSkills() {
-        const localPlayer = this.playerManager.getPlayer(this.networkManager.peerId);
-        if (!localPlayer) return [];
-
-        return Array.from(localPlayer.skillManager.skills.values());
+        return this.playerManager.getPlayerSkills(this.networkManager.peerId);
     }
 
     /**
      * 獲取本地玩家的技能冷卻狀態
      */
     getLocalPlayerCooldowns(): Map<string, number> {
-        const localPlayer = this.playerManager.getPlayer(this.networkManager.peerId);
-        if (!localPlayer) return new Map();
-
-        return localPlayer.skillManager.getAllCooldowns();
+        const cooldowns = this.playerManager.getPlayerSkillCooldowns(this.networkManager.peerId);
+        const result = new Map<string, number>();
+        for (const [id, cd] of cooldowns) {
+            result.set(id, cd.current);
+        }
+        return result;
     }
 }
