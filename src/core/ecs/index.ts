@@ -19,6 +19,9 @@ export { RenderComponent } from './components/RenderComponent';
 export { PhysicsComponent } from './components/PhysicsComponent';
 export { AIComponent, type AIType } from './components/AIComponent';
 export { PlayerInputComponent } from './components/PlayerInputComponent';
+export { SkillComponent, type SkillState } from './components/SkillComponent';
+export { AnimationComponent, type AnimationType, type AnimationState } from './components/AnimationComponent';
+export { InventoryComponent, type ItemStats } from './components/InventoryComponent';
 
 // Systems
 export { MovementSystem } from './systems/MovementSystem';
@@ -27,6 +30,8 @@ export { HealthSystem } from './systems/HealthSystem';
 export { CombatSystem } from './systems/CombatSystem';
 export { CollisionSystem, type HitEvent } from './systems/CollisionSystem';
 export { AISystem } from './systems/AISystem';
+export { PlayerInputSystem } from './systems/PlayerInputSystem';
+export { SkillSystem } from './systems/SkillSystem';
 
 // Factory
 export { EntityFactory, type PlayerConfig, type CreepConfig, type TowerConfig } from './EntityFactory';

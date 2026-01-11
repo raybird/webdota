@@ -16,7 +16,12 @@ import { RenderComponent } from './components/RenderComponent';
 import { PhysicsComponent } from './components/PhysicsComponent';
 import { AIComponent } from './components/AIComponent';
 import { PlayerInputComponent } from './components/PlayerInputComponent';
+import { SkillComponent } from './components/SkillComponent';
+import { AnimationComponent } from './components/AnimationComponent';
+import { InventoryComponent } from './components/InventoryComponent';
 import { CollisionSystem } from './systems/CollisionSystem';
+import { getSkill } from '../../data/skills';
+import { getCharacter } from '../../data/characters';
 
 /**
  * 玩家建立配置
@@ -112,6 +117,30 @@ export class EntityFactory {
             characterId: config.characterId
         });
         this.world.addComponent(entityId, playerInput);
+
+        // Skill
+        const skillComponent = new SkillComponent({
+            maxEnergy: 100,
+            currentEnergy: 100,
+            energyRegenRate: 5
+        });
+        // 添加角色技能
+        const character = getCharacter(config.characterId);
+        const basicAttack = getSkill('basic_attack');
+        if (basicAttack) skillComponent.addSkill(basicAttack);
+        if (character?.skills) {
+            character.skills.forEach(skillId => {
+                const skill = getSkill(skillId);
+                if (skill) skillComponent.addSkill(skill);
+            });
+        }
+        this.world.addComponent(entityId, skillComponent);
+
+        // Animation
+        this.world.addComponent(entityId, new AnimationComponent());
+
+        // Inventory
+        this.world.addComponent(entityId, new InventoryComponent(500));
 
         // Physics
         const physics = this.createKinematicBody(config.position, { halfWidth: 0.3, halfHeight: 0.5, halfDepth: 0.3 });

@@ -31,7 +31,10 @@ import {
     CombatSystem as ECSCombatSystem,
     CollisionSystem,
     AISystem,
+    PlayerInputSystem,
+    SkillSystem,
 } from './ecs';
+import { ECSSkillExecutor } from './combat/ECSSkillExecutor';
 
 /**
  * 遊戲引擎核心
@@ -62,6 +65,7 @@ export class GameEngine {
     ecsWorld!: World;
     entityFactory!: EntityFactory;
     collisionSystem!: CollisionSystem;
+    ecsSkillExecutor!: ECSSkillExecutor;
 
     // Game Loop
 
@@ -147,12 +151,17 @@ export class GameEngine {
         this.entityFactory.setCollisionSystem(this.collisionSystem);
 
         // 註冊 ECS Systems
+        this.ecsWorld.addSystem(new PlayerInputSystem());
+        this.ecsWorld.addSystem(new SkillSystem());
         this.ecsWorld.addSystem(new MovementSystem());
         this.ecsWorld.addSystem(new ECSCombatSystem());
         this.ecsWorld.addSystem(this.collisionSystem);
         this.ecsWorld.addSystem(new AISystem());
         this.ecsWorld.addSystem(new HealthSystem());
         this.ecsWorld.addSystem(new ECSRenderSystem());
+
+        // Initialize ECS SkillExecutor
+        this.ecsSkillExecutor = new ECSSkillExecutor(this.collisionSystem);
 
         console.log('[GameEngine] ECS World initialized');
 
