@@ -21,6 +21,18 @@ import { SoundManager } from './SoundManager';
 import type { CombatEntity } from './entities/CombatEntity';
 import demoArenaMap from '../data/maps/demo_arena.json';
 
+// ECS Imports
+import {
+    World,
+    EntityFactory,
+    MovementSystem,
+    RenderSystem as ECSRenderSystem,
+    HealthSystem,
+    CombatSystem as ECSCombatSystem,
+    CollisionSystem,
+    AISystem,
+} from './ecs';
+
 /**
  * 遊戲引擎核心
  * 負責協調各個子系統與驅動遊戲循環
@@ -45,6 +57,11 @@ export class GameEngine {
     creepManager!: CreepManager;
     baseManager!: BaseManager;
     soundManager!: SoundManager;
+
+    // ECS
+    ecsWorld!: World;
+    entityFactory!: EntityFactory;
+    collisionSystem!: CollisionSystem;
 
     // Game Loop
 
@@ -123,7 +140,21 @@ export class GameEngine {
             this.soundManager.playGameOverSound();
         });
 
-        // Find and set camera for RenderManager
+        // 11. Initialize ECS World and Systems
+        this.ecsWorld = new World();
+        this.collisionSystem = new CollisionSystem(this.physicsWorld);
+        this.entityFactory = new EntityFactory(this.app, this.physicsWorld, this.ecsWorld);
+        this.entityFactory.setCollisionSystem(this.collisionSystem);
+
+        // 註冊 ECS Systems
+        this.ecsWorld.addSystem(new MovementSystem());
+        this.ecsWorld.addSystem(new ECSCombatSystem());
+        this.ecsWorld.addSystem(this.collisionSystem);
+        this.ecsWorld.addSystem(new AISystem());
+        this.ecsWorld.addSystem(new HealthSystem());
+        this.ecsWorld.addSystem(new ECSRenderSystem());
+
+        console.log('[GameEngine] ECS World initialized');
 
         // Find and set camera for RenderManager
         const camera = this.app.root.findByName('Camera');
@@ -131,13 +162,13 @@ export class GameEngine {
             this.renderManager.setCamera(camera as pc.Entity);
         }
 
-        // 5. Initialize Host Manager (使用已有的 NetworkManager)
+        // 12. Initialize Host Manager (使用已有的 NetworkManager)
         this.hostManager = new HostManager(this.app, this.physicsWorld);
 
-        // 6. Setup Event Listeners
+        // 13. Setup Event Listeners
         this.setupEventListeners();
 
-        // 7. Start Loop
+        // 14. Start Loop
         this.app.start();
         this.app.on('update', (dt) => this.gameLoop(dt));
         window.addEventListener('resize', () => this.app.resizeCanvas());
@@ -389,6 +420,9 @@ export class GameEngine {
             this.towerManager.update(dt, allCombatEntities);
             this.creepManager.update(dt, allCombatEntities);
             this.baseManager.update(dt, allCombatEntities);
+
+            // 6. Update ECS World (new system, runs parallel to legacy managers)
+            this.ecsWorld.update(dt);
 
             // 5. Broadcast State
             if (this.currentFrame % 3 === 0) { // 每 3 幀同步一次
