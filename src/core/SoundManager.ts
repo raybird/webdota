@@ -54,17 +54,29 @@ export class SoundManager {
      * 預載常用音效 (使用程式產生的音效)
      */
     private preloadSounds(): void {
-        // 由於沒有實際音檔，我們使用 Web Audio API 產生合成音效
-        this.createSynthSound('attack', 'sfx', { frequency: 200, duration: 0.1, type: 'square' });
-        this.createSynthSound('skill_fire', 'sfx', { frequency: 400, duration: 0.3, type: 'sawtooth' });
-        this.createSynthSound('skill_ice', 'sfx', { frequency: 300, duration: 0.4, type: 'triangle' });
-        this.createSynthSound('skill_dash', 'sfx', { frequency: 150, duration: 0.15, type: 'sine' });
-        this.createSynthSound('hit', 'sfx', { frequency: 100, duration: 0.08, type: 'square' });
-        this.createSynthSound('death', 'sfx', { frequency: 80, duration: 0.5, type: 'sawtooth' });
-        this.createSynthSound('button_click', 'ui', { frequency: 600, duration: 0.05, type: 'sine' });
-        this.createSynthSound('game_over', 'ui', { frequency: 250, duration: 1.0, type: 'triangle' });
+        // Attack: Punchy noise + low square
+        this.createSynthSound('attack', 'sfx', { frequency: 150, duration: 0.12, type: 'square', decay: 15 });
 
-        console.log('[SoundManager] Synthetic sounds initialized');
+        // Fire: Noisy wind with frequency drop
+        this.createSynthSound('skill_fire', 'sfx', { frequency: 400, duration: 0.4, type: 'noise', decay: 4 });
+
+        // Ice: FM Crystal sound
+        this.createSynthSound('skill_ice', 'sfx', { frequency: 800, duration: 0.5, type: 'sine', decay: 5, fm: { freq: 1200, amount: 400 } });
+
+        // Dash: Fast noise sweep
+        this.createSynthSound('skill_dash', 'sfx', { frequency: 100, duration: 0.2, type: 'noise', decay: 10 });
+
+        // Hit: Intense noise burst (short)
+        this.createSynthSound('hit', 'sfx', { frequency: 60, duration: 0.1, type: 'noise', decay: 20 });
+
+        // Death: Low sawtooth fall
+        this.createSynthSound('death', 'sfx', { frequency: 150, duration: 0.8, type: 'sawtooth', decay: 2 });
+
+        // UI: Clean sine clicks
+        this.createSynthSound('button_click', 'ui', { frequency: 880, duration: 0.08, type: 'sine', decay: 20 });
+        this.createSynthSound('game_over', 'ui', { frequency: 440, duration: 1.5, type: 'triangle', decay: 1 });
+
+        console.log('[SoundManager] High-quality synthetic sounds initialized');
     }
 
     /**
@@ -73,7 +85,13 @@ export class SoundManager {
     private createSynthSound(
         name: string,
         _category: SoundCategory,
-        config: { frequency: number; duration: number; type: OscillatorType }
+        config: {
+            frequency: number;
+            duration: number;
+            type: OscillatorType | 'noise';
+            decay?: number;
+            fm?: { freq: number; amount: number };
+        }
     ): void {
         const audioContext = (this.app.systems.sound as any)?.context as AudioContext;
         if (!audioContext) {
@@ -81,41 +99,43 @@ export class SoundManager {
             return;
         }
 
-        // 創建離線音訊緩衝
         const sampleRate = audioContext.sampleRate;
         const length = sampleRate * config.duration;
         const buffer = audioContext.createBuffer(1, length, sampleRate);
         const data = buffer.getChannelData(0);
 
-        // 生成波形
+        const decay = config.decay || 8;
+
+        // FM Synthesis parameters (optional)
+        const fmFreq = config.fm?.freq || 0;
+        const fmAmount = config.fm?.amount || 0;
+
         for (let i = 0; i < length; i++) {
             const t = i / sampleRate;
-            const envelope = Math.exp(-t * 8); // 衰減包絡
+            const envelope = Math.exp(-t * decay);
             let wave = 0;
 
-            switch (config.type) {
-                case 'sine':
-                    wave = Math.sin(2 * Math.PI * config.frequency * t);
-                    break;
-                case 'square':
-                    wave = Math.sign(Math.sin(2 * Math.PI * config.frequency * t));
-                    break;
-                case 'sawtooth':
-                    wave = 2 * ((t * config.frequency) % 1) - 1;
-                    break;
-                case 'triangle':
-                    wave = Math.abs(4 * ((t * config.frequency) % 1) - 2) - 1;
-                    break;
+            if (config.type === 'noise') {
+                wave = Math.random() * 2 - 1;
+            } else {
+                // Modulator for FM
+                const mod = fmAmount > 0 ? Math.sin(2 * Math.PI * fmFreq * t) * fmAmount : 0;
+                const freq = config.frequency + mod;
+
+                switch (config.type) {
+                    case 'sine': wave = Math.sin(2 * Math.PI * freq * t); break;
+                    case 'square': wave = Math.sign(Math.sin(2 * Math.PI * freq * t)); break;
+                    case 'sawtooth': wave = 2 * ((t * freq) % 1) - 1; break;
+                    case 'triangle': wave = Math.abs(4 * ((t * freq) % 1) - 2) - 1; break;
+                }
             }
 
-            data[i] = wave * envelope * 0.3; // 降低音量避免爆音
+            data[i] = wave * envelope * 0.3;
         }
 
-        // 將 AudioBuffer 包裝為 PlayCanvas Sound
         const sound = new pc.Sound(buffer);
         this.sounds.set(name, sound);
 
-        // 添加到 SoundComponent
         if (this.soundEntity.sound) {
             this.soundEntity.sound.addSlot(name, {
                 volume: 1.0,
@@ -124,7 +144,7 @@ export class SoundManager {
             });
             const slot = this.soundEntity.sound.slot(name);
             if (slot) {
-                slot.asset = null; // 手動設定 buffer
+                slot.asset = null;
                 (slot as any)._sound = sound;
                 this.slots.set(name, slot);
             }
