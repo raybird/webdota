@@ -58,11 +58,11 @@ const joinRoom = async () => {
       <p class="subtitle">多人連線競技遊戲</p>
       
       <div class="lobby-actions">
-        <div class="action-card card-fantasy">
+        <div class="action-card card-glass">
           <h3>建立新遊戲</h3>
           <p>創建一個新房間並邀請朋友加入</p>
           <button 
-            class="btn-fantasy main-btn" 
+            class="btn-cyber primary main-btn" 
             @click="createRoom"
             @mouseenter="playHover"
             :disabled="isConnecting"
@@ -73,7 +73,7 @@ const joinRoom = async () => {
 
         <div class="divider">OR</div>
 
-        <div class="action-card card-fantasy">
+        <div class="action-card card-glass">
           <h3>加入遊戲</h3>
           <p>輸入房間 ID 加入現有遊戲</p>
           <div class="join-form">
@@ -86,7 +86,7 @@ const joinRoom = async () => {
               @keyup.enter="joinRoom"
             >
             <button 
-              class="btn-fantasy secondary-btn" 
+              class="btn-cyber secondary-btn" 
               @click="joinRoom"
               @mouseenter="playHover"
               :disabled="!roomIdInput || isConnecting"
@@ -305,7 +305,8 @@ const joinRoom = async () => {
     gap: 0.6rem;
   }
   
-  .btn-fantasy {
+  /* .btn-cyber 已經由 design-system.css 接管，如有覆蓋請放在此 */
+  .btn-cyber { /* Added .btn-cyber selector */
     padding: 0.9rem;
     font-size: 1rem;
     min-height: 48px; /* Touch-friendly minimum */

@@ -2,22 +2,20 @@ import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { NetworkManager, type PlayerInput, type GameState } from './NetworkManager';
 import { HostManager } from './HostManager';
-import { HitboxManager } from './combat/HitboxManager';
 import { UIManager } from './UIManager';
 import { ECSPlayerManager } from './managers/ECSPlayerManager';
 import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
 import { ECSTowerManager } from './managers/ECSTowerManager';
-import { BaseManager } from './managers/BaseManager';
+import { ECSBaseManager } from './managers/ECSBaseManager';
 import { ECSCreepManager } from './managers/ECSCreepManager';
+import { SoundManager } from './SoundManager';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
 import { ProjectileManager } from './combat/ProjectileManager';
 import { MapManager, type MapConfig } from './map';
-import { SoundManager } from './SoundManager';
-import type { CombatEntity } from './entities/CombatEntity';
 import demoArenaMap from '../data/maps/demo_arena.json';
 
 // ECS Imports
@@ -32,6 +30,7 @@ import {
     AISystem,
     PlayerInputSystem,
     SkillSystem,
+    ComponentType,
 } from './ecs';
 import { ECSSkillExecutor } from './combat/ECSSkillExecutor';
 
@@ -46,7 +45,6 @@ export class GameEngine {
     // Managers
     networkManager!: NetworkManager;
     hostManager!: HostManager;
-    hitboxManager!: HitboxManager;
     uiManager!: UIManager;
     playerManager!: ECSPlayerManager;
     inputManager!: InputManager;
@@ -57,7 +55,7 @@ export class GameEngine {
     mapManager!: MapManager;
     towerManager!: ECSTowerManager;
     creepManager!: ECSCreepManager;
-    baseManager!: BaseManager;
+    baseManager!: ECSBaseManager;
     soundManager!: SoundManager;
 
     // ECS
@@ -118,7 +116,6 @@ export class GameEngine {
 
         // 6. Initialize Managers
         this.uiManager = new UIManager(this.app);
-        this.hitboxManager = new HitboxManager(this.app);
         // 注意：ECSPlayerManager 需要在 ECS World 初始化後才能創建，移至下方
         this.inputManager = new InputManager();
         this.renderManager = new RenderManager(this.app);
@@ -151,10 +148,11 @@ export class GameEngine {
         this.towerManager = new ECSTowerManager(this.ecsWorld, this.entityFactory, this.uiManager);
         this.creepManager = new ECSCreepManager(this.mapManager, this.uiManager, this.ecsWorld, this.entityFactory);
         this.playerManager = new ECSPlayerManager(this.ecsWorld, this.entityFactory, this.uiManager);
-        this.baseManager = new BaseManager(this.app, this.physicsWorld);
+        this.baseManager = new ECSBaseManager(this.ecsWorld, this.entityFactory, this.uiManager);
 
-        // 9. Spawn Towers from Map Config
+        // 9. Spawn Towers and Bases from Map
         this.spawnTowersFromMap();
+        this.spawnBasesFromMap();
 
         // 10. Initialize SoundManager
         this.soundManager = new SoundManager(this.app);
@@ -377,10 +375,8 @@ export class GameEngine {
         }
 
         // Visual Update
-        // 注意：ECS RenderSystem 現在負責玩家視覺同步
-        // this.renderManager.syncVisuals(this.playerManager.getAllPlayers());
-        // this.renderManager.updateCamera(this.networkManager.peerId, this.playerManager.getAllPlayers());
-        // this.uiManager.updateAll(this.playerManager.getAllPlayers());
+        // 注意：ECS RenderSystem 現在負責實體視覺同步
+        this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
     }
 
     /**
@@ -426,10 +422,9 @@ export class GameEngine {
             // (SkillSystem, PlayerInputSystem 等已在 ecsWorld.update() 中執行)
 
             // 5. Update Entity Managers (Towers, Creeps, Bases)
-            const allCombatEntities = this.getAllCombatEntities();
             this.towerManager.update(dt);
             this.creepManager.update(dt);
-            this.baseManager.update(dt, allCombatEntities);
+            this.baseManager.update(dt);
 
             // 6. Update ECS World (handles player logic now)
             this.ecsWorld.update(dt);
@@ -494,8 +489,18 @@ export class GameEngine {
             const rb = this.playerManager.getPlayerRigidBody(playerId);
             if (!rb) return;
 
+            // 防作弊校驗: 確保移動向量長度不超過 1 (或稍微寬容的 1.05)
+            let safeMoveX = input.moveX;
+            let safeMoveY = input.moveY;
+            const mag = Math.sqrt(safeMoveX * safeMoveX + safeMoveY * safeMoveY);
+            if (mag > 1.05) {
+                safeMoveX /= mag;
+                safeMoveY /= mag;
+                // console.warn(`[Anti-Cheat] Player ${playerId.substring(0, 8)} velocity > 1, clamped.`);
+            }
+
             // moveY 需要取反，因為在俯視角下 W(前進) 應該往 Z 負方向移動
-            const moveDir = { x: input.moveX, y: 0, z: -input.moveY };
+            const moveDir = { x: safeMoveX, y: 0, z: -safeMoveY };
 
             if (moveDir.x !== 0 || moveDir.z !== 0) {
                 const currentPos = rb.translation();
@@ -534,50 +539,42 @@ export class GameEngine {
             }
         });
 
-        // Update Hitboxes - 使用所有戰鬥實體
-        const allCombatEntities = this.getAllCombatEntities();
-        const hits = this.hitboxManager.update(dt, allCombatEntities);
-        hits.forEach(hit => {
-            // 使用 ECSPlayerManager 處理玩家傷害
-            const playerEntityId = this.playerManager.getPlayer(hit.targetId);
-            if (playerEntityId) {
-                this.playerManager.damagePlayer(hit.targetId, hit.damage, hit.attackerId);
-                // TODO: applyKnockback 需透過 ECS physics component
-                return;
-            }
-
-            // ECS 小兵由 CollisionSystem 處理，此處跳過
-            // (小兵傷害由 ECS HealthSystem 處理)
-
-            // ECS 塔由 CollisionSystem 處理，此處跳過
-            // (塔傷害由 ECS HealthSystem 處理)
-
-            // 檢查是否命中主堡
-            const base = this.baseManager.getAllBases().get(hit.targetId);
-            if (base) {
-                base.takeDamage(hit.damage);
-                return;
-            }
-        });
+        // ECS 的判定邏輯已交由 CollisionSystem 與 Rapier Sensor 處理。
 
         // Update Projectiles (投射物移動與碰撞)
-        this.projectileManager.update(dt, this.hitboxManager, allCombatEntities);
+        // 在 ProjectileManager 內，投射物依然需要手動移動與判定。
+        // 我們將 ECSWorld 內的 collisionSystem 傳入供其產生傷害打擊。
+        const collisionSystem = this.ecsWorld.getSystem<CollisionSystem>('CollisionSystem');
+        if (collisionSystem) {
+            this.projectileManager.update(dt, collisionSystem, this.getAllCombatEntities());
+        }
     }
 
     /**
      * 取得所有戰鬥實體 (Player + Tower + Creep)
      * 返回的陣列包含所有可攻擊的實體，用於 HitboxManager 和 ProjectileManager
      */
-    private getAllCombatEntities(): CombatEntity[] {
-        // PlayerEntity 與 CombatEntity 使用不同的 ID 屬性 (playerId vs entityId)
-        // 但都有 getPosition() 和 isDead() 方法，使用 unknown 作為中間類型轉換
-        const players = Array.from(this.playerManager.getAllPlayers().values()) as unknown as CombatEntity[];
-        // ECS 塔不納入舊版 CombatEntity 數組（由 ECS AISystem 處理）
-        // const towers = ...
-        // ECS 小兵不納入舊版 CombatEntity 數組（由 ECS AISystem 處理）
-        // const creeps = ...
-        const bases = this.baseManager.getAllBasesAsEntities();
-        return [...players, ...bases];
+    private getAllCombatEntities(): any[] {
+        const combatEntityIds = this.ecsWorld.query(ComponentType.TRANSFORM, ComponentType.HEALTH);
+        const entities: any[] = [];
+        for (const id of combatEntityIds) {
+            // @ts-ignore - Temporary hack to access private components if needed, or use getComponent properly
+            const transform = this.ecsWorld.getComponent(id, ComponentType.TRANSFORM) as any;
+            const health = this.ecsWorld.getComponent(id, ComponentType.HEALTH) as any;
+            if (!transform || !health) continue;
+
+            entities.push({
+                entityId: id,
+                playerId: id, // 相容舊版參數
+                getPosition: () => transform.position,
+                isDead: () => health.isDead(),
+                combatStats: {
+                    currentHp: health.current,
+                    maxHp: health.max,
+                }
+            });
+        }
+        return entities;
     }
 
     /**

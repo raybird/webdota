@@ -66,6 +66,18 @@ export interface TowerConfig {
 }
 
 /**
+ * 主堡建立配置
+ */
+export interface BaseConfig {
+    team: Team;
+    position: { x: number; y: number; z: number };
+    maxHp?: number;
+    attackPower?: number;
+    attackRange?: number;
+    attackCooldown?: number;
+}
+
+/**
  * EntityFactory - 實體工廠
  */
 export class EntityFactory {
@@ -264,6 +276,57 @@ export class EntityFactory {
         return entityId;
     }
 
+    /**
+     * 建立主堡 Entity
+     */
+    createBase(config: BaseConfig): EntityId {
+        const entityId = this.world.createEntity();
+
+        // Transform
+        this.world.addComponent(entityId, new TransformComponent(config.position));
+
+        // Health
+        this.world.addComponent(entityId, new HealthComponent({
+            maxHp: config.maxHp ?? 5000,
+            defense: 30
+        }));
+
+        // Team
+        this.world.addComponent(entityId, new TeamComponent(config.team));
+
+        // Combat
+        this.world.addComponent(entityId, new CombatComponent({
+            attackPower: config.attackPower ?? 50,
+            attackRange: config.attackRange ?? 8,
+            attackCooldown: config.attackCooldown ?? 3.0,
+            moveSpeed: 0
+        }));
+
+        // AI (主堡具備基本自衛能力)
+        this.world.addComponent(entityId, new AIComponent({
+            aiType: 'tower', // 暫用 tower AI 邏輯以尋找目標並攻擊
+            attackRange: config.attackRange ?? 8,
+            attackCooldown: config.attackCooldown ?? 3.0
+        }));
+
+        // Physics (靜態剛體, 體積較大)
+        const physics = this.createStaticCuboidBody(config.position, 2.5, 3, 2.5);
+        this.world.addComponent(entityId, physics);
+
+        // 註冊到 CollisionSystem
+        if (this.collisionSystem && physics.collider) {
+            this.collisionSystem.registerEntityCollider(physics.collider, entityId, config.team);
+        }
+
+        // Render
+        const pcEntity = this.createBaseVisual(config.position, config.team);
+        this.world.addComponent(entityId, new RenderComponent(pcEntity));
+
+        console.log(`[EntityFactory] Created base (${entityId.substring(0, 8)}) team=${config.team}`);
+
+        return entityId;
+    }
+
     // ==================== 私有方法：物理建立 ====================
 
     private createKinematicBody(
@@ -293,6 +356,25 @@ export class EntityFactory {
         const rigidBody = this.physicsWorld.createRigidBody(rigidBodyDesc);
 
         const colliderDesc = RAPIER.ColliderDesc.cylinder(halfHeight, radius);
+        const collider = this.physicsWorld.createCollider(colliderDesc, rigidBody);
+
+        const physics = new PhysicsComponent(rigidBody, this.physicsWorld);
+        physics.setCollider(collider);
+
+        return physics;
+    }
+
+    private createStaticCuboidBody(
+        position: { x: number; y: number; z: number },
+        halfWidth: number,
+        halfHeight: number,
+        halfDepth: number
+    ): PhysicsComponent {
+        const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(position.x, position.y, position.z);
+        const rigidBody = this.physicsWorld.createRigidBody(rigidBodyDesc);
+
+        const colliderDesc = RAPIER.ColliderDesc.cuboid(halfWidth, halfHeight, halfDepth);
         const collider = this.physicsWorld.createCollider(colliderDesc, rigidBody);
 
         const physics = new PhysicsComponent(rigidBody, this.physicsWorld);
@@ -380,6 +462,53 @@ export class EntityFactory {
         top.setLocalPosition(0, 3.5, 0);
         this.applyMaterial(top, this.getTeamColor(team, 0.8));
         entity.addChild(top);
+
+        this.app.root.addChild(entity);
+        return entity;
+    }
+
+    private createBaseVisual(position: { x: number; y: number; z: number }, team: Team): pc.Entity {
+        const entity = new pc.Entity('Base');
+        entity.setPosition(position.x, position.y, position.z);
+
+        // 主堡底座
+        const base = new pc.Entity('Base_Bottom');
+        base.addComponent('render', { type: 'cylinder' });
+        base.setLocalScale(5, 0.8, 5);
+        base.setLocalPosition(0, 0.4, 0);
+        this.applyMaterial(base, this.getTeamColor(team, 0.3));
+        entity.addChild(base);
+
+        // 主堡主體
+        const body = new pc.Entity('Body');
+        body.addComponent('render', { type: 'box' });
+        body.setLocalScale(3, 4, 3);
+        body.setLocalPosition(0, 2.8, 0);
+        this.applyMaterial(body, this.getTeamColor(team, 0.5));
+        entity.addChild(body);
+
+        // 主堡塔尖
+        const top = new pc.Entity('Top');
+        top.addComponent('render', { type: 'cone' });
+        top.setLocalScale(3.5, 2.5, 3.5);
+        top.setLocalPosition(0, 6, 0);
+        this.applyMaterial(top, this.getTeamColor(team, 0.7));
+        entity.addChild(top);
+
+        // 發光核心
+        const core = new pc.Entity('Core');
+        core.addComponent('render', { type: 'sphere' });
+        core.setLocalScale(1.2, 1.2, 1.2);
+        core.setLocalPosition(0, 3.5, 0);
+        const coreMaterial = new pc.StandardMaterial();
+        const coreColor = this.getTeamColor(team, 1.0);
+        coreMaterial.diffuse = coreColor;
+        coreMaterial.emissive = coreColor;
+        coreMaterial.update();
+        if (core.render) {
+            core.render.meshInstances.forEach(mi => mi.material = coreMaterial);
+        }
+        entity.addChild(core);
 
         this.app.root.addChild(entity);
         return entity;

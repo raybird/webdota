@@ -18,7 +18,7 @@ const isVictory = computed(() => {
 <template>
   <Transition name="fade">
     <div v-if="isVisible" class="game-over-overlay">
-      <div class="result-card card-fantasy animate-pop">
+      <div class="result-card card-glass animate-pop">
         <h1 :class="['result-title', isVictory ? 'victory' : 'defeat']">
           {{ isVictory ? 'VICTORY' : 'DEFEAT' }}
         </h1>
@@ -30,7 +30,7 @@ const isVictory = computed(() => {
           <p class="reason-text">{{ reason === 'base_destroyed' ? 'Base Destroyed' : 'Game Over' }}</p>
         </div>
 
-        <button class="btn-fantasy lobby-btn" @click="emit('back-to-lobby')">
+        <button class="btn-cyber primary lobby-btn" @click="emit('back-to-lobby')">
           RETURN TO LOBBY
         </button>
       </div>

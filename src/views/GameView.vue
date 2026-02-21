@@ -9,6 +9,8 @@ import EntityStatus from '../components/game/EntityStatus.vue'
 import GameOverOverlay from '../components/game/GameOverOverlay.vue'
 import Minimap from '../components/game/Minimap.vue'
 import Shop from '../components/game/Shop.vue'
+import DamageNumberLayer from '../components/game/DamageNumberLayer.vue'
+import NotificationLayer from '../components/game/NotificationLayer.vue'
 import { useRoomStore } from '../stores/roomStore'
 
 const gameStore = useGameStore()
@@ -25,6 +27,7 @@ const props = defineProps<{
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const currentCooldowns = ref<Map<string, number>>(new Map())
+const currentPing = ref<number>(0)
 
 // 技能配置
 const skills = ref<any[]>([])
@@ -158,16 +161,25 @@ onMounted(async () => {
       animationFrameId.value = requestAnimationFrame(updateLoop)
     }
     updateLoop()
+    
+    eventBus.on('PING_UPDATED', handlePingUpdate)
   }
 
   // 監聯 Shop 快捷鍵
   window.addEventListener('keydown', handleKeyDown)
 })
 
+const handlePingUpdate = (e: any) => {
+  if (e.type === 'PING_UPDATED') {
+    currentPing.value = e.ping
+  }
+}
+
 onUnmounted(() => {
   // 清理資源
   cancelAnimationFrame(animationFrameId.value)
   window.removeEventListener('keydown', handleKeyDown)
+  eventBus.off('PING_UPDATED', handlePingUpdate)
   props.gameService.destroy()
 })
 </script>
@@ -179,7 +191,7 @@ onUnmounted(() => {
     <!-- HUD -->
     <div class="hud-layer">
       <!-- 左上角：狀態資訊 -->
-      <div class="status-panel card-fantasy">
+      <div class="status-panel card-glass">
         <div class="hud-header">
           <div class="frame-counter">Frame: {{ gameStore.currentFrame }}</div>
           <div class="role-indicator" :class="{ host: roomStore.isHost }">
@@ -204,6 +216,10 @@ onUnmounted(() => {
           <div class="info-row">
             <span class="label">ID:</span>
             <span class="value">{{ roomStore.myPeerId?.substring(0, 8) || 'N/A' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">PING:</span>
+            <span class="value" :class="{'high-ping': currentPing > 150}">{{ currentPing }} ms</span>
           </div>
           <div class="cooldown-debug">
             CDs: {{ Array.from(currentCooldowns.entries()).map(([k, v]) => `${k}:${v.toFixed(1)}`).join(', ') }}
@@ -258,6 +274,16 @@ onUnmounted(() => {
           :type="item.type"
         />
       </div>
+
+      <!-- 螢幕空間 UI 層：傷害跳字 -->
+      <DamageNumberLayer
+        v-if="gameService.gameEngine && gameService.gameEngine.app"
+        :app="gameService.gameEngine.app"
+        :game-service="gameService"
+      />
+
+      <!-- 螢幕空間 UI 層：網路狀態通知 -->
+      <NotificationLayer />
 
       <!-- 遊戲結束覆蓋層 -->
       <GameOverOverlay
@@ -383,25 +409,28 @@ onUnmounted(() => {
   font-family: var(--font-heading);
   font-weight: bold;
   font-size: 1.1rem;
-  margin: 8px 0;
-  padding: 4px;
+  margin: 12px 0;
+  padding: 6px;
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.4);
   color: #aaa;
   border: 1px solid #555;
   text-shadow: 0 2px 2px rgba(0,0,0,0.8);
+  letter-spacing: 1px;
 }
 
 .team-banner.team-red {
-  color: #ff6b6b;
-  border-color: #d63031;
-  background: linear-gradient(90deg, rgba(214,48,49,0.2) 0%, rgba(214,48,49,0.0) 50%, rgba(214,48,49,0.2) 100%);
+  color: var(--c-cta);
+  border-color: var(--c-cta);
+  background: linear-gradient(90deg, rgba(244,63,94,0.15) 0%, transparent 50%, rgba(244,63,94,0.15) 100%);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.2);
 }
 
 .team-banner.team-blue {
-  color: #54a0ff;
-  border-color: #0984e3;
-  background: linear-gradient(90deg, rgba(9,132,227,0.2) 0%, rgba(9,132,227,0.0) 50%, rgba(9,132,227,0.2) 100%);
+  color: #38BDF8;
+  border-color: #38BDF8;
+  background: linear-gradient(90deg, rgba(56,189,248,0.15) 0%, transparent 50%, rgba(56,189,248,0.15) 100%);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
 }
 
 .entity-ui-layer {
@@ -428,18 +457,18 @@ onUnmounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2d4059 0%, #1a1a2e 100%);
-  border: 2px solid #ffd700;
+  background: linear-gradient(135deg, var(--c-bg-panel) 0%, var(--c-secondary-dark) 100%);
+  border: 2px solid var(--c-primary);
   font-size: 1.8rem;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 10px rgba(124, 58, 237, 0.3);
   transition: all 0.2s;
   z-index: 100;
 }
 
 .floating-shop-btn:hover {
   transform: translateX(-50%) scale(1.1);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(255, 215, 0, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 15px var(--c-primary);
 }
 
 .floating-shop-btn:active {
@@ -471,18 +500,27 @@ onUnmounted(() => {
   margin-top: 10px;
   width: 100%;
   padding: 8px 12px;
-  background: linear-gradient(135deg, #2d4059 0%, #3a506b 100%);
-  border: 1px solid #4a6572;
-  border-radius: 8px;
-  color: #e0e0e0;
+  background: linear-gradient(135deg, var(--c-secondary-dark) 0%, var(--c-bg-dark) 100%);
+  border: 1px solid var(--c-primary-dim);
+  border-radius: 4px;
+  color: var(--c-text-main);
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s;
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .shop-btn:hover {
-  background: linear-gradient(135deg, #3a506b 0%, #4a6572 100%);
-  border-color: #ffd700;
-  color: #ffd700;
+  background: linear-gradient(135deg, var(--c-bg-dark) 0%, var(--c-primary-dim) 100%);
+  border-color: var(--c-secondary);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
+}
+
+.high-ping {
+  color: var(--color-danger) !important;
+  text-shadow: 0 0 5px var(--color-danger);
 }
 </style>

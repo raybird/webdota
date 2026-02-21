@@ -97,19 +97,19 @@ const copyRoomCode = async () => {
         </div>
 
         <!-- 按鈕 -->
-        <div class="control-bar">
-          <button class="btn btn-leave" @click="leaveRoom">離開</button>
+        <div class="control-bar card-glass" style="box-shadow: none; border-radius: 0;">
+          <button class="btn-cyber" @click="leaveRoom" style="background: transparent; border-color: #666;">離開</button>
           
           <div class="status-indicator">
             <div class="status-dot" :class="{ ready: amIReady }"></div>
             {{ amIReady ? '已準備' : '準備中' }}
           </div>
 
-          <button class="btn btn-ready" :class="{ on: amIReady }" @click="toggleReady">
+          <button class="btn-cyber btn-ready" :class="{ primary: amIReady }" @click="toggleReady">
             {{ amIReady ? '取消' : '準備' }}
           </button>
           
-          <button v-if="isHost" class="btn btn-start" :disabled="!allPlayersReady" @click="startGame">
+          <button v-if="isHost" class="btn-cyber primary btn-start" :disabled="!allPlayersReady" @click="startGame">
             開始遊戲
           </button>
         </div>
@@ -146,9 +146,10 @@ const copyRoomCode = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 0.8rem 1.5rem;
-  background: linear-gradient(90deg, #240046 0%, #3c096c 50%, #240046 100%);
-  border-bottom: 2px solid var(--c-primary-dim);
-  box-shadow: 0 0 15px rgba(0,0,0,0.8);
+  background: var(--c-bg-panel);
+  backdrop-filter: blur(10px);
+  border-bottom: 2px solid var(--c-primary);
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
   flex-shrink: 0;
   z-index: 10;
 }
@@ -223,63 +224,24 @@ const copyRoomCode = async () => {
   overflow: auto;
 }
 
-.control-bar {
   display: flex;
   gap: 0.8rem;
-  padding: 0.8rem;
-  background: rgba(0, 0, 0, 0.4);
+  padding: 1rem;
+  background: rgba(15, 15, 35, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
-}
 
-.btn {
-  padding: 0.5rem 1.2rem;
-  font-size: 0.9rem;
-  font-weight: bold;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-transform: uppercase;
-}
-
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.btn-leave {
-  background: transparent;
-  border-color: #666;
+/* Buttons now use .btn-cyber from design-system.css */
+.btn-ready:not(.primary) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
   color: #ccc;
 }
-
-.btn-leave:hover {
-  border-color: #fff;
-  color: #fff;
-}
-
-.btn-ready {
-  background: var(--c-secondary-dark, #3a0a4a);
-  border-color: var(--c-secondary, #9d4edd);
-  color: var(--c-secondary, #9d4edd);
-}
-
-.btn-ready:hover, .btn-ready.on {
-  background: var(--c-secondary, #9d4edd);
-  color: #fff;
-}
-
 .btn-start {
-  background: linear-gradient(135deg, #ffd700, #b8860b);
-  color: #000;
-  border-color: #fff;
-}
-
-.btn-start:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+  background: linear-gradient(135deg, var(--c-primary), var(--c-cta));
+  border-color: transparent;
 }
 
 .status-indicator {
@@ -378,7 +340,7 @@ const copyRoomCode = async () => {
     padding: 0.5rem;
   }
   
-  .btn {
+  .btn-cyber {
     padding: 0.6rem 1rem;
     font-size: 0.8rem;
   }

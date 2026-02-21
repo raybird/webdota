@@ -13,6 +13,12 @@ export type PlayerLeftEvent = {
     playerId: string
 }
 
+export type PingUpdatedEvent = {
+    type: 'PING_UPDATED'
+    peerId: string
+    ping: number
+}
+
 export type PlayerReadyEvent = {
     type: 'PLAYER_READY'
     playerId: string
@@ -83,6 +89,13 @@ export type PlayerHealedEvent = {
     amount: number
 }
 
+export type EntityTookDamageEvent = {
+    type: 'ENTITY_TOOK_DAMAGE'
+    targetId: string
+    damage: number
+    isCrit: boolean
+}
+
 // 聯合類型
 export type GameEvent =
     | PlayerJoinedEvent
@@ -100,8 +113,10 @@ export type GameEvent =
     | SkillUsedEvent
     | PlayerDamagedEvent
     | PlayerHealedEvent
+    | EntityTookDamageEvent
     | SkillEffectEvent
     | GameOverEvent
+    | PingUpdatedEvent
 
 export type SkillEffectEvent = {
     type: 'SKILL_EFFECT'

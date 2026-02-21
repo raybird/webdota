@@ -128,22 +128,18 @@ export class EffectManager {
             material: this.materials.get('attack')
         });
 
-        // 設定位置與方向
         entity.setPosition(pos.x + dir.x * 0.5, pos.y + 0.5, pos.z + dir.z * 0.5);
 
-        // 讓圓錐倒下並指向攻擊方向
-        // 預設圓錐尖端朝上 (Y)，我們需要讓它朝向 dir
         const target = new pc.Vec3(pos.x + dir.x, pos.y + 0.5, pos.z + dir.z);
         entity.lookAt(target);
-        entity.rotateLocal(90, 0, 0); // 修正圓錐朝向
+        entity.rotateLocal(90, 0, 0);
 
-        entity.setLocalScale(0.5, 1.5, 0.5); // 變長條狀
+        entity.setLocalScale(0.1, 0.5, 0.1);
 
         this.app.root.addChild(entity);
 
-        // 動畫：快速消失
         let timer = 0;
-        const duration = 0.2;
+        const duration = 0.25;
 
         const update = (dt: number) => {
             timer += dt;
@@ -153,12 +149,12 @@ export class EffectManager {
                 return;
             }
 
-            // 變大並變透明
-            const scale = 0.5 + (timer / duration) * 0.5;
-            entity.setLocalScale(scale, 1.5, scale);
+            const t = timer / duration;
+            const easeOutQuart = 1 - Math.pow(1 - t, 4);
+            const scaleX = 0.2 + easeOutQuart * 1.5;
+            const scaleY = 0.5 + easeOutQuart * 2.5;
 
-            // 這裡無法直接修改共享材質的 opacity，若要漸變需要 clone material
-            // 簡單起見，只做縮放
+            entity.setLocalScale(scaleX, scaleY, scaleX);
         };
 
         this.app.on('update', update);
@@ -250,19 +246,29 @@ export class EffectManager {
      * 建立爆炸特效
      */
     private createExplosionEffect(pos: pc.Vec3, radius: number) {
-        const entity = new pc.Entity('Explosion');
-        entity.addComponent('render', {
+        // Core flash
+        const flash = new pc.Entity('ExplosionFlash');
+        flash.addComponent('render', {
             type: 'sphere',
             material: this.materials.get('ultimate')
         });
+        flash.setPosition(pos.x, pos.y + 0.5, pos.z);
+        flash.setLocalScale(radius * 2, radius * 2, radius * 2);
+        this.app.root.addChild(flash);
+        setTimeout(() => flash.destroy(), 80); // Quick intense flash
 
+        // Outer wave
+        const entity = new pc.Entity('ExplosionLayer');
+        entity.addComponent('render', {
+            type: 'sphere',
+            material: this.materials.get('fire')
+        });
         entity.setPosition(pos.x, pos.y + 0.5, pos.z);
         entity.setLocalScale(0.1, 0.1, 0.1);
-
         this.app.root.addChild(entity);
 
         let timer = 0;
-        const duration = 0.5;
+        const duration = 0.6;
 
         const update = (dt: number) => {
             timer += dt;
@@ -272,9 +278,9 @@ export class EffectManager {
                 return;
             }
 
-            // 劇烈膨脹
-            const progress = timer / duration;
-            const scale = Math.sin(progress * Math.PI) * radius * 2;
+            const t = timer / duration;
+            const easeOutExpo = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+            const scale = easeOutExpo * radius * 2.5;
             entity.setLocalScale(scale, scale, scale);
         };
 
@@ -285,31 +291,29 @@ export class EffectManager {
      * 建立受擊特效（火花）
      */
     createHitEffect(pos: pc.Vec3) {
-        const count = 5;
+        const count = 8; // juice up sparks
         for (let i = 0; i < count; i++) {
             const entity = new pc.Entity('HitSpark');
             entity.addComponent('render', {
                 type: 'box',
-                material: this.materials.get('attack') // 重用黃色材質
+                material: this.materials.get('attack')
             });
 
-            entity.setPosition(pos.x, pos.y + 0.5, pos.z);
-            entity.setLocalScale(0.1, 0.1, 0.1);
+            entity.setPosition(pos.x, pos.y + 1.0, pos.z);
+            entity.setLocalScale(0.15, 0.15, 0.15);
 
-            // 隨機噴射方向
             const angle = Math.random() * Math.PI * 2;
-            const speed = 2 + Math.random() * 2;
+            const speed = 4 + Math.random() * 5;
             const velocity = new pc.Vec3(
                 Math.cos(angle) * speed,
-                3 + Math.random() * 2, // 向上噴
+                2 + Math.random() * 6, // 向上噴
                 Math.sin(angle) * speed
             );
 
             this.app.root.addChild(entity);
 
-            // 物理模擬（簡單拋物線）
             let timer = 0;
-            const duration = 0.3;
+            const duration = 0.4 + Math.random() * 0.2;
 
             const update = (dt: number) => {
                 timer += dt;
@@ -319,7 +323,7 @@ export class EffectManager {
                     return;
                 }
 
-                // 移動
+                // 拋物線移動
                 const p = entity.getPosition();
                 entity.setPosition(
                     p.x + velocity.x * dt,
@@ -327,11 +331,12 @@ export class EffectManager {
                     p.z + velocity.z * dt
                 );
 
-                // 重力
-                velocity.y -= 9.8 * dt;
+                velocity.y -= 15 * dt; // gravity
 
-                // 旋轉
-                entity.rotate(10, 10, 10);
+                // 隨機旋轉與縮小
+                entity.rotate(200 * dt, 150 * dt, 100 * dt);
+                const scale = 0.15 * (1 - (timer / duration));
+                entity.setLocalScale(scale, scale, scale);
             };
 
             this.app.on('update', update);

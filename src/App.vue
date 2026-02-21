@@ -9,10 +9,12 @@ import { NetworkManager } from './core/NetworkManager'
 import { eventBus } from './events/EventBus'
 import { audioManager } from './core/AudioManager'
 
-// Views
-import LobbyView from './views/LobbyView.vue'
-import RoomView from './views/RoomView.vue'
-import GameView from './views/GameView.vue'
+import { defineAsyncComponent } from 'vue'
+
+// Lazy loaded Views
+const LobbyView = defineAsyncComponent(() => import('./views/LobbyView.vue'))
+const RoomView = defineAsyncComponent(() => import('./views/RoomView.vue'))
+const GameView = defineAsyncComponent(() => import('./views/GameView.vue'))
 
 // Stores
 const roomStore = useRoomStore()

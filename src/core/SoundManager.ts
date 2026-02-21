@@ -3,6 +3,7 @@
  * 使用 Web Audio API 與 PlayCanvas 音訊系統管理遊戲音效
  */
 import * as pc from 'playcanvas';
+import { eventBus } from '../events/EventBus';
 
 export type SoundCategory = 'sfx' | 'bgm' | 'ui';
 
@@ -26,6 +27,7 @@ export class SoundManager {
     };
 
     private muted: boolean = false;
+    private boundOnDamage: (e: any) => void;
 
     constructor(app: pc.Application) {
         this.app = app;
@@ -36,6 +38,16 @@ export class SoundManager {
         this.app.root.addChild(this.soundEntity);
 
         this.preloadSounds();
+
+        this.boundOnDamage = this.onDamage.bind(this);
+        eventBus.on('ENTITY_TOOK_DAMAGE', this.boundOnDamage);
+    }
+
+    private onDamage(event: any) {
+        if (event.type !== 'ENTITY_TOOK_DAMAGE') return;
+        if (event.damage > 0) {
+            this.playHitSound();
+        }
     }
 
     /**
@@ -221,5 +233,12 @@ export class SoundManager {
      */
     isMuted(): boolean {
         return this.muted;
+    }
+
+    destroy(): void {
+        eventBus.off('ENTITY_TOOK_DAMAGE', this.boundOnDamage);
+        if (this.soundEntity) {
+            this.soundEntity.destroy();
+        }
     }
 }

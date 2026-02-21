@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { HitboxManager } from './HitboxManager';
+import { CollisionSystem } from '../ecs/systems/CollisionSystem';
 import type { Skill } from './SkillManager';
 
 /**
@@ -134,7 +134,7 @@ export class ProjectileManager {
     /**
      * 更新所有投射物（每幀呼叫）
      */
-    update(dt: number, hitboxManager: HitboxManager, entities: CollidableEntity[] | Map<string, CollidableEntity>): void {
+    update(dt: number, collisionSystem: CollisionSystem, entities: CollidableEntity[] | Map<string, CollidableEntity>): void {
         const toRemove: string[] = [];
 
         // 將 Map 轉換為陣列
@@ -158,7 +158,7 @@ export class ProjectileManager {
 
             // 檢查是否超過最大距離
             if (proj.traveledDistance >= proj.maxRange) {
-                this.onProjectileExpire(proj, hitboxManager);
+                this.onProjectileExpire(proj, collisionSystem);
                 toRemove.push(id);
                 return;
             }
@@ -166,7 +166,7 @@ export class ProjectileManager {
             // 檢查碰撞（簡化版：檢查與實體的距離）
             const hitTarget = this.checkCollision(proj, entityList);
             if (hitTarget) {
-                this.onProjectileHit(proj, hitTarget, hitboxManager);
+                this.onProjectileHit(proj, hitTarget, collisionSystem);
                 toRemove.push(id);
                 return;
             }
@@ -205,11 +205,11 @@ export class ProjectileManager {
     /**
      * 投射物命中目標
      */
-    private onProjectileHit(proj: Projectile, targetId: string, hitboxManager: HitboxManager): void {
+    private onProjectileHit(proj: Projectile, targetId: string, collisionSystem: CollisionSystem): void {
         console.log(`[ProjectileManager] Projectile ${proj.id} hit ${targetId}`);
 
         // 在命中位置創建傷害判定
-        hitboxManager.createHitbox(
+        collisionSystem.createHitbox(
             proj.position,
             proj.skill.aoe || 1.0,
             proj.skill.damage,
@@ -226,12 +226,12 @@ export class ProjectileManager {
     /**
      * 投射物到達最大距離（爆炸）
      */
-    private onProjectileExpire(proj: Projectile, hitboxManager: HitboxManager): void {
+    private onProjectileExpire(proj: Projectile, collisionSystem: CollisionSystem): void {
         console.log(`[ProjectileManager] Projectile ${proj.id} expired at max range`);
 
         // 在終點創建 AOE 傷害（如果有 AOE 屬性）
         if (proj.skill.aoe && proj.skill.aoe > 0) {
-            hitboxManager.createHitbox(
+            collisionSystem.createHitbox(
                 proj.position,
                 proj.skill.aoe,
                 proj.skill.damage,

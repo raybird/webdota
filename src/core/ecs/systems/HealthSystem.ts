@@ -8,6 +8,7 @@ import { World } from '../World';
 import { ComponentType } from '../Component';
 import { HealthComponent } from '../components/HealthComponent';
 import { RenderComponent } from '../components/RenderComponent';
+import { eventBus } from '../../../events/EventBus';
 
 export class HealthSystem extends System {
     readonly name = 'HealthSystem';
@@ -59,7 +60,22 @@ export class HealthSystem extends System {
 
         const actualDamage = health.takeDamage(damage, attackerId);
 
-        console.log(`[HealthSystem] ${targetId.substring(0, 8)} took ${actualDamage} damage from ${attackerId?.substring(0, 8) || 'unknown'}. HP: ${health.currentHp}/${health.maxHp}`);
+        // 如果大於0的傷害，觸發受擊效果與跳字
+        if (actualDamage > 0) {
+            // 發送傷害事件給 DamageNumber UI
+            eventBus.emit({
+                type: 'ENTITY_TOOK_DAMAGE',
+                targetId,
+                damage: actualDamage,
+                isCrit: false // 預留爆擊機制
+            });
+
+            // 觸發受擊閃爍 (Hit Flash)
+            const render = world.getComponent<RenderComponent>(targetId, ComponentType.RENDER);
+            if (render && render.flashHit) {
+                render.flashHit();
+            }
+        }
 
         return actualDamage;
     }

@@ -130,7 +130,7 @@ const handleMouseDown = (e: MouseEvent) => {
 .skill-button {
   position: relative;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #4a0e4e, #240046);
+  background: radial-gradient(circle at 30% 30%, rgba(124, 58, 237, 0.3), var(--c-bg-dark));
   border: 2px solid var(--c-primary-dim);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.5);
   cursor: pointer;
@@ -215,11 +215,11 @@ const handleMouseDown = (e: MouseEvent) => {
 
 .cooldown-progress {
   fill: none;
-  stroke: var(--c-primary);
+  stroke: var(--c-cta);
   stroke-width: 4;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.1s linear;
-  filter: drop-shadow(0 0 2px var(--c-primary));
+  filter: drop-shadow(0 0 4px var(--c-cta));
 }
 
 .cooldown-text {
@@ -249,8 +249,8 @@ const handleMouseDown = (e: MouseEvent) => {
   position: absolute;
   top: -8px; left: -8px; right: -8px; bottom: -8px;
   border-radius: 50%;
-  box-shadow: 0 0 20px 5px rgba(255, 68, 68, 0.8);
-  border: 2px solid #ff4444;
+  box-shadow: 0 0 20px 5px rgba(244, 63, 94, 0.6);
+  border: 2px solid var(--c-cta);
   pointer-events: none;
   animation: glow-pulse 0.8s ease-in-out infinite;
   z-index: 0;

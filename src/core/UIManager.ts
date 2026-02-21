@@ -198,8 +198,9 @@ export class UIManager {
      * 為非玩家實體建立簡化 UI（僅血條）
      * @param entityId 實體 ID
      * @param team 隊伍 (用於顏色)
+     * @param isBase 是否為主堡
      */
-    createEntityUI(entityId: string, team: 'red' | 'blue' | 'neutral'): { hpBarEntity: pc.Entity, hpBarFillEntity: pc.Entity } {
+    createEntityUI(entityId: string, team: 'red' | 'blue' | 'neutral', _isBase: boolean = false): { hpBarEntity: pc.Entity, hpBarFillEntity: pc.Entity } {
         const ENTITY_HP_BAR_WIDTH = 80;
         const ENTITY_HP_BAR_HEIGHT = 10;
 

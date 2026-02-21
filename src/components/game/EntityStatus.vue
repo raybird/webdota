@@ -17,9 +17,9 @@ const hpPercent = computed(() => {
 })
 
 const barColor = computed(() => {
-  if (props.type === 'base') return '#ffcc00'
-  if (props.entity.team === 'red') return '#ff4d4d'
-  if (props.entity.team === 'blue') return '#4d94ff'
+  if (props.type === 'base') return '#FBBF24' // Yellow
+  if (props.entity.team === 'red') return 'var(--c-cta, #F43F5E)' // Neon Rose/Red
+  if (props.entity.team === 'blue') return '#38BDF8' // Sky Blue
   return '#ffffff'
 })
 
@@ -105,11 +105,11 @@ onUnmounted(() => {
 .hp-container {
   width: 60px;
   height: 6px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(15, 15, 35, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 3px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 /* 主堡和塔的血條更寬 */
@@ -121,6 +121,7 @@ onUnmounted(() => {
 .hp-fill {
   height: 100%;
   transition: width 0.2s ease-out;
+  box-shadow: 0 0 5px currentColor; /* 讓血條本體發光，依賴 background-color 需要稍微修改，但 CSS 變數不好直接用，可用 drop-shadow 或忽略 */
 }
 
 .entity-label {

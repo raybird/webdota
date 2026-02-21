@@ -1,4 +1,5 @@
 import Peer, { type DataConnection } from 'peerjs';
+import { eventBus } from '../events/EventBus';
 
 export interface PlayerInput {
     frame: number;
@@ -57,9 +58,25 @@ export class NetworkManager {
     onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }> };
     onRoomState?: (players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }>) => void;
 
+    // Ping tracking
+    private pingInterval: number | null = null;
+    public pings: Map<string, number> = new Map();
+
     constructor() {
         // Peer 會在 createRoom 或 joinRoom 時初始化
         // 不在這裡自動創建，以便使用自定義 ID
+    }
+
+    private startPingLoop() {
+        if (this.pingInterval !== null) {
+            window.clearInterval(this.pingInterval);
+        }
+        this.pingInterval = window.setInterval(() => {
+            this.connections.forEach(conn => {
+                const now = Date.now();
+                conn.send({ type: 'ping', timestamp: now });
+            });
+        }, 2000);
     }
 
     /**
@@ -86,6 +103,7 @@ export class NetworkManager {
             this.peer.on('open', (id) => {
                 this.peerId = id.toUpperCase(); // 強制大寫
                 console.log(`[Network] My Peer ID: ${this.peerId}`);
+                this.startPingLoop();
                 if (this.onConnected) this.onConnected();
                 resolve(this.peerId);
             });
@@ -250,6 +268,22 @@ export class NetworkManager {
                 if (this.onRoomState) this.onRoomState(data.players);
                 break;
 
+            case 'ping':
+                const connPing = this.connections.get(_fromPeerId);
+                if (connPing) {
+                    connPing.send({ type: 'pong', timestamp: data.timestamp });
+                }
+                break;
+
+            case 'pong':
+                const rtt = Date.now() - data.timestamp;
+                this.pings.set(_fromPeerId, rtt);
+                // 只廣播重要的 Ping (Host到Client, Client到Host)
+                if (this.isHost || _fromPeerId === this.hostId) {
+                    eventBus.emit({ type: 'PING_UPDATED', peerId: _fromPeerId, ping: rtt });
+                }
+                break;
+
             default:
                 console.warn('[Network] Unknown message type:', data.type);
         }
@@ -380,9 +414,15 @@ export class NetworkManager {
     cleanup() {
         console.log('[Network] Cleaning up network resources...');
 
+        if (this.pingInterval !== null) {
+            window.clearInterval(this.pingInterval);
+            this.pingInterval = null;
+        }
+
         // 關閉所有連線
         this.connections.forEach(conn => conn.close());
         this.connections.clear();
+        this.pings.clear();
 
         // 銷毀 Peer
         if (this.peer) {

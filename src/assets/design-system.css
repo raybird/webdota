@@ -1,34 +1,38 @@
-/* Fantasy Design System */
+/* Cyberpunk / Retro-Futurism Design System */
+
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  /* Colors - Fantasy Theme */
-  --c-primary: #ffd700;       /* Gold */
-  --c-primary-dim: #c5a000;
-  --c-secondary: #9d4edd;     /* Magic Purple */
-  --c-secondary-dark: #240046;
-  --c-bg-dark: #0a0a12;       /* Deep Night */
-  --c-bg-panel: rgba(20, 10, 30, 0.85); /* Glassy Dark Purple */
+  /* Colors - Cyberpunk Theme */
+  --c-primary: #7C3AED;       /* Neon Purple */
+  --c-primary-dim: #5B21B6;
+  --c-secondary: #A78BFA;     /* Light Purple */
+  --c-secondary-dark: #4C1D95;
+  --c-cta: #F43F5E;           /* Neon Rose */
+  --c-bg-dark: #0F0F23;       /* Deep Night */
+  --c-bg-panel: rgba(15, 15, 35, 0.75); /* Glassy Dark Purple */
   
-  --c-text-main: #f0f0f0;
-  --c-text-muted: #a0a0b0;
-  --c-text-gold: #ffd700;
+  --c-text-main: #E2E8F0;
+  --c-text-muted: #94A3B8;
+  --c-text-accent: #A78BFA;
   
   /* Danger / Success */
-  --c-danger: #ff4444;
-  --c-success: #44ff44;
+  --c-danger: #ef4444;
+  --c-success: #10b981;
 
   /* Fonts */
-  --font-heading: 'Cinzel', serif;
-  --font-body: 'Lato', sans-serif;
+  --font-heading: 'Chakra Petch', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
   
   /* Borders & Shadows */
-  --border-gold: 1px solid rgba(255, 215, 0, 0.3);
-  --shadow-glow: 0 0 15px rgba(157, 78, 221, 0.4);
-  --shadow-gold: 0 0 10px rgba(255, 215, 0, 0.3);
+  --border-neon: 1px solid rgba(124, 58, 237, 0.3);
+  --border-glass: 1px solid rgba(255, 255, 255, 0.1);
+  --shadow-glow: 0 0 15px rgba(124, 58, 237, 0.5);
+  --shadow-cta: 0 0 15px rgba(244, 63, 94, 0.5);
   
   /* Transitions */
-  --trans-fast: 0.15s ease;
-  --trans-normal: 0.3s ease;
+  --trans-fast: 0.15s ease-out;
+  --trans-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Typography */
@@ -44,27 +48,17 @@ body {
   font-family: var(--font-body);
   background-color: var(--c-bg-dark);
   color: var(--c-text-main);
-}
-
-/* Animations */
-@keyframes fantasy-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-
-@keyframes rune-glow {
-  0%, 100% { opacity: 0.8; text-shadow: 0 0 5px var(--c-secondary); }
-  50% { opacity: 1; text-shadow: 0 0 20px var(--c-primary); }
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Common Components */
 
-/* Fantasy Button */
-.btn-fantasy {
+/* Cyber Button */
+.btn-cyber {
   position: relative;
-  background: linear-gradient(180deg, #3c096c 0%, #240046 100%);
-  border: 1px solid var(--c-primary);
-  color: var(--c-primary);
+  background: linear-gradient(180deg, var(--c-secondary-dark) 0%, #0F0F23 100%);
+  border: var(--border-neon);
+  color: var(--c-text-main);
   font-family: var(--font-heading);
   padding: 0.8rem 2rem;
   font-size: 1.1rem;
@@ -73,62 +67,73 @@ body {
   box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
   overflow: hidden;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+  border-radius: 4px;
 }
 
-.btn-fantasy::before {
+.btn-cyber::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(45deg, transparent 0%, rgba(255, 215, 0, 0.1) 50%, transparent 100%);
+  background: linear-gradient(45deg, transparent 0%, rgba(167, 139, 250, 0.2) 50%, transparent 100%);
   transform: translateX(-100%);
   transition: 0.5s;
 }
 
-.btn-fantasy:hover {
-  box-shadow: 0 0 15px var(--c-secondary);
-  text-shadow: 0 0 8px var(--c-primary);
-  border-color: #ffe066;
+.btn-cyber:hover {
+  box-shadow: var(--shadow-glow);
+  text-shadow: 0 0 8px var(--c-secondary);
+  border-color: var(--c-secondary);
+  color: #fff;
 }
 
-.btn-fantasy:hover::before {
+.btn-cyber:hover::before {
   transform: translateX(100%);
 }
 
-.btn-fantasy:active {
+.btn-cyber:active {
   transform: scale(0.98);
 }
 
-.btn-fantasy:disabled {
+.btn-cyber:disabled {
   filter: grayscale(100%);
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-/* Fantasy Card */
-.card-fantasy {
+/* Primary / CTA Variation */
+.btn-cyber.primary {
+  border-color: var(--c-cta);
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.3) 0%, #0F0F23 100%);
+}
+.btn-cyber.primary:hover {
+  box-shadow: var(--shadow-cta);
+  border-color: #ff718d;
+  text-shadow: 0 0 8px var(--c-cta);
+}
+
+/* Glass Card */
+.card-glass {
   background: var(--c-bg-panel);
-  border: var(--border-gold);
-  backdrop-filter: blur(10px);
+  border: var(--border-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 1.5rem;
   position: relative;
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  border-radius: 8px;
+  color: var(--c-text-main);
+  transition: transform var(--trans-normal), box-shadow var(--trans-normal);
 }
 
-.card-fantasy::after {
+/* Subtle glowing accent on top edge */
+.card-glass::before {
   content: '';
   position: absolute;
-  bottom: 0; right: 0;
-  width: 20px; height: 20px;
-  border-bottom: 2px solid var(--c-primary);
-  border-right: 2px solid var(--c-primary);
-}
-
-.card-fantasy::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 20px; height: 20px;
-  border-top: 2px solid var(--c-primary);
-  border-left: 2px solid var(--c-primary);
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--c-primary), transparent);
+  opacity: 0.5;
 }
