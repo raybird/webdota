@@ -115,6 +115,15 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Orientation Lock Overlay -->
+    <div class="orientation-lock">
+      <div class="orientation-message">
+        <div class="rotate-icon">📱🔄</div>
+        <h2>請將裝置轉為橫向</h2>
+        <p>為獲得最佳遊戲體驗，請使用橫向模式遊玩。</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -176,5 +185,56 @@ body {
 .debug-line {
   margin-bottom: 2px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Orientation Lock */
+.orientation-lock {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--c-bg-dark);
+  z-index: 99999;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.orientation-message {
+  padding: 2rem;
+  background: rgba(15, 15, 35, 0.9);
+  border: 1px solid var(--c-primary);
+  border-radius: 12px;
+  box-shadow: 0 0 30px var(--c-secondary-dark);
+}
+
+.rotate-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: rotate-phone 2s infinite ease-in-out alternate;
+}
+
+@keyframes rotate-phone {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-90deg); }
+}
+
+.orientation-message h2 {
+  color: var(--c-primary);
+  margin-bottom: 0.5rem;
+}
+
+.orientation-message p {
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+/* 偵測手機直立模式 */
+@media screen and (max-width: 768px) and (orientation: portrait) {
+  .orientation-lock {
+    display: flex;
+  }
 }
 </style>

@@ -146,9 +146,9 @@ const copyRoomCode = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 0.8rem 1.5rem;
-  background: var(--c-bg-panel);
+  background: linear-gradient(180deg, rgba(15,15,35,0.9) 0%, rgba(0,0,0,0) 100%);
   backdrop-filter: blur(10px);
-  border-bottom: 2px solid var(--c-primary);
+  border-bottom: 2px solid var(--c-primary-dim);
   box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
   flex-shrink: 0;
   z-index: 10;
@@ -198,13 +198,16 @@ const copyRoomCode = async () => {
 }
 
 .team-panel {
-  width: 180px;
-  min-width: 150px;
-  max-width: 200px;
+  width: 250px;
+  min-width: 200px;
+  max-width: 300px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
 .center-panel {
@@ -220,18 +223,23 @@ const copyRoomCode = async () => {
 
 .selector-container {
   flex: 1;
-  padding: 0.5rem;
+  padding: 1rem;
   overflow: auto;
+  display: flex;
+  justify-content: center;
 }
 
+.control-bar {
   display: flex;
-  gap: 0.8rem;
-  padding: 1rem;
-  background: rgba(15, 15, 35, 0.8);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.9) 0%, rgba(15, 15, 35, 0.8) 100%);
+  border-top: 1px solid rgba(124, 58, 237, 0.3);
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
+  min-height: 80px;
+}
 
 /* Buttons now use .btn-cyber from design-system.css */
 .btn-ready:not(.primary) {
