@@ -28,6 +28,7 @@ import {
     CombatSystem as ECSCombatSystem,
     CollisionSystem,
     AISystem,
+    SpatialSystem,
     PlayerInputSystem,
     SkillSystem,
     ComponentType,
@@ -135,6 +136,7 @@ export class GameEngine {
         this.ecsWorld.addSystem(new MovementSystem());
         this.ecsWorld.addSystem(new ECSCombatSystem());
         this.ecsWorld.addSystem(this.collisionSystem);
+        this.ecsWorld.addSystem(new SpatialSystem());
         this.ecsWorld.addSystem(new AISystem());
         this.ecsWorld.addSystem(new HealthSystem());
         this.ecsWorld.addSystem(new ECSRenderSystem());

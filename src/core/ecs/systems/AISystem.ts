@@ -1,3 +1,4 @@
+import { SpatialSystem } from './SpatialSystem';
 /**
  * AISystem.ts - AI 行為系統
  * 處理小兵與防禦塔的自動行為
@@ -128,11 +129,16 @@ export class AISystem extends System {
         range: number,
         selfTeam: string
     ): { entityId: string; distance: number } | null {
-        const candidates = world.query(ComponentType.TRANSFORM, ComponentType.TEAM, ComponentType.HEALTH);
+        const spatialSystem = world.getSystem<SpatialSystem>('SpatialSystem');
+        
+        // 如果空間系統可用，則進行優化查詢，否則降級為全量查詢
+        const candidateIds = spatialSystem 
+            ? spatialSystem.queryNearby(position.x, position.z, range)
+            : world.query(ComponentType.TRANSFORM, ComponentType.TEAM, ComponentType.HEALTH);
 
         let nearest: { entityId: string; distance: number } | null = null;
 
-        for (const candidateId of candidates) {
+        for (const candidateId of candidateIds) {
             if (candidateId === selfId) continue;
 
             const candidateTeam = world.getComponent<TeamComponent>(candidateId, ComponentType.TEAM);

@@ -20,6 +20,7 @@ import { SkillComponent } from './components/SkillComponent';
 import { AnimationComponent } from './components/AnimationComponent';
 import { InventoryComponent } from './components/InventoryComponent';
 import { CollisionSystem } from './systems/CollisionSystem';
+import { MaterialCache } from './MaterialCache';
 import { getSkill } from '../../data/skills';
 import { getCharacter } from '../../data/characters';
 
@@ -500,11 +501,8 @@ export class EntityFactory {
         core.addComponent('render', { type: 'sphere' });
         core.setLocalScale(1.2, 1.2, 1.2);
         core.setLocalPosition(0, 3.5, 0);
-        const coreMaterial = new pc.StandardMaterial();
         const coreColor = this.getTeamColor(team, 1.0);
-        coreMaterial.diffuse = coreColor;
-        coreMaterial.emissive = coreColor;
-        coreMaterial.update();
+        const coreMaterial = MaterialCache.getInstance().getMaterial(`base_core_${team}`, coreColor, 1.0);
         if (core.render) {
             core.render.meshInstances.forEach(mi => mi.material = coreMaterial);
         }
@@ -524,10 +522,8 @@ export class EntityFactory {
     }
 
     private applyMaterial(entity: pc.Entity, color: pc.Color): void {
-        const material = new pc.StandardMaterial();
-        material.diffuse = color;
-        material.emissive = new pc.Color(color.r * 0.2, color.g * 0.2, color.b * 0.2);
-        material.update();
+        const colorKey = `color_${color.r.toFixed(2)}_${color.g.toFixed(2)}_${color.b.toFixed(2)}`;
+        const material = MaterialCache.getInstance().getMaterial(colorKey, color, 0.2);
 
         if (entity.render) {
             entity.render.meshInstances.forEach(mi => {

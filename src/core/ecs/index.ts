@@ -35,3 +35,5 @@ export { SkillSystem } from './systems/SkillSystem';
 
 // Factory
 export { EntityFactory, type PlayerConfig, type CreepConfig, type TowerConfig } from './EntityFactory';
+export * from './systems/SpatialSystem';
+export * from './MaterialCache';
