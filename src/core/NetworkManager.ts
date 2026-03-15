@@ -1,5 +1,6 @@
 import Peer, { type DataConnection } from 'peerjs';
 import { eventBus } from '../events/EventBus';
+import { BinarySerializer, PacketType } from '../utils/BinarySerializer';
 
 export interface PlayerInput {
     frame: number;
@@ -197,6 +198,19 @@ export class NetworkManager {
      * 處理收到的訊息
      */
     private handleMessage(_fromPeerId: string, data: any) {
+        // 處理二進位數據 (ArrayBuffer)
+        if (data instanceof ArrayBuffer) {
+            const view = new DataView(data);
+            const type = view.getUint8(0);
+
+            if (type === PacketType.INPUT) {
+                const input = BinarySerializer.deserializeInput(data, _fromPeerId);
+                this.storeInput(input);
+                if (this.onInputReceived) this.onInputReceived(input);
+                return;
+            }
+        }
+
         switch (data.type) {
             case 'peer_list':
                 // 收到 Host 發來的 Peer 列表，連線到所有其他玩家
@@ -464,13 +478,10 @@ export class NetworkManager {
      * 廣播玩家輸入給所有其他玩家
      */
     broadcastInput(input: PlayerInput) {
-        const message = {
-            type: 'input',
-            input
-        };
+        const binaryData = BinarySerializer.serializeInput(input);
 
         this.connections.forEach((conn) => {
-            conn.send(message);
+            conn.send(binaryData);
         });
 
         // 也存到自己的 buffer
