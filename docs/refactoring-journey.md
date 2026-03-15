@@ -694,7 +694,30 @@ Infrastructure Layer
 
 ---
 
+### Phase 9: 進階性能規訓與記憶體衛生 (Advanced Performance Tuning)
+
+**背景**:
+隨著戰鬥規模擴大，發現 $O(N^2)$ 的鄰近查詢與頻繁的材質/特效生成造成了顯著的性能負熵。
+
+**目標**:
+實作空間分區、材質快取與特效物件池，確保在高壓對戰下維持 60FPS。
+
+#### 9.1 空間規訓 (Spatial Partitioning)
+- **實作**: 建立 `SpatialSystem` 使用 Spatial Hashing 技術。
+- **成果**: 將 AI 尋找目標的複雜度從 $O(N^2)$ 降至 $O(1)$。
+
+#### 9.2 材質快取 (Material Cache)
+- **實作**: 建立 `MaterialCache` 複用 `pc.StandardMaterial`。
+- **成果**: 消除小兵生成時的 WebGL 狀態切換與記憶體抖動。
+
+#### 9.3 特效物件池 (Effect Pooling) - [In Progress]
+- **規劃**: 針對 `EffectManager` 中的頻繁視覺特效（如揮擊、火花）實作物件池。
+- **預期**: 徹底杜絕戰鬥過程中的 GC 停頓。
+
+---
+
 ## 🔮 未來展望
+... (保留原文) ...
 
 ### 短期計劃 (1-2 週)
 

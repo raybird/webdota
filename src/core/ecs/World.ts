@@ -23,13 +23,16 @@ export class World {
     /** 待刪除的 Entity（延遲刪除避免迭代問題） */
     private entitiesToRemove: Set<EntityId> = new Set();
 
+    /** 可複用的 Entity ID 池 */
+    private freeIds: EntityId[] = [];
+
     // ==================== Entity 管理 ====================
 
     /**
      * 建立新 Entity
      */
     createEntity(): EntityId {
-        const id = createEntityId();
+        const id = this.freeIds.pop() || createEntityId();
         this.entities.add(id);
         return id;
     }
@@ -50,6 +53,7 @@ export class World {
             componentMap.delete(entityId);
         }
         this.entities.delete(entityId);
+        this.freeIds.push(entityId); // 將 ID 放入池中複用
     }
 
     /**

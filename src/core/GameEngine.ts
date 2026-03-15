@@ -32,6 +32,9 @@ import {
     PlayerInputSystem,
     SkillSystem,
     ComponentType,
+    PoolableComponent,
+    RenderComponent,
+    TeamComponent,
 } from './ecs';
 import { ECSSkillExecutor } from './combat/ECSSkillExecutor';
 
@@ -140,6 +143,21 @@ export class GameEngine {
         this.ecsWorld.addSystem(new AISystem());
         this.ecsWorld.addSystem(new HealthSystem());
         this.ecsWorld.addSystem(new ECSRenderSystem());
+
+        // 監聽實體死亡事件，處理池化回收
+        eventBus.on('ENTITY_DIED', (event) => {
+            const entityId = event.entityId;
+            const poolable = this.ecsWorld.getComponent<PoolableComponent>(entityId, ComponentType.POOLABLE);
+            
+            if (poolable && poolable.templateName === 'creep') {
+                const render = this.ecsWorld.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
+                const team = this.ecsWorld.getComponent<TeamComponent>(entityId, ComponentType.TEAM);
+                
+                if (render && team) {
+                    this.entityFactory.releaseCreepVisual(team.team, render.pcEntity);
+                }
+            }
+        });
 
         // Initialize ECS SkillExecutor
         this.ecsSkillExecutor = new ECSSkillExecutor(this.collisionSystem);

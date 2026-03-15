@@ -1,4 +1,5 @@
 import * as pc from 'playcanvas';
+import { ObjectPool } from '../utils/ObjectPool';
 
 /**
  * 特效管理器
@@ -10,9 +11,13 @@ export class EffectManager {
     // 預載材質
     private materials: Map<string, pc.StandardMaterial> = new Map();
 
+    // 特效物件池
+    private pools: Map<string, ObjectPool<pc.Entity>> = new Map();
+
     constructor(app: pc.Application) {
         this.app = app;
         this.initMaterials();
+        this.initPools();
     }
 
     /**
@@ -47,7 +52,6 @@ export class EffectManager {
         this.materials.set('shockwave', shockwaveMat);
 
         // 4. 大招特效材質（紅色高亮）
-        // 4. 大招特效材質（紅色高亮）
         const ultMat = new pc.StandardMaterial();
         ultMat.diffuse = new pc.Color(1, 0, 0);
         ultMat.emissive = new pc.Color(1, 0.2, 0.2);
@@ -73,6 +77,43 @@ export class EffectManager {
         iceMat.blendType = pc.BLEND_ADDITIVE;
         iceMat.update();
         this.materials.set('ice', iceMat);
+    }
+
+    /**
+     * 初始化特效池
+     */
+    private initPools() {
+        // 1. 揮擊特效池
+        this.pools.set('slash', new ObjectPool<pc.Entity>(
+            () => {
+                const entity = new pc.Entity('SlashEffect');
+                entity.addComponent('render', {
+                    type: 'cone',
+                    material: this.materials.get('attack')
+                });
+                return entity;
+            },
+            (entity) => {
+                entity.enabled = false;
+                if (entity.parent) entity.parent.removeChild(entity);
+            }
+        ));
+
+        // 2. 受擊火花池
+        this.pools.set('spark', new ObjectPool<pc.Entity>(
+            () => {
+                const entity = new pc.Entity('HitSpark');
+                entity.addComponent('render', {
+                    type: 'box',
+                    material: this.materials.get('attack')
+                });
+                return entity;
+            },
+            (entity) => {
+                entity.enabled = false;
+                if (entity.parent) entity.parent.removeChild(entity);
+            }
+        ));
     }
 
     /**
@@ -111,7 +152,6 @@ export class EffectManager {
         }
         // --- 通用/舊技能 ---
         else {
-            // Fallback for old skills or basic attacks
             if (skillId.includes('basic') || skillId === 'basic_attack') {
                 this.createSlashEffect(position, direction);
             }
@@ -122,12 +162,10 @@ export class EffectManager {
      * 建立揮擊特效（圓錐體）
      */
     private createSlashEffect(pos: pc.Vec3, dir: pc.Vec3) {
-        const entity = new pc.Entity('SlashEffect');
-        entity.addComponent('render', {
-            type: 'cone',
-            material: this.materials.get('attack')
-        });
-
+        const pool = this.pools.get('slash')!;
+        const entity = pool.acquire();
+        
+        entity.enabled = true;
         entity.setPosition(pos.x + dir.x * 0.5, pos.y + 0.5, pos.z + dir.z * 0.5);
 
         const target = new pc.Vec3(pos.x + dir.x, pos.y + 0.5, pos.z + dir.z);
@@ -144,7 +182,7 @@ export class EffectManager {
         const update = (dt: number) => {
             timer += dt;
             if (timer >= duration) {
-                entity.destroy();
+                pool.release(entity);
                 this.app.off('update', update);
                 return;
             }
@@ -169,11 +207,10 @@ export class EffectManager {
             setTimeout(() => {
                 const entity = new pc.Entity('DashGhost');
                 entity.addComponent('render', {
-                    type: 'box', // 假設玩家是方塊
+                    type: 'box',
                     material: this.materials.get('dash')
                 });
 
-                // 在路徑上生成
                 entity.setPosition(
                     pos.x + dir.x * i * 0.5,
                     pos.y + 0.5,
@@ -181,15 +218,13 @@ export class EffectManager {
                 );
 
                 this.app.root.addChild(entity);
-
-                // 快速消失
                 setTimeout(() => entity.destroy(), 200);
             }, i * 50);
         }
     }
 
     /**
-     * 建立震波特效（擴散的圓柱）
+     * 建立震波特效
      */
     private createShockwaveEffect(pos: pc.Vec3, radius: number) {
         const entity = new pc.Entity('Shockwave');
@@ -199,7 +234,7 @@ export class EffectManager {
         });
 
         entity.setPosition(pos.x, pos.y + 0.1, pos.z);
-        entity.setLocalScale(0.1, 0.1, 0.1); // 初始很小
+        entity.setLocalScale(0.1, 0.1, 0.1);
 
         this.app.root.addChild(entity);
 
@@ -214,7 +249,6 @@ export class EffectManager {
                 return;
             }
 
-            // 擴散
             const progress = timer / duration;
             const currentRadius = progress * radius * 2;
             entity.setLocalScale(currentRadius, 0.1, currentRadius);
@@ -230,15 +264,13 @@ export class EffectManager {
         const entity = new pc.Entity('Shield');
         entity.addComponent('render', {
             type: 'sphere',
-            material: this.materials.get('dash') // 重用青色材質
+            material: this.materials.get('dash')
         });
 
         entity.setPosition(pos.x, pos.y + 0.5, pos.z);
         entity.setLocalScale(1.2, 1.2, 1.2);
 
         this.app.root.addChild(entity);
-
-        // 持續 0.5 秒
         setTimeout(() => entity.destroy(), 500);
     }
 
@@ -246,7 +278,6 @@ export class EffectManager {
      * 建立爆炸特效
      */
     private createExplosionEffect(pos: pc.Vec3, radius: number) {
-        // Core flash
         const flash = new pc.Entity('ExplosionFlash');
         flash.addComponent('render', {
             type: 'sphere',
@@ -255,9 +286,8 @@ export class EffectManager {
         flash.setPosition(pos.x, pos.y + 0.5, pos.z);
         flash.setLocalScale(radius * 2, radius * 2, radius * 2);
         this.app.root.addChild(flash);
-        setTimeout(() => flash.destroy(), 80); // Quick intense flash
+        setTimeout(() => flash.destroy(), 80);
 
-        // Outer wave
         const entity = new pc.Entity('ExplosionLayer');
         entity.addComponent('render', {
             type: 'sphere',
@@ -291,13 +321,11 @@ export class EffectManager {
      * 建立受擊特效（火花）
      */
     createHitEffect(pos: pc.Vec3) {
-        const count = 8; // juice up sparks
+        const pool = this.pools.get('spark')!;
+        const count = 8;
         for (let i = 0; i < count; i++) {
-            const entity = new pc.Entity('HitSpark');
-            entity.addComponent('render', {
-                type: 'box',
-                material: this.materials.get('attack')
-            });
+            const entity = pool.acquire();
+            entity.enabled = true;
 
             entity.setPosition(pos.x, pos.y + 1.0, pos.z);
             entity.setLocalScale(0.15, 0.15, 0.15);
@@ -306,7 +334,7 @@ export class EffectManager {
             const speed = 4 + Math.random() * 5;
             const velocity = new pc.Vec3(
                 Math.cos(angle) * speed,
-                2 + Math.random() * 6, // 向上噴
+                2 + Math.random() * 6,
                 Math.sin(angle) * speed
             );
 
@@ -318,12 +346,11 @@ export class EffectManager {
             const update = (dt: number) => {
                 timer += dt;
                 if (timer >= duration) {
-                    entity.destroy();
+                    pool.release(entity);
                     this.app.off('update', update);
                     return;
                 }
 
-                // 拋物線移動
                 const p = entity.getPosition();
                 entity.setPosition(
                     p.x + velocity.x * dt,
@@ -331,9 +358,7 @@ export class EffectManager {
                     p.z + velocity.z * dt
                 );
 
-                velocity.y -= 15 * dt; // gravity
-
-                // 隨機旋轉與縮小
+                velocity.y -= 15 * dt;
                 entity.rotate(200 * dt, 150 * dt, 100 * dt);
                 const scale = 0.15 * (1 - (timer / duration));
                 entity.setLocalScale(scale, scale, scale);
@@ -344,7 +369,7 @@ export class EffectManager {
     }
 
     /**
-     * 旋風斬特效 (持續旋轉的紅色圓柱)
+     * 旋風斬特效
      */
     private createWhirlwindEffect(pos: pc.Vec3, radius: number) {
         const entity = new pc.Entity('Whirlwind');
@@ -354,7 +379,7 @@ export class EffectManager {
         });
 
         entity.setPosition(pos.x, pos.y + 1.0, pos.z);
-        entity.setLocalScale(radius * 0.1, 0.1, radius * 0.1); // Start small
+        entity.setLocalScale(radius * 0.1, 0.1, radius * 0.1);
 
         this.app.root.addChild(entity);
 
@@ -369,7 +394,6 @@ export class EffectManager {
                 return;
             }
 
-            // 旋轉與擴大
             entity.rotate(0, 720 * dt, 0);
             const scale = Math.min(radius * 2, (radius * 2) * (timer / 0.2));
             entity.setLocalScale(scale, 0.2 + (Math.sin(timer * 10) * 0.1), scale);
@@ -379,7 +403,7 @@ export class EffectManager {
     }
 
     /**
-     * 煙霧彈特效 (多個灰色球體)
+     * 煙霧彈特效
      */
     private createSmokeEffect(pos: pc.Vec3) {
         const count = 8;
@@ -387,7 +411,7 @@ export class EffectManager {
             const entity = new pc.Entity('Smoke');
             entity.addComponent('render', {
                 type: 'sphere',
-                material: this.materials.get('shockwave') // 用白色代替煙霧
+                material: this.materials.get('shockwave')
             });
 
             const angle = (i / count) * Math.PI * 2;
@@ -414,7 +438,6 @@ export class EffectManager {
                 const progress = timer / duration;
                 const scale = 1.0 + progress * 0.5;
                 entity.setLocalScale(scale, scale, scale);
-                // 向上飄
                 entity.translate(0, 0.5 * dt, 0);
             };
             this.app.on('update', update);
@@ -425,7 +448,6 @@ export class EffectManager {
      * 幻影特效
      */
     private createPhantomEffect(pos: pc.Vec3) {
-        // 簡單的紫色殘影
         const entity = new pc.Entity('Phantom');
         entity.addComponent('render', {
             type: 'capsule',
@@ -451,7 +473,6 @@ export class EffectManager {
 
         this.app.root.addChild(entity);
 
-        // 火球飛行 (純視覺，邏輯在 SkillExecutor)
         let timer = 0;
         const duration = 0.5;
         const speed = 15;
@@ -459,7 +480,7 @@ export class EffectManager {
         const update = (dt: number) => {
             timer += dt;
             if (timer >= duration) {
-                this.createExplosionEffect(entity.getPosition(), 2.0); // 結尾爆炸
+                this.createExplosionEffect(entity.getPosition(), 2.0);
                 entity.destroy();
                 this.app.off('update', update);
                 return;
@@ -503,19 +524,18 @@ export class EffectManager {
     }
 
     /**
-     * 閃現特效 (起點消失)
+     * 閃現特效
      */
     private createBlinkEffect(pos: pc.Vec3, _dir: pc.Vec3) {
         const entity = new pc.Entity('Blink');
         entity.addComponent('render', {
             type: 'cylinder',
-            material: this.materials.get('ice') // 用冰材質代表魔法
+            material: this.materials.get('ice')
         });
         entity.setPosition(pos.x, pos.y + 1, pos.z);
         entity.setLocalScale(0.5, 2.0, 0.5);
         this.app.root.addChild(entity);
 
-        // 快速縮小消失
         let timer = 0;
         const duration = 0.2;
         const update = (dt: number) => {
@@ -532,10 +552,9 @@ export class EffectManager {
     }
 
     /**
-     * 隕石特效 (預警圈 + 落下)
+     * 隕石特效
      */
     private createMeteorEffect(pos: pc.Vec3, radius: number) {
-        // 1. 地面預警圈
         const indicator = new pc.Entity('MeteorIndicator');
         indicator.addComponent('render', {
             type: 'cylinder',
@@ -545,7 +564,6 @@ export class EffectManager {
         indicator.setLocalScale(radius * 2, 0.05, radius * 2);
         this.app.root.addChild(indicator);
 
-        // 2. 隕石本體 (從天而降)
         const meteor = new pc.Entity('Meteor');
         meteor.addComponent('render', {
             type: 'sphere',
@@ -557,12 +575,11 @@ export class EffectManager {
         this.app.root.addChild(meteor);
 
         let timer = 0;
-        const fallDuration = 1.0; // 1秒落地
+        const fallDuration = 1.0;
 
         const update = (dt: number) => {
             timer += dt;
             if (timer >= fallDuration) {
-                // 落地爆炸
                 this.createExplosionEffect(pos, radius);
                 indicator.destroy();
                 meteor.destroy();
@@ -570,9 +587,8 @@ export class EffectManager {
                 return;
             }
 
-            // 落下邏輯
             const progress = timer / fallDuration;
-            const currentY = startHeight * (1 - progress * progress); // 加速落下
+            const currentY = startHeight * (1 - progress * progress);
             meteor.setPosition(pos.x, currentY, pos.z);
         };
         this.app.on('update', update);

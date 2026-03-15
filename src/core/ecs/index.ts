@@ -22,6 +22,7 @@ export { PlayerInputComponent } from './components/PlayerInputComponent';
 export { SkillComponent, type SkillState } from './components/SkillComponent';
 export { AnimationComponent, type AnimationType, type AnimationState } from './components/AnimationComponent';
 export { InventoryComponent, type ItemStats } from './components/InventoryComponent';
+export { PoolableComponent } from './components/PoolableComponent';
 
 // Systems
 export { MovementSystem } from './systems/MovementSystem';

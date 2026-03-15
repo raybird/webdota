@@ -19,8 +19,10 @@ import { PlayerInputComponent } from './components/PlayerInputComponent';
 import { SkillComponent } from './components/SkillComponent';
 import { AnimationComponent } from './components/AnimationComponent';
 import { InventoryComponent } from './components/InventoryComponent';
+import { PoolableComponent } from './components/PoolableComponent';
 import { CollisionSystem } from './systems/CollisionSystem';
 import { MaterialCache } from './MaterialCache';
+import { ObjectPool } from '../../utils/ObjectPool';
 import { getSkill } from '../../data/skills';
 import { getCharacter } from '../../data/characters';
 
@@ -87,10 +89,30 @@ export class EntityFactory {
     private world: World;
     private collisionSystem: CollisionSystem | null = null;
 
+    /** 小兵視覺物件池：Map<Team, ObjectPool<pc.Entity>> */
+    private creepVisualPools: Map<Team, ObjectPool<pc.Entity>> = new Map();
+
     constructor(app: pc.Application, physicsWorld: RAPIER.World, world: World) {
         this.app = app;
         this.physicsWorld = physicsWorld;
         this.world = world;
+
+        // 初始化小兵視覺池
+        (['red', 'blue'] as Team[]).forEach(team => {
+            this.creepVisualPools.set(team, new ObjectPool<pc.Entity>(
+                () => {
+                    const entity = new pc.Entity(`Creep_${team}`);
+                    entity.addComponent('render', { type: 'box' });
+                    entity.setLocalScale(0.6, 0.8, 0.6);
+                    this.applyMaterial(entity, team === 'red' ? new pc.Color(1, 0.3, 0.3) : new pc.Color(0.3, 0.3, 1));
+                    return entity;
+                },
+                (entity) => {
+                    entity.enabled = false;
+                    if (entity.parent) entity.parent.removeChild(entity);
+                }
+            ));
+        });
     }
 
     /**
@@ -208,6 +230,9 @@ export class EntityFactory {
             attackCooldown: config.attackCooldown ?? 2.0
         }));
 
+        // Poolable
+        this.world.addComponent(entityId, new PoolableComponent('creep'));
+
         // Physics
         const physics = this.createKinematicBody(config.position, { halfWidth: 0.3, halfHeight: 0.5, halfDepth: 0.3 });
         this.world.addComponent(entityId, physics);
@@ -218,12 +243,30 @@ export class EntityFactory {
         }
 
         // Render
-        const pcEntity = this.createCreepVisual(config.position, config.team);
+        const pool = this.creepVisualPools.get(config.team);
+        const pcEntity = pool ? pool.acquire() : this.createCreepVisual(config.position, config.team);
+        
+        pcEntity.enabled = true;
+        pcEntity.setPosition(config.position.x, config.position.y + 0.4, config.position.z);
+        this.app.root.addChild(pcEntity);
+
         this.world.addComponent(entityId, new RenderComponent(pcEntity));
 
-        console.log(`[EntityFactory] Created creep (${entityId.substring(0, 8)}) team=${config.team}`);
+        console.log(`[EntityFactory] Created creep (${entityId.substring(0, 8)}) team=${config.team} (Pooled)`);
 
         return entityId;
+    }
+
+    /**
+     * 釋放小兵實體視覺物件
+     */
+    releaseCreepVisual(team: Team, pcEntity: pc.Entity): void {
+        const pool = this.creepVisualPools.get(team);
+        if (pool) {
+            pool.release(pcEntity);
+        } else {
+            pcEntity.destroy();
+        }
     }
 
     /**

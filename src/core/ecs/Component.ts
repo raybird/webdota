@@ -27,6 +27,7 @@ export const ComponentType = {
     PLAYER_INPUT: 'PlayerInput',
     ANIMATION: 'Animation',
     INVENTORY: 'Inventory',
+    POOLABLE: 'Poolable',
 } as const;
 
 export type ComponentTypeName = typeof ComponentType[keyof typeof ComponentType];

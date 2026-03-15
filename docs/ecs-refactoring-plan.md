@@ -175,6 +175,20 @@ update(dt: number) {
 
 ---
 
+## Phase 4: 性能規訓與優化 (Performance Optimization)
+
+### 4.1 空間分區 (Spatial Partitioning)
+- **實作**: `SpatialSystem.ts` 使用 Spatial Hashing 優化 $O(N^2)$ 鄰近查詢。
+- **應用**: 優化 `AISystem` 中的目標尋找與 `CollisionSystem` 的碰撞檢測預過濾。
+
+### 4.2 材質快取 (Material Cache)
+- **實作**: `MaterialCache.ts` 用於複用 `pc.StandardMaterial`。
+- **目標**: 減少 WebGL 狀態切換與記憶體分配，杜絕頻繁生成小兵時的 GC 抖動。
+
+### 4.3 物件池 (Object Pooling)
+- **實作**: `ObjectPool.ts` 與 `PoolableComponent.ts`。
+- **應用**: 實作 `EntityFactory` 中的視覺實體池，複用 `pc.Entity` 以達成 60FPS 穩定運行。
+
 ## 檔案變更總覽
 
 | 操作 | 路徑 | 說明 |

@@ -96,6 +96,12 @@ export type EntityTookDamageEvent = {
     isCrit: boolean
 }
 
+export type EntityDiedEvent = {
+    type: 'ENTITY_DIED'
+    entityId: string
+    killerId: string | null
+}
+
 // 聯合類型
 export type GameEvent =
     | PlayerJoinedEvent
@@ -114,6 +120,7 @@ export type GameEvent =
     | PlayerDamagedEvent
     | PlayerHealedEvent
     | EntityTookDamageEvent
+    | EntityDiedEvent
     | SkillEffectEvent
     | GameOverEvent
     | PingUpdatedEvent

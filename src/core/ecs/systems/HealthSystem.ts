@@ -34,10 +34,20 @@ export class HealthSystem extends System {
                     this.onEntityDeath(entityId, health.lastAttackerId);
                 }
 
-                // 銷毀渲染組件
+                // 發送全域死亡事件
+                eventBus.emit({
+                    type: 'ENTITY_DIED',
+                    entityId,
+                    killerId: health.lastAttackerId
+                });
+
+                // 處理渲染組件：如果是可池化的，由 Factory 處理，否則直接銷毀
                 const render = world.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
                 if (render) {
-                    render.destroy();
+                    // 如果沒有 POOLABLE 組件，則直接銷毀視覺物件
+                    if (!world.hasComponent(entityId, ComponentType.POOLABLE)) {
+                        render.destroy();
+                    }
                 }
 
                 // 標記 Entity 待刪除
