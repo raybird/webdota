@@ -250,6 +250,13 @@ window.services.network.connections.size
 
 ## 📝 更新日誌
 
+### v26.0315.2100 (2026-03-15)
+
+- 🚀 **性能規訓**: 實作 `SpatialSystem` (空間分區) 解決 $O(N^2)$ 鄰近查詢瓶頸。
+- 🚀 **記憶體優化**: 實作 `MaterialCache` (材質快取) 大幅降低頻繁生成實體時的 GC 壓力。
+- 🛠️ **架構演化**: 重構 `EntityFactory` 與 `AISystem` 以對齊 TeleNexus 精密規訓架構。
+- ✅ **自動化維運**: 部署了每日 6 次的極速自主演化排程與驗證 SOP。
+
 ### v0.2.0 (2025-12-03)
 
 - ✨ 完成模組化架構重構
