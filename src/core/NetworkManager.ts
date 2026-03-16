@@ -399,11 +399,8 @@ export class NetworkManager {
      * 發送輸入
      */
     sendInput(input: PlayerInput) {
-        const message = {
-            type: 'input',
-            input
-        };
-        this.connections.forEach(conn => conn.send(message));
+        const binaryData = BinarySerializer.serializeInput(input);
+        this.connections.forEach(conn => conn.send(binaryData));
     }
 
     /**

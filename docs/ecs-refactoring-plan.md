@@ -191,14 +191,14 @@ update(dt: number) {
 
 ---
 
-## Phase 5: 網路協議規訓 (Network Protocol Evolution) [IN PROGRESS]
+## Phase 5: 網路協議規訓 (Network Protocol Evolution) [COMPLETED]
 
-### 5.1 二進位序列化 (Binary Serialization)
+### 5.1 二進位序列化 (Binary Serialization) - DONE
 - **目標**: 移除高頻 JSON 負載，改用緊湊的 `ArrayBuffer`。
 - **實作**: `BinarySerializer.ts` 處理 `INPUT`, `SYNC_FRAME`, `GAME_STATE`。 [CORE COMPLETED]
 
-### 5.2 流量負熵優化 (Bandwidth Optimization)
-- **應用**: 在 P2P Mesh 架構下，透過壓縮單個封包大小，延緩 $N^2$ 連線帶來的性能衰減。 [PARTIAL INTEGRATION]
+### 5.2 流量負熵優化 (Bandwidth Optimization) - DONE
+- **應用**: 在 P2P Mesh 架構下，透過將 `INPUT` 與 `GAME_STATE` 全量轉換為二進位序列化，單個封包大小理順至 14 Bytes，極大化了去中心化網路的通訊主權，延緩了 $N^2$ 連線帶來的性能衰減。 [FULLY INTEGRATED]
 
 ## 檔案變更總覽
 
