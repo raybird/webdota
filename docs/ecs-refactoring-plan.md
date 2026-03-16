@@ -187,7 +187,18 @@ update(dt: number) {
 
 ### 4.3 物件池 (Object Pooling)
 - **實作**: `ObjectPool.ts` 與 `PoolableComponent.ts`。
-- **應用**: 實作 `EntityFactory` 中的視覺實體池，複用 `pc.Entity` 以達成 60FPS 穩定運行。
+- **應用**: 實作 `EntityFactory` 中的視覺實體池，複用 `pc.Entity` 以達成 60FPS  穩定運行。
+
+---
+
+## Phase 5: 網路協議規訓 (Network Protocol Evolution)
+
+### 5.1 二進位序列化 (Binary Serialization)
+- **目標**: 移除高頻 JSON 負載，改用緊湊的 `ArrayBuffer`。
+- **實作**: `BinarySerializer.ts` 處理 `INPUT`, `SYNC_FRAME`, `GAME_STATE`。
+
+### 5.2 流量負熵優化 (Bandwidth Optimization)
+- **應用**: 在 P2P Mesh 架構下，透過壓縮單個封包大小，延緩 $N^2$ 連線帶來的性能衰減。
 
 ## 檔案變更總覽
 

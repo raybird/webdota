@@ -710,9 +710,30 @@ Infrastructure Layer
 - **實作**: 建立 `MaterialCache` 複用 `pc.StandardMaterial`。
 - **成果**: 消除小兵生成時的 WebGL 狀態切換與記憶體抖動。
 
-#### 9.3 特效物件池 (Effect Pooling) - [In Progress]
-- **規劃**: 針對 `EffectManager` 中的頻繁視覺特效（如揮擊、火花）實作物件池。
-- **預期**: 徹底杜絕戰鬥過程中的 GC 停頓。
+#### 9.3 特效物件池 (Effect Pooling)
+- **實作**: 針對 `EffectManager` 中的頻繁視覺特效（如揮擊、火花）實作物件池。
+- **成果**: 徹底杜絕戰鬥過程中的 GC 停頓。
+
+---
+
+### Phase 10: 網路層規訓與二進位通訊革命 (Network Layer Optimization)
+
+**背景**:
+P2P Mesh 網路中，$N^2$ 的連線數導致頻寬壓力隨玩家增加劇烈增長。原有的 JSON 序列化在大規模對戰中產生了顯著的網路負熵。
+
+**目標**:
+將高頻通訊全面轉向二進位格式，極致化 Mesh 效能。
+
+#### 10.1 二進位序列化 (Binary Serialization)
+- **實作**: 建立 `BinarySerializer` 使用 `ArrayBuffer` 與 `DataView`。
+- **成果**: 
+    - `PlayerInput`: 從 JSON 壓縮至 14 Bytes。
+    - `GameState`: 實現動態長度二進位封裝。
+    - `SyncFrame`: 壓縮至 5 Bytes。
+
+#### 10.2 通訊協議規訓 (Protocol Discipline)
+- **重構**: `NetworkManager` 支援雙路徑解析，優先處理二進位封包。
+- **效益**: 減少了 JSON 解析的 CPU 開銷，大幅降低了 P2P 廣播的頻寬佔用。
 
 ---
 

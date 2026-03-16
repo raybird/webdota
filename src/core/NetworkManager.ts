@@ -208,6 +208,14 @@ export class NetworkManager {
                 this.storeInput(input);
                 if (this.onInputReceived) this.onInputReceived(input);
                 return;
+            } else if (type === PacketType.SYNC_FRAME) {
+                const frame = BinarySerializer.deserializeSyncFrame(data);
+                if (this.onFrameSync) this.onFrameSync(frame);
+                return;
+            } else if (type === PacketType.GAME_STATE) {
+                const state = BinarySerializer.deserializeGameState(data);
+                if (this.onGameState) this.onGameState(state);
+                return;
             }
         }
 
@@ -309,10 +317,8 @@ export class NetworkManager {
     sendGameState(state: GameState, targetPeerId: string) {
         const conn = this.connections.get(targetPeerId);
         if (conn) {
-            conn.send({
-                type: 'game_state',
-                state
-            });
+            const binaryData = BinarySerializer.serializeGameState(state);
+            conn.send(binaryData);
         }
     }
 
@@ -404,11 +410,8 @@ export class NetworkManager {
      * 廣播遊戲狀態 (Host Only)
      */
     broadcastGameState(state: GameState) {
-        const message = {
-            type: 'game_state',
-            state
-        };
-        this.connections.forEach(conn => conn.send(message));
+        const binaryData = BinarySerializer.serializeGameState(state);
+        this.connections.forEach(conn => conn.send(binaryData));
     }
 
     /**
@@ -455,11 +458,8 @@ export class NetworkManager {
     sendFrameSync(frame: number, targetPeerId: string) {
         const conn = this.connections.get(targetPeerId);
         if (conn) {
-            conn.send({
-                type: 'sync_frame',
-                frame
-            });
-            // console.log(`[Network] Sent frame sync ${frame} to ${targetPeerId}`); // 減少 log
+            const binaryData = BinarySerializer.serializeSyncFrame(frame);
+            conn.send(binaryData);
         }
     }
 
@@ -467,11 +467,8 @@ export class NetworkManager {
      * 廣播 Frame 同步訊息給所有玩家
      */
     broadcastFrameSync(frame: number) {
-        const message = {
-            type: 'sync_frame',
-            frame
-        };
-        this.connections.forEach(conn => conn.send(message));
+        const binaryData = BinarySerializer.serializeSyncFrame(frame);
+        this.connections.forEach(conn => conn.send(binaryData));
     }
 
     /**
