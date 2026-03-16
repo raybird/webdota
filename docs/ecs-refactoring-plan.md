@@ -175,30 +175,30 @@ update(dt: number) {
 
 ---
 
-## Phase 4: 性能規訓與優化 (Performance Optimization)
+## Phase 4: 性能規訓與優化 (Performance Optimization) [COMPLETED]
 
-### 4.1 空間分區 (Spatial Partitioning)
+### 4.1 空間分區 (Spatial Partitioning) - DONE
 - **實作**: `SpatialSystem.ts` 使用 Spatial Hashing 優化 $O(N^2)$ 鄰近查詢。
 - **應用**: 優化 `AISystem` 中的目標尋找與 `CollisionSystem` 的碰撞檢測預過濾。
 
-### 4.2 材質快取 (Material Cache)
+### 4.2 材質快取 (Material Cache) - DONE
 - **實作**: `MaterialCache.ts` 用於複用 `pc.StandardMaterial`。
 - **目標**: 減少 WebGL 狀態切換與記憶體分配，杜絕頻繁生成小兵時的 GC 抖動。
 
-### 4.3 物件池 (Object Pooling)
-- **實作**: `ObjectPool.ts` 與 `PoolableComponent.ts`。
-- **應用**: 實作 `EntityFactory` 中的視覺實體池，複用 `pc.Entity` 以達成 60FPS  穩定運行。
+### 4.3 物件池 (Object Pooling) - DONE
+- **實作**: `EntityPool.ts` 與 `PoolableComponent.ts`。
+- **應用**: 實作 `EntityFactory` 中的視覺實體池，複用 `pc.Entity` 以達成 60FPS 穩定運行。
 
 ---
 
-## Phase 5: 網路協議規訓 (Network Protocol Evolution)
+## Phase 5: 網路協議規訓 (Network Protocol Evolution) [IN PROGRESS]
 
 ### 5.1 二進位序列化 (Binary Serialization)
 - **目標**: 移除高頻 JSON 負載，改用緊湊的 `ArrayBuffer`。
-- **實作**: `BinarySerializer.ts` 處理 `INPUT`, `SYNC_FRAME`, `GAME_STATE`。
+- **實作**: `BinarySerializer.ts` 處理 `INPUT`, `SYNC_FRAME`, `GAME_STATE`。 [CORE COMPLETED]
 
 ### 5.2 流量負熵優化 (Bandwidth Optimization)
-- **應用**: 在 P2P Mesh 架構下，透過壓縮單個封包大小，延緩 $N^2$ 連線帶來的性能衰減。
+- **應用**: 在 P2P Mesh 架構下，透過壓縮單個封包大小，延緩 $N^2$ 連線帶來的性能衰減。 [PARTIAL INTEGRATION]
 
 ## 檔案變更總覽
 
