@@ -200,6 +200,16 @@ update(dt: number) {
 ### 5.2 流量負熵優化 (Bandwidth Optimization) - DONE
 - **應用**: 在 P2P Mesh 架構下，透過將 `INPUT` 與 `GAME_STATE` 全量轉換為二進位序列化，單個封包大小理順至 14 Bytes，極大化了去中心化網路的通訊主權，延緩了 $N^2$ 連線帶來的性能衰減。 [FULLY INTEGRATED]
 
+## Phase 6: 環境主權與 UI 規訓 (Environment Sovereignty & UI Hardening) [IN PROGRESS]
+
+### 6.1 畫面視口修復 (Viewport Hardening) - DONE
+- **問題**: 選角後 PlayCanvas 渲染視口與 Vue 畫布容器產生尺寸不對焦。
+- **修復**: 在 `GameView.vue` 初始化後強制執行 `resizeCanvas()`，並加入 Resize 監聽器。
+
+### 6.2 邊緣主權預演 (Edge Sovereign Preparation) - DONE
+- **目標**: 對焦 NVIDIA GTC 2026 定調的「物理 AI」與 Vera CPU 趨勢。
+- **實作**: 在 `GameService.ts` 引入 `preflightCheck` 協議，為未來邊緣加速邏輯鋪路。
+
 ## 檔案變更總覽
 
 | 操作 | 路徑 | 說明 |

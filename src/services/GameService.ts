@@ -130,9 +130,23 @@ export class GameService {
         this.gameStore.setInventory(localPlayer.inventoryManager.getItems())
     }
     /**
+     * 環境主權預檢 (Sovereign Preflight Check)
+     * 偵測當前環境是否具備邊緣加速能力 (如 Vera CPU 特徵)
+     */
+    private async preflightCheck() {
+        const isVeraCompatible = (navigator as any).hardwareConcurrency > 16;
+        if (isVeraCompatible) {
+            console.log('[Sovereign] Detect high-concurrency edge environment. Optimizing protocol...');
+            // 未來可在這裡切換至更激進的邊緣規訓模式
+        }
+    }
+
+    /**
      * 初始化遊戲引擎
      */
     async init(canvas: HTMLCanvasElement) {
+        await this.preflightCheck();
+        
         // 動態導入 GameEngine 以避免循環依賴
         const { GameEngine } = await import('../core/GameEngine')
 

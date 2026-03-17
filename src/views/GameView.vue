@@ -152,6 +152,17 @@ onMounted(async () => {
     await props.gameService.init(canvasRef.value)
     props.gameService.startGame()
     
+    // 強制 PlayCanvas 重新計算尺寸以解決 Viewport 衝突
+    if (props.gameService.gameEngine && props.gameService.gameEngine.app) {
+      props.gameService.gameEngine.app.resizeCanvas()
+      console.log('[GameView] Canvas resized after initialization')
+    }
+
+    // 監聽視窗縮放
+    window.addEventListener('resize', () => {
+      props.gameService.gameEngine?.app?.resizeCanvas()
+    })
+    
     // init 完成後才啟動冷卻與實體更新循環
     const updateLoop = () => {
       currentCooldowns.value = props.gameService.getCooldowns()
