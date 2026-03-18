@@ -202,9 +202,9 @@ update(dt: number) {
 
 ## Phase 6: 環境主權與 UI 規訓 (Environment Sovereignty & UI Hardening) [IN PROGRESS]
 
-### 6.1 畫面視口修復 (Viewport Hardening) - DONE
+### 6.1 畫面視口修復 (Viewport Hardening) - FULLY HARDENED
 - **問題**: 選角後 PlayCanvas 渲染視口與 Vue 畫布容器產生尺寸不對焦。
-- **修復**: 在 `GameView.vue` 初始化後強制執行 `resizeCanvas()`，並加入 Resize 監聽器。
+- **修復**: 在 `GameView.vue` 初始化後強制執行 `resizeCanvas()`，加入 Resize 監聽器，並於 GitHub Actions 中硬化推送權限以確保穩定上線。
 
 ### 6.2 邊緣主權預演 (Edge Sovereign Preparation) - DONE
 - **目標**: 對焦 NVIDIA GTC 2026 定調的「物理 AI」與 Vera CPU 趨勢。
