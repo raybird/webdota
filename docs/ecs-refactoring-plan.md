@@ -210,6 +210,10 @@ update(dt: number) {
 - **目標**: 對焦 NVIDIA GTC 2026 定調的「物理 AI」與 Vera CPU 趨勢。
 - **實作**: 在 `GameService.ts` 引入 `preflightCheck` 協議，為未來邊緣加速邏輯鋪路。
 
+### 6.3 戰局自癒與持久化 (State Persistence & Resilience) - DONE
+- **背景**: 參考 Curiosity Engine v26.0319 研究報告中提到的「LangGraph Checkpointing」。
+- **實作**: 在 `GameEngine.ts` 實作 `saveCheckpoint()`，將 P2P 戰局狀態持久化至本地 `localStorage`（因果地板），大幅降低斷線後的狀態遺失。
+
 ## 檔案變更總覽
 
 | 操作 | 路徑 | 說明 |

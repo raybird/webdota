@@ -379,6 +379,26 @@ export class GameEngine {
 
         if (state.isGameStarted) {
             this.isGameStarted = true;
+            // 實作本地檢查點：持久化戰局因果地板
+            this.saveCheckpoint(state);
+        }
+    }
+
+    /**
+     * 持久化戰局狀態至本地空間 (Checkpointing)
+     * 為 P2P 斷線重連提供因果召回地板
+     */
+    private saveCheckpoint(state: GameState) {
+        try {
+            const checkpoint = {
+                timestamp: Date.now(),
+                frame: this.currentFrame,
+                players: state.players.length,
+                data: state
+            };
+            localStorage.setItem('webdota_causal_floor', JSON.stringify(checkpoint));
+        } catch (e) {
+            // 靜默失效，不規訓正常戰局
         }
     }
 
