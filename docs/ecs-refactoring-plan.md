@@ -212,7 +212,12 @@ update(dt: number) {
 
 ### 6.3 戰局自癒與持久化 (State Persistence & Resilience) - DONE
 - **背景**: 參考 Curiosity Engine v26.0319 研究報告中提到的「LangGraph Checkpointing」。
-- **實作**: 在 `GameEngine.ts` 實作 `saveCheckpoint()`，將 P2P 戰局狀態持久化至本地 `localStorage`（因果地板），大幅降低斷線後的狀態遺失。
+- **實作**: 在 `GameEngine.ts` 實作 `saveCheckpoint()`，將 P2P 戰局狀態持久化至 本地 `localStorage`（因果地板），大幅降低斷線後的狀態遺失。
+
+### 6.4 共識主權與裁判規訓 (Consensus Sovereignty & Referee Hardening) - DONE
+- **背景**: 對焦 P2P Mesh 架構下的狀態衝突判定。
+- **實作**: 建立 `RefereeManager.ts`，對每一幀關鍵數據進行「指紋化 (Hashing)」。在 `handleGameState` 中執行跨節點校驗，一旦偵測到「因果分歧 (Causal Divergence)」即發出 警告，為未來引入「裁判代理」自動修復鋪路。
+
 
 ## 檔案變更總覽
 

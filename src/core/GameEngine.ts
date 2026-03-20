@@ -16,6 +16,7 @@ import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
 import { ProjectileManager } from './combat/ProjectileManager';
 import { MapManager, type MapConfig } from './map';
+import { RefereeManager } from './managers/RefereeManager';
 import demoArenaMap from '../data/maps/demo_arena.json';
 
 // ECS Imports
@@ -342,8 +343,15 @@ export class GameEngine {
     }
 
     private handleGameState(state: GameState) {
-        // 同步 Host 的幀數
+        const referee = RefereeManager.getInstance();
+        const stateHash = referee.calculateHash(state);
+        
         if (state.frame !== undefined) {
+            // 如果本地已有該幀紀錄，執行因果校驗
+            if (!referee.validate(state.frame, stateHash)) {
+                console.warn(`[GameEngine] Causal Divergence detected at frame ${state.frame}!`);
+            }
+            referee.submitState(state.frame, stateHash);
             this.currentFrame = state.frame;
             this.gameStore.setFrame(this.currentFrame);
         }
