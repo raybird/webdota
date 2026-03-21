@@ -1,12 +1,13 @@
 import { type GameState } from '../NetworkManager';
 
 /**
- * RefereeManager - 共識主權與裁判規訓
- * 負責跨 P2P 節點的狀態一致性校驗，偵測並標記因果分歧
+ * RefereeManager - 共識主權與裁判規訓 (v26.0322 硬化版)
+ * 負責跨 P2P 節點的狀態一致性校驗，實現物理與邏輯分層規訓。
  */
 export class RefereeManager {
     private static instance: RefereeManager;
-    private stateHistory: Map<number, string> = new Map(); // frame -> stateHash
+    private stateHistory: Map<number, string> = new Map(); 
+    private divergenceLog: Array<{frame: number, local: string, remote: string}> = [];
 
     private constructor() {}
 
@@ -18,38 +19,61 @@ export class RefereeManager {
     }
 
     /**
-     * 計算遊戲狀態的物理指紋 (State Fingerprint)
+     * 計算分層狀態指紋 (Layered Fingerprint)
+     * 物理層：位置 (x, y, z)
+     * 邏輯層：血量、能量 (stats)
      */
     public calculateHash(state: GameState): string {
-        // 僅選取關鍵數據進行 Hash，優化效能
-        const payload = state.players.map((p: any) => ({
-            id: p.id,
-            pos: p.pos,
-            hp: p.stats?.hp
-        }));
-        // 使用簡單的字串序列化作為指紋原型
+        const payload = {
+            p: state.players.map((p) => ({
+                i: p.id,
+                v: [p.pos.x.toFixed(2), p.pos.y.toFixed(2), p.pos.z.toFixed(2)], // 物理層 (精度規訓)
+                h: p.stats?.hp || 0, // 邏輯層
+                e: p.stats?.energy || 0
+            })),
+            f: state.frame
+        };
+        // 對齊 2026 因果對焦：採用 Base64 壓縮指紋
         return btoa(JSON.stringify(payload));
     }
 
     /**
-     * 提交本地狀態至裁判席
+     * 提交本地狀態，維持因果窗口
      */
     public submitState(frame: number, hash: string) {
         this.stateHistory.set(frame, hash);
-        // 保留最近 300 幀的歷史，對沖網路延遲
-        if (this.stateHistory.size > 300) {
-            const keys = Array.from(this.stateHistory.keys());
-            const oldestFrame = Math.min(...keys);
-            this.stateHistory.delete(oldestFrame);
+        if (this.stateHistory.size > 600) { // 擴張至 10 秒窗口 (60fps)
+            const oldest = Math.min(...Array.from(this.stateHistory.keys()));
+            this.stateHistory.delete(oldest);
         }
     }
 
     /**
-     * 校驗遠端狀態是否發生因果分歧
+     * 校驗遠端狀態並觸發自癒
+     * @returns boolean 是否通過一致性檢查
      */
     public validate(frame: number, remoteHash: string): boolean {
         const localHash = this.stateHistory.get(frame);
-        if (!localHash) return true; // 尚未同步，暫不判定
-        return localHash === remoteHash;
+        if (!localHash) return true; 
+
+        if (localHash !== remoteHash) {
+            this.divergenceLog.push({ frame, local: localHash, remote: remoteHash });
+            console.error(`[Referee] 偵測到因果分歧 @ Frame ${frame}. 啟動主權自癒協議...`);
+            this.triggerSelfHealing(frame);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 觸發自癒：請求重新同步或回溯至最後一個有效 Checkpoint
+     */
+    private triggerSelfHealing(frame: number) {
+        // 預演：發出 RE_SYNC 事件至 NetworkManager
+        window.dispatchEvent(new CustomEvent('WEBDOTA_RESYNC_REQUEST', { detail: { frame } }));
+    }
+
+    public getDivergenceStats() {
+        return this.divergenceLog;
     }
 }
