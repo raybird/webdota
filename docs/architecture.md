@@ -550,3 +550,4 @@ webdota/
 **最後更新：** 2025-11-30  
 **維護者：** [Your Name]
 \n### 2026-03-22: 裁判主權硬化 (Referee Hardening)\n- **分層指紋技術**: 將 ECS 狀態分為物理層 (Physics) 與邏輯層 (Logic)，分別計算高精度指紋。\n- **自癒協議**: 實作 `WEBDOTA_RESYNC_REQUEST` 事件，當偵測到因果分歧時自動觸發狀態回溯與重同步。
+\n### 2026-03-23: 因果自癒與 Checkpoint 系統 (Causal Healing)\n- **物理快照技術**: 每 60 幀執行 `physicsWorld.takeSnapshot()`，實現物理與邏輯狀態的完整持久化。\n- **自癒回溯協議**: 監聽 `WEBDOTA_RESYNC_REQUEST` 事件，支援根據幀號自動召回最後一個有效檢查點並重塑戰局。
