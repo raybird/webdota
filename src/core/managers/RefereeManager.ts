@@ -8,6 +8,9 @@ export class RefereeManager {
     private static instance: RefereeManager;
     private stateHistory: Map<number, string> = new Map(); 
     private divergenceLog: Array<{frame: number, local: string, remote: string}> = [];
+    private lastConsistentFrame: number = 0;
+    private consecutiveDivergenceCount: number = 0;
+    private readonly COLLAPSE_THRESHOLD: number = 10; // 連續 10 幀分歧則坍縮
 
     private constructor() {}
 
@@ -20,20 +23,17 @@ export class RefereeManager {
 
     /**
      * 計算分層狀態指紋 (Layered Fingerprint)
-     * 物理層：位置 (x, y, z)
-     * 邏輯層：血量、能量 (stats)
      */
     public calculateHash(state: GameState): string {
         const payload = {
             p: state.players.map((p) => ({
                 i: p.id,
-                v: [p.pos.x.toFixed(2), p.pos.y.toFixed(2), p.pos.z.toFixed(2)], // 物理層 (精度規訓)
-                h: p.stats?.hp || 0, // 邏輯層
+                v: [p.pos.x.toFixed(2), p.pos.y.toFixed(2), p.pos.z.toFixed(2)], 
+                h: p.stats?.hp || 0,
                 e: p.stats?.energy || 0
             })),
             f: state.frame
         };
-        // 對齊 2026 因果對焦：採用 Base64 壓縮指紋
         return btoa(JSON.stringify(payload));
     }
 
@@ -42,35 +42,46 @@ export class RefereeManager {
      */
     public submitState(frame: number, hash: string) {
         this.stateHistory.set(frame, hash);
-        if (this.stateHistory.size > 600) { // 擴張至 10 秒窗口 (60fps)
+        if (this.stateHistory.size > 600) {
             const oldest = Math.min(...Array.from(this.stateHistory.keys()));
             this.stateHistory.delete(oldest);
         }
     }
 
     /**
-     * 校驗遠端狀態並觸發自癒
-     * @returns boolean 是否通過一致性檢查
+     * 校驗遠端狀態
      */
     public validate(frame: number, remoteHash: string): boolean {
         const localHash = this.stateHistory.get(frame);
         if (!localHash) return true; 
 
         if (localHash !== remoteHash) {
+            this.consecutiveDivergenceCount++;
             this.divergenceLog.push({ frame, local: localHash, remote: remoteHash });
-            console.error(`[Referee] 偵測到因果分歧 @ Frame ${frame}. 啟動主權自癒協議...`);
-            this.triggerSelfHealing(frame);
+            
+            if (this.consecutiveDivergenceCount >= this.COLLAPSE_THRESHOLD) {
+                console.error(`[Referee] 因果分歧突破臨界位 (@ Frame ${frame}). 執行『狀態坍縮』協議...`);
+                this.triggerStateCollapse(frame);
+                this.consecutiveDivergenceCount = 0;
+            }
             return false;
+        } else {
+            this.lastConsistentFrame = frame;
+            this.consecutiveDivergenceCount = 0;
+            return true;
         }
-        return true;
     }
 
     /**
-     * 觸發自癒：請求重新同步或回溯至最後一個有效 Checkpoint
+     * 狀態坍縮：強制接受外部權威狀態並重置本地因果地板
      */
-    private triggerSelfHealing(frame: number) {
-        // 預演：發出 RE_SYNC 事件至 NetworkManager
-        window.dispatchEvent(new CustomEvent('WEBDOTA_RESYNC_REQUEST', { detail: { frame } }));
+    private triggerStateCollapse(frame: number) {
+        window.dispatchEvent(new CustomEvent('WEBDOTA_STATE_COLLAPSE', { 
+            detail: { 
+                frame, 
+                rollbackTo: this.lastConsistentFrame 
+            } 
+        }));
     }
 
     public getDivergenceStats() {

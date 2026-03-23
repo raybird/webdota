@@ -214,9 +214,16 @@ update(dt: number) {
 - **背景**: 參考 Curiosity Engine v26.0319 研究報告中提到的「LangGraph Checkpointing」。
 - **實作**: 在 `GameEngine.ts` 實作 `saveCheckpoint()`，將 P2P 戰局狀態持久化至 本地 `localStorage`（因果地板），大幅降低斷線後的狀態遺失。
 
-### 6.4 共識主權與裁判規訓 (Consensus Sovereignty & Referee Hardening) - DONE
-- **背景**: 對焦 P2P Mesh 架構下的狀態衝突判定。
-- **實作**: 建立 `RefereeManager.ts`，對每一幀關鍵數據進行「指紋化 (Hashing)」。在 `handleGameState` 中執行跨節點校驗，一旦偵測到「因果分歧 (Causal Divergence)」即發出 警告，為未來引入「裁判代理」自動修復鋪路。
+### 6.4 共識主權與裁判規訓 (Consensus Sovereignty & Referee Hardening) - FULLY HARDENED
+- **背景**: 對焦 P2P Mesh 架構下的狀態衝突判定與量子坍縮預演。
+- **實作**: 
+    - 建立 `RefereeManager.ts` 執行狀態指紋 (Hashing) 與分層校驗。
+    - **[NEW] 延遲因果校準 (Delayed Causal Calibration)**：引入 `COLLAPSE_THRESHOLD`，容忍短暫的抖動，僅在持續分歧時觸發干預。
+    - **[NEW] 狀態坍縮 (State Collapse)**：當分歧突破臨界位，自動發送 `WEBDOTA_STATE_COLLAPSE` 事件，回溯至最後一個一致性幀並同步權威狀態。
+
+## Phase 7: 主權存封與邊緣演化 (Sovereign Archiving & Edge Evolution) [PLANNED]
+- **目標**: 將戰局中的「重大決策」與「因果分歧處理」標註 C2PA 指紋。
+- **對焦**: 整合 Curiosity Engine 關於 JUMBF 段落雜湊的研究成果。，一旦偵測到「因果分歧 (Causal Divergence)」即發出 警告，為未來引入「裁判代理」自動修復鋪路。
 
 
 ## 檔案變更總覽
