@@ -1,7 +1,8 @@
 import { type GameState } from '../NetworkManager';
+import { ProvenanceManager } from './ProvenanceManager';
 
 /**
- * RefereeManager - 共識主權與裁判規訓 (v26.0322 硬化版)
+ * RefereeManager - 共識主權與裁判規訓 (v26.0325 證據硬化版)
  * 負責跨 P2P 節點的狀態一致性校驗，實現物理與邏輯分層規訓。
  */
 export class RefereeManager {
@@ -61,6 +62,14 @@ export class RefereeManager {
             
             if (this.consecutiveDivergenceCount >= this.COLLAPSE_THRESHOLD) {
                 console.error(`[Referee] 因果分歧突破臨界位 (@ Frame ${frame}). 執行『狀態坍縮』協議...`);
+                
+                // 執行數位存證
+                ProvenanceManager.getInstance().recordEvent(frame, 'STATE_COLLAPSE', {
+                    localHash,
+                    remoteHash,
+                    lastConsistentFrame: this.lastConsistentFrame
+                });
+
                 this.triggerStateCollapse(frame);
                 this.consecutiveDivergenceCount = 0;
             }
