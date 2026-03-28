@@ -8,7 +8,8 @@ Web MOBA 遊戲技術文件
 1. [整體架構](#整體架構)
 2. [技術選型](#技術選型)
 3. [核心模組](#核心模組)
-4. [網路架構](#網路架構)
+4. [主權存封](#主權存封)
+5. [網路架構](#網路架構)
 5. [同步機制](#同步機制)
 6. [資料流](#資料流)
 7. [目錄結構](#目錄結構)
@@ -187,6 +188,16 @@ User Input → ECSPlayerManager (InputComponent)
 - 等待室（玩家列表、準備狀態）
 - 遊戲中 HUD（血條、MP、小地圖）
 - Debug 面板
+
+---
+
+### 6. 主權存封 (Provenance & Causal Guard)
+WebDota 採用段落級因果存證機制，確保戰局關鍵事件的不可篡改性。由 `ProvenanceManager.ts` 統一管理。
+
+*   **因果指紋 (Causal Fingerprint)**：對關鍵事件 Payload 執行 SHA-256 雜湊，產生具備證據力的雜湊憑證。
+*   **持久化層 (Persistence)**：
+    *   **v26.0328 升級**：全面平移至 **IndexedDB** (`WebDotaProvenanceDB`)，支持大容量戰局快照與高頻因果紀錄，確保資料不因頁面重新整理而丟失。
+*   **物理主權**：預演向 RWA (Real World Assets) 鏈上錨定，將遊戲內的競爭結果轉化為可驗證的物理事實。
 
 ---
 

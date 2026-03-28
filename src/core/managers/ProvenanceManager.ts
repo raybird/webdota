@@ -1,19 +1,41 @@
 /**
- * ProvenanceManager - 戰局主權存封與數位指紋 (v26.0325)
- * 負責為關鍵戰局事件產生符合 C2PA 精神的段落級雜湊憑證。
+ * ProvenanceManager - 戰局主權存封與數位指紋 (v26.0328)
+ * 負責為關鍵戰局事件產生符合 C2PA 精神的段落級雜湊憑證，並持久化至 IndexedDB。
  */
 export class ProvenanceManager {
     private static instance: ProvenanceManager;
+    private dbName = 'WebDotaProvenanceDB';
+    private db: IDBDatabase | null = null;
     private manifestStore: Array<{
         id: string,
         frame: number,
         timestamp: string,
         eventType: string,
         payloadHash: string,
-        signature: string // 模擬簽名
+        signature: string
     }> = [];
 
-    private constructor() {}
+    private constructor() {
+        this.initDB();
+    }
+
+    private async initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, 1);
+            request.onupgradeneeded = (e: any) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('manifests')) {
+                    db.createObjectStore('manifests', { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = (e: any) => {
+                this.db = e.target.result;
+                console.log(`[Provenance] IndexedDB 初始化成功`);
+                resolve(true);
+            };
+            request.onerror = (e) => reject(e);
+        });
+    }
 
     public static getInstance(): ProvenanceManager {
         if (!ProvenanceManager.instance) {
@@ -47,13 +69,14 @@ export class ProvenanceManager {
         this.manifestStore.push(manifest);
         console.log(`[Provenance] 事件存證成功: ${eventType} @ Frame ${frame} | Hash: ${payloadHash.substring(0, 16)}...`);
         
-        // 觸發物理存儲 (預演未來向 RWA 鏈上錨定)
-        this.syncToLocalArchive(manifest);
+        await this.syncToIndexedDB(manifest);
     }
 
-    private syncToLocalArchive(manifest: any) {
-        const key = `WEBDOTA_PROVENANCE_${manifest.id}`;
-        localStorage.setItem(key, JSON.stringify(manifest));
+    private async syncToIndexedDB(manifest: any) {
+        if (!this.db) return;
+        const transaction = this.db.transaction(['manifests'], 'readwrite');
+        const store = transaction.objectStore('manifests');
+        store.add(manifest);
     }
 
     public getManifestStore() {
