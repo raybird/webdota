@@ -77,6 +77,11 @@ export class GameEngine {
     private accumulator = 0;
     private isGameStarted = false;
 
+    // Power Economy
+    private fpsMonitor: number[] = [];
+    private currentTargetHz = 60;
+    private powerSavingMode = false;
+
     private pendingSkillUse: { skillId: string; direction: { x: number; z: number } } | null = null;
     private pendingRemoteInputs: PlayerInput[] = [];
 
@@ -332,12 +337,34 @@ export class GameEngine {
     }
 
     gameLoop(dt: number) {
+        this.updatePowerEconomy(dt);
+        const step = 1 / this.currentTargetHz;
+        
         this.accumulator += dt;
-        while (this.accumulator >= this.FIXED_TIMESTEP) {
-            this.fixedUpdate(this.FIXED_TIMESTEP);
-            this.accumulator -= this.FIXED_TIMESTEP;
+        while (this.accumulator >= step) {
+            this.fixedUpdate(step);
+            this.accumulator -= step;
         }
         this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
+    }
+
+    private updatePowerEconomy(dt: number) {
+        const fps = 1 / dt;
+        this.fpsMonitor.push(fps);
+        if (this.fpsMonitor.length > 180) this.fpsMonitor.shift(); // 監測最近 3 秒
+
+        const avgFps = this.fpsMonitor.reduce((a, b) => a + b, 0) / this.fpsMonitor.length;
+        
+        if (avgFps < 30 && !this.powerSavingMode && this.fpsMonitor.length >= 180) {
+            console.warn("[PowerEconomy] 偵測到極低幀率，啟動能耗規訓模式 (30Hz)");
+            this.currentTargetHz = 30;
+            this.powerSavingMode = true;
+            eventBus.emit({ type: 'POWER_ECONOMY_TRIGGERED', data: { hz: 30 } });
+        } else if (avgFps > 55 && this.powerSavingMode) {
+            console.log("[PowerEconomy] 效能恢復，回到主權模式 (60Hz)");
+            this.currentTargetHz = 60;
+            this.powerSavingMode = false;
+        }
     }
 
     fixedUpdate(dt: number) {
