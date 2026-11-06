@@ -12,6 +12,7 @@ import Minimap from '../components/game/Minimap.vue'
 import Shop from '../components/game/Shop.vue'
 import DamageNumberLayer from '../components/game/DamageNumberLayer.vue'
 import NotificationLayer from '../components/game/NotificationLayer.vue'
+import ConnectionPanel from '../components/game/ConnectionPanel.vue'
 import { useRoomStore } from '../stores/roomStore'
 
 const gameStore = useGameStore()
@@ -35,6 +36,13 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 const engineReady = ref(false)
 const currentCooldowns = ref<Map<string, number>>(new Map())
 const currentPing = ref<number>(0)
+const showConnectionPanel = ref(false)
+const toggleConnectionPanel = () => { showConnectionPanel.value = !showConnectionPanel.value }
+/** 滑鼠或觸控點擊後放掉焦點，否則之後按空白鍵（普攻）會再觸發按鈕；鍵盤操作（detail 為 0）保留焦點 */
+const onPingRowClick = (e: MouseEvent) => {
+  toggleConnectionPanel()
+  if (e.detail > 0) (e.currentTarget as HTMLElement | null)?.blur()
+}
 
 // 技能配置
 const skills = ref<any[]>([])
@@ -68,6 +76,9 @@ const handleJoystickEnd = () => {
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'b' || e.key === 'B') {
     gameStore.toggleShop()
+  }
+  if (e.key === 'n' || e.key === 'N') {
+    toggleConnectionPanel()
   }
 }
 
@@ -179,10 +190,17 @@ onUnmounted(() => {
             <span class="label">ID:</span>
             <span class="value">{{ roomStore.myPeerId?.substring(0, 8) || 'N/A' }}</span>
           </div>
-          <div class="info-row">
+          <button
+            type="button"
+            class="info-row ping-row"
+            :aria-expanded="showConnectionPanel"
+            aria-controls="connection-panel"
+            title="連線診斷 (N)"
+            @click="onPingRowClick"
+          >
             <span class="label">PING:</span>
-            <span class="value" :class="{'high-ping': currentPing > 150}">{{ currentPing }} ms</span>
-          </div>
+            <span class="value" :class="{'high-ping': currentPing > 150}">{{ currentPing }} ms ⓘ</span>
+          </button>
           <div class="cooldown-debug">
             CDs: {{ Array.from(currentCooldowns.entries()).map(([k, v]) => `${k}:${v.toFixed(1)}`).join(', ') }}
           </div>
@@ -193,6 +211,13 @@ onUnmounted(() => {
         </div>
         <button class="shop-btn" @click="toggleShop">🏪 商店 (B)</button>
       </div>
+
+      <ConnectionPanel
+        v-if="showConnectionPanel"
+        id="connection-panel"
+        :game-service="gameService"
+        @close="showConnectionPanel = false"
+      />
 
       <!-- 右上角：小地圖 -->
       <div class="minimap-area">
@@ -313,6 +338,12 @@ onUnmounted(() => {
   pointer-events: auto; /* 恢復 UI 元素的點擊 */
 }
 
+/* 傷害數字與通知是全畫面的覆蓋層，要讓點擊穿透到底下的 HUD（商店、搖桿、PING）與畫面 */
+.hud-layer > .damage-layer,
+.hud-layer > .notification-layer {
+  pointer-events: none;
+}
+
 .joystick-area {
   position: absolute;
   bottom: 50px;
@@ -331,6 +362,8 @@ onUnmounted(() => {
   left: 20px;
   width: 250px;
   pointer-events: auto;
+  /* 搖桿的觸控區佔滿全畫面（z-index 50），面板要在它上面才點得到；傷害數字（60）仍畫在面板上方 */
+  z-index: 55;
 }
 
 .hud-header {
@@ -495,6 +528,27 @@ onUnmounted(() => {
   border-color: var(--c-secondary);
   color: #fff;
   box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
+}
+
+.ping-row {
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+}
+
+.ping-row:hover .value,
+.ping-row:focus-visible .value {
+  color: var(--c-secondary);
+}
+
+.ping-row:focus-visible {
+  outline: 1px solid var(--c-secondary);
+  outline-offset: 2px;
 }
 
 .high-ping {

@@ -1,4 +1,5 @@
 import Peer, { type DataConnection } from 'peerjs';
+import { ConnectionDiagnostics, readIceInfo } from './net/ConnectionDiagnostics';
 import { eventBus } from '../events/EventBus';
 import { BinarySerializer, PacketType, type NetEntityState } from '../utils/BinarySerializer';
 
@@ -115,7 +116,10 @@ export class NetworkManager {
 
     // Ping tracking
     private pingInterval: number | null = null;
+    private pingSeq = 0;
     public pings: Map<string, number> = new Map();
+    /** 連線診斷（延遲、抖動、連線方式、同步頻率） */
+    readonly diagnostics = new ConnectionDiagnostics();
 
     constructor() {
         // Peer 會在 createRoom 或 joinRoom 時初始化
@@ -126,12 +130,21 @@ export class NetworkManager {
         if (this.pingInterval !== null) {
             window.clearInterval(this.pingInterval);
         }
+        // 每秒一次：抖動要有足夠樣本；每兩次順便讀一次 WebRTC 統計判斷連線方式
         this.pingInterval = window.setInterval(() => {
-            this.connections.forEach(conn => {
-                const now = Date.now();
-                conn.send({ type: 'ping', timestamp: now });
+            const seq = ++this.pingSeq;
+            const now = performance.now();
+            this.connections.forEach((conn, peerId) => {
+                this.diagnostics.pingSent(peerId, seq, now);
+                // timestamp 欄位給舊版本：舊版 pong 只會原樣帶回 timestamp
+                conn.send({ type: 'ping', seq, timestamp: seq });
+                if (seq % 2 === 0 && conn.peerConnection) {
+                    readIceInfo(conn.peerConnection)
+                        .then(ice => this.diagnostics.setIce(peerId, ice))
+                        .catch(() => this.diagnostics.setIce(peerId, null));
+                }
             });
-        }, 2000);
+        }, 1000);
     }
 
     /**
@@ -214,6 +227,8 @@ export class NetworkManager {
             const normalizedPeerId = conn.peer.toUpperCase();
             console.log(`[Network] ${normalizedPeerId} disconnected`);
             this.connections.delete(normalizedPeerId);
+            this.pings.delete(normalizedPeerId);
+            this.diagnostics.removePeer(normalizedPeerId);
             if (this.onPeerLeft) this.onPeerLeft(normalizedPeerId);
 
             // 如果斷線的是 Host，觸發 Host Migration
@@ -266,9 +281,11 @@ export class NetworkManager {
                 if (this.onInputReceived) this.onInputReceived(input);
             } else if (type === PacketType.GAME_STATE) {
                 const state = BinarySerializer.deserializeGameState(data);
+                this.diagnostics.stateMessage('game', performance.now());
                 if (this.onGameState) this.onGameState(state);
             } else if (type === PacketType.ENTITY_STATE) {
                 const { frame, entities } = BinarySerializer.deserializeEntityState(data);
+                this.diagnostics.stateMessage('entity', performance.now());
                 if (this.onEntityState) this.onEntityState(frame, entities);
             }
             return;
@@ -349,18 +366,20 @@ export class NetworkManager {
             case 'ping':
                 const connPing = this.connections.get(fromPeerId);
                 if (connPing) {
-                    connPing.send({ type: 'pong', timestamp: data.timestamp });
+                    connPing.send({ type: 'pong', seq: data.seq, timestamp: data.timestamp });
                 }
                 break;
 
-            case 'pong':
-                const rtt = Date.now() - data.timestamp;
-                this.pings.set(fromPeerId, rtt);
+            case 'pong': {
+                const rtt = this.diagnostics.pongReceived(fromPeerId, data.seq ?? data.timestamp, performance.now());
+                if (rtt === null) break;
+                this.pings.set(fromPeerId, Math.round(rtt));
                 // 只廣播重要的 Ping (Host到Client, Client到Host)
                 if (this.isHost || fromPeerId === this.hostId) {
-                    eventBus.emit({ type: 'PING_UPDATED', peerId: fromPeerId, ping: rtt });
+                    eventBus.emit({ type: 'PING_UPDATED', peerId: fromPeerId, ping: Math.round(rtt) });
                 }
                 break;
+            }
 
             default:
                 console.warn('[Network] Unknown message type:', data.type);
@@ -458,6 +477,7 @@ export class NetworkManager {
     broadcastGameState(state: GameState) {
         const binaryData = BinarySerializer.serializeGameState(state);
         this.connections.forEach(conn => conn.send(binaryData));
+        this.diagnostics.stateMessage('game', performance.now());
     }
 
     /**
@@ -466,6 +486,7 @@ export class NetworkManager {
     broadcastEntityState(frame: number, entities: NetEntityState[]) {
         const binaryData = BinarySerializer.serializeEntityState(frame, entities);
         this.connections.forEach(conn => conn.send(binaryData));
+        this.diagnostics.stateMessage('entity', performance.now());
     }
 
     /**
@@ -536,6 +557,7 @@ export class NetworkManager {
         this.connections.forEach(conn => conn.close());
         this.connections.clear();
         this.pings.clear();
+        this.diagnostics.clear();
 
         // 銷毀 Peer
         if (this.peer) {
