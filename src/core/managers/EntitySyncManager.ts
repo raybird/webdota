@@ -85,6 +85,18 @@ export class EntitySyncManager {
         });
     }
 
+    /** Host：建築或小兵的網路 ID；不是同步實體時傳回 undefined */
+    netIdOf(entityId: EntityId): number | undefined {
+        if (!this.world.hasEntity(entityId)) return undefined;
+        if (!this.structureManager.getAll().has(entityId) && !this.creepManager.getAllCreepIds().has(entityId)) return undefined;
+        return this.getNetId(entityId);
+    }
+
+    /** Client：網路 ID 對應的鏡像實體 */
+    entityOf(netId: number): EntityId | undefined {
+        return this.mirrors.get(netId);
+    }
+
     private getNetId(entityId: EntityId): number {
         let netId = this.netIds.get(entityId);
         if (netId === undefined) {

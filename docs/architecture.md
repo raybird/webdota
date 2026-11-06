@@ -168,6 +168,14 @@ Entity ID 不重複使用。
 - **素材**：`public/env/` 由 `tools/env/generate.py` 離線產生（原創，規格與座標對應見 `public/env/NOTICE.md`，合成預覽 `tools/env/preview-scene.png`）；`public/characters/` 的戰場連續圖是 48×48、與場景同鏡頭的斜俯視（2026-11-06 v2，產生器 `tools/portraits/generate_battle.py`，合成預覽 `tools/portraits/preview-battle-scene.png`），大廳 96px 立繪只用於 UI。
 - 玩家腳下的隊伍色圓環同樣帶 `no-status-fx` tag；受擊閃白、狀態色調與半透明由 `RenderComponent` 以 mesh instance 參數覆寫。
 
+### 防禦塔攻擊回饋（TowerFeedback，2026-11-06）
+防禦塔與主堡原本每次冷卻結束就直接扣最近敵人的血，畫面上看不出射程與誰在被打。
+
+- **光彈**：`AISystem`（只在 Host 執行）發射時不再立即扣血，而是發出 `TOWER_ATTACK` 事件並記下飛行中的光彈，飛行時間 = 距離 ÷ 16 單位／秒，命中時才呼叫 `HealthSystem.dealDamage`；目標在途中消失時光彈落空。
+- **轉播**：Host 收到事件後由 `TowerFeedback.playBolt` 播放，並以 `tower_attack` 訊息轉播。兩端的 ECS Entity ID 不同，所以建築與小兵用 `EntitySyncManager` 的網路 ID（`netIdOf`／`entityOf`），玩家用 Peer ID（`getPlayerIdOf`）。Client 只播放畫面，傷害照常由血量同步帶過來（`syncHp` 觸發傷害數字與閃白）。
+- **畫面**：塔頂水晶射出隊伍色光彈（`public/env/tower-bolt-*`），追著目標飛，抵達時播命中特效（`tower-impact-*`）；素材未載入時退回火球。
+- **射程圈**：本地玩家距敵方建築在「射程 + 4」以內時，地面出現米色虛線橢圓；進入射程後變紅色。射程取地圖設定（Client 的建築鏡像沒有同步射程）。貼圖照畫面比例畫、平面依視角轉向，所以像素與螢幕 1:1；建築被摧毀時一併移除。
+
 ### 狀態效果（StatusComponent，2026-11-06）
 技能的 `effect` 欄位：`invincible`（戰士 E）、`invisible`（刺客 E）施放時加在自己身上，`slow`（法師 W）由 Hitbox 命中時加在目標身上。
 

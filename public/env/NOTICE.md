@@ -47,3 +47,24 @@ python3 tools/env/generate.py
 程式只寫入 `public/env/` 與 `tools/env/`，並刪除已淘汰的 `ground.png`、`pillar-side.png`、`pillar-top.png`、`shadow.png`。同一 Pillow 版本重跑產生相同位元組；Pillow／PNG 編碼器版本不同時壓縮結果可能不同。規格日期固定為 2026-11-06。
 
 `tools/env/preview.png` 是深色背景總覽，包含兩方地面、nearest 2 倍局部、全部動畫幀、石柱、材質連鋪與腳下陰影。`tools/env/preview-scene.png` 按地圖取 x=[−26,−6]、z=[−29,1] 的藍方 30×20 單位地面視窗，只拼入足印與視窗相交的物件，上方保留 96px 建築高度餘裕，nearest 3 倍顯示牆、木箱、柱、塔、主堡與紅藍小兵；依足印前緣深度排序，沒有烘焙投影。`tools/env/validation.json` 記錄尺寸、格數、fps、loop、pivot、足印、透明留白、色數、二值 alpha、無縫四邊、兩方地面差異範圍、檔案大小與 SHA-256；不計報告自身雜湊。
+
+## 防禦塔光彈與命中特效（2026-11-06）
+
+2026-11-06 新增下列原創連續圖，沿用塔頂水晶的隊伍色盤、19px／世界單位的像素密度與既有 JSON 格式，均為單列橫排。發光體不加深色外框；水晶碎片採 `#1a1422` 外框及左上高光。無抗鋸齒、無半透明，每隊最多六個不透明色。
+
+| 檔名（各含 PNG + JSON） | 每格／整張 | 格數 | fps | loop | pivot |
+|---|---|---:|---:|---|---|
+| tower-bolt-blue、tower-bolt-red | 32×16／128×16 | 4 | 16 | true | [22,8] |
+| tower-impact-blue、tower-impact-red | 32×32／160×32 | 5 | 18 | false | [16,16] |
+
+光彈原圖朝右，彈頭為 8×7px，pivot 固定在彈頭發光核心；後方兩段光尾以長度與亮點變化形成循環。遊戲以 pivot 為中心轉向目標。命中依序為閃光、光環與碎片外擴、最大 26×26px 爆開、殘光、全透明結尾；pivot 固定在爆開中心。命中特效第 5 格全透明，非遺漏影格。16／18fps 的 JSON duration 沿用既有取整規則，分別為 62／56ms；精確播放速率以 `meta.pixelfx.fps` 為準。
+
+離線重製只需要 Python 3 + Pillow，不用亂數或外部圖片；從專案根目錄執行：
+
+```sh
+python3 tools/env/generate_fx.py
+```
+
+若一併重製場景，先執行 `generate.py`，再執行 `generate_fx.py`。後者只寫入上述四組 PNG／JSON、此段 NOTICE、`tools/env/preview-bolt.png` 與 `tools/env/validation.json`；保留其餘既有素材及驗證資料。同一 Pillow 版本重跑產生相同位元組。規格日期固定為 2026-11-06。
+
+`tools/env/preview-bolt.png` 包含所有影格的 nearest 5 倍放大、pivot 標記，以及以既有地面、塔與敵方小兵合成的紅藍攻擊示意（nearest 2 倍，飛行與命中分圖）。灰色虛線僅為預覽的飛行路線輔助線，不屬於素材。驗證報告新增 `tower_fx` 與各檔案紀錄，檢查影格格式、尺寸、fps、loop、pivot、色盤、二值 alpha、彈頭固定、最大範圍、透明結尾、紅藍輪廓一致與 SHA-256。

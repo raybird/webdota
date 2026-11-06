@@ -1078,8 +1078,250 @@
       ]
     },
     "public/env/NOTICE.md": {
-      "bytes": 5331,
-      "sha256": "49ef62b97f5db54b0f6919fc4dae1b67dd0983887cf8d63a4dc67ebda0eb2bbf"
+      "bytes": 7396,
+      "sha256": "ce0e5d15aae6611b8580bcd01db3d75163cfc2fe1fc070d2d9d67b3ba279c040"
+    },
+    "public/env/tower-bolt-blue.png": {
+      "size": [
+        128,
+        16
+      ],
+      "bytes": 293,
+      "sha256": "f9a14ddc86540a98fef2a83c129ab7c058c1208268cde9a3d16eedb904b30542",
+      "colors_including_transparent": 5,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        32,
+        16
+      ],
+      "fps": 16,
+      "loop": true,
+      "pivot": [
+        22,
+        8
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          2,
+          5,
+          26,
+          12
+        ],
+        [
+          5,
+          5,
+          26,
+          12
+        ],
+        [
+          3,
+          5,
+          26,
+          12
+        ],
+        [
+          4,
+          5,
+          26,
+          12
+        ]
+      ],
+      "distinct_frames": 4
+    },
+    "public/env/tower-bolt-blue.json": {
+      "bytes": 1755,
+      "sha256": "02e8e3812b27db7947bf059a9fb2efe7805059cb0910768b15d5193736a7cc8b"
+    },
+    "public/env/tower-bolt-red.png": {
+      "size": [
+        128,
+        16
+      ],
+      "bytes": 301,
+      "sha256": "e778855a8944c2276edb73c70601368736f5d3d12cbffb63cdf02012b6f476a1",
+      "colors_including_transparent": 5,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        32,
+        16
+      ],
+      "fps": 16,
+      "loop": true,
+      "pivot": [
+        22,
+        8
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          2,
+          5,
+          26,
+          12
+        ],
+        [
+          5,
+          5,
+          26,
+          12
+        ],
+        [
+          3,
+          5,
+          26,
+          12
+        ],
+        [
+          4,
+          5,
+          26,
+          12
+        ]
+      ],
+      "distinct_frames": 4
+    },
+    "public/env/tower-bolt-red.json": {
+      "bytes": 1748,
+      "sha256": "22e1064e373cd6c85774c49e0fe7df8260dcba929e81edef6adbeae3f81d38ad"
+    },
+    "public/env/tower-impact-blue.png": {
+      "size": [
+        160,
+        32
+      ],
+      "bytes": 753,
+      "sha256": "e27ac9e7bc877246fbf532c5c7a6d55a71cffc3e84828c83bc3c4b35cc51e1f1",
+      "colors_including_transparent": 7,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 5,
+      "frame_size": [
+        32,
+        32
+      ],
+      "fps": 18,
+      "loop": false,
+      "pivot": [
+        16,
+        16
+      ],
+      "columns": 5,
+      "frame_bounds": [
+        [
+          10,
+          10,
+          23,
+          23
+        ],
+        [
+          5,
+          6,
+          26,
+          27
+        ],
+        [
+          3,
+          3,
+          29,
+          29
+        ],
+        [
+          3,
+          3,
+          29,
+          29
+        ],
+        null
+      ],
+      "distinct_frames": 5
+    },
+    "public/env/tower-impact-blue.json": {
+      "bytes": 2081,
+      "sha256": "eb391faca087f21edc31a0c6a664267a67da293520ea523cd0f3186051a4947f"
+    },
+    "public/env/tower-impact-red.png": {
+      "size": [
+        160,
+        32
+      ],
+      "bytes": 745,
+      "sha256": "abff92ac9ca501a35747f1aba660e58813f5b43de4ae1a0936d1010b03af0400",
+      "colors_including_transparent": 7,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 5,
+      "frame_size": [
+        32,
+        32
+      ],
+      "fps": 18,
+      "loop": false,
+      "pivot": [
+        16,
+        16
+      ],
+      "columns": 5,
+      "frame_bounds": [
+        [
+          10,
+          10,
+          23,
+          23
+        ],
+        [
+          5,
+          6,
+          26,
+          27
+        ],
+        [
+          3,
+          3,
+          29,
+          29
+        ],
+        [
+          3,
+          3,
+          29,
+          29
+        ],
+        null
+      ],
+      "distinct_frames": 5
+    },
+    "public/env/tower-impact-red.json": {
+      "bytes": 2073,
+      "sha256": "1a68915f8a4d538e9644a4267c81279a5528f2ddee552180246cf04d2859eeab"
+    },
+    "tools/env/generate_fx.py": {
+      "bytes": 16052,
+      "sha256": "1ce71bd707aead4167156de6517375a8984de6a1c2573169fc999dd60bd52a4b"
+    },
+    "tools/env/preview-bolt.png": {
+      "bytes": 83001,
+      "sha256": "6f35a2ddd9c17c0517bf007222c0487cee76bd2aed0d6b11699e1f3f06f4bc1c",
+      "size": [
+        1056,
+        1502
+      ]
     }
   },
   "team_ground_difference": {
@@ -1095,5 +1337,51 @@
     "shadow.png"
   ],
   "creep_contact_boundary": "last opaque foot row is 29; pivot [16,30] is its geometric bottom boundary; 2 transparent rows",
-  "checks_passed": true
+  "checks_passed": true,
+  "tower_fx": {
+    "date": "2026-11-06",
+    "pillow": "12.2.0",
+    "generator": "tools/env/generate_fx.py",
+    "randomness": "none",
+    "horizontal_px_per_world": 19,
+    "palette": {
+      "blue": {
+        "shade": "#354e8f",
+        "team": "#3b6fd8",
+        "rim": "#7db9ed",
+        "core": "#d2f4ef",
+        "white": "#f4fffd",
+        "outline": "#1a1422"
+      },
+      "red": {
+        "shade": "#9a3b45",
+        "team": "#d84a3b",
+        "rim": "#f8a47c",
+        "core": "#fff0bd",
+        "white": "#fff9ee",
+        "outline": "#1a1422"
+      }
+    },
+    "total_frames": 18,
+    "bolt_direction": "right; pivot at luminous head core",
+    "bolt_head_bounds": [
+      18,
+      5,
+      26,
+      12
+    ],
+    "impact_max_extent_px": 26,
+    "impact_final_frame_transparent": true,
+    "preview": {
+      "all_frames_nearest_scale": 5,
+      "scene_nearest_scale": 2,
+      "teams": [
+        "blue",
+        "red"
+      ],
+      "separate_flight_and_impact": true
+    },
+    "team_silhouettes_match": true,
+    "checks_passed": true
+  }
 }

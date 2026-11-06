@@ -96,6 +96,14 @@ export type EntityTookDamageEvent = {
     isCrit: boolean
 }
 
+/** 防禦塔（含主堡）發射光彈；傷害在 flightTime 秒後光彈命中時才結算（Host 發出，GameEngine 轉播給 Client） */
+export type TowerAttackEvent = {
+    type: 'TOWER_ATTACK'
+    attackerId: string
+    targetId: string
+    flightTime: number
+}
+
 export type EntityDiedEvent = {
     type: 'ENTITY_DIED'
     entityId: string
@@ -125,6 +133,7 @@ export type GameEvent =
     | PlayerDamagedEvent
     | PlayerHealedEvent
     | EntityTookDamageEvent
+    | TowerAttackEvent
     | EntityDiedEvent
     | PlayerRespawnedEvent
     | GameOverEvent

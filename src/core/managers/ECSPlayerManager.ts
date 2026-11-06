@@ -171,6 +171,12 @@ export class ECSPlayerManager {
         return this.players.get(playerId.toUpperCase());
     }
 
+    /** ECS Entity ID 對應的玩家 ID（不是玩家時傳回 undefined） */
+    getPlayerIdOf(entityId: EntityId): string | undefined {
+        for (const [playerId, id] of this.players) if (id === entityId) return playerId;
+        return undefined;
+    }
+
     /**
      * 取得所有玩家 playerId -> EntityId 的 Map
      */
