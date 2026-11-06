@@ -1,0 +1,292 @@
+{
+  "date": "2026-11-06",
+  "characters": {
+    "warrior": {
+      "files_bytes": {
+        "warrior-avatar.png": 721,
+        "warrior-idle.json": 2966,
+        "warrior-idle.png": 5810
+      },
+      "colors": 16,
+      "frames": 8,
+      "fps": 8,
+      "loop": true,
+      "pivot": [
+        48,
+        92
+      ],
+      "frameSize": [
+        96,
+        96
+      ],
+      "columns": 8,
+      "bounds": [
+        [
+          14,
+          14,
+          86,
+          92
+        ],
+        [
+          14,
+          14,
+          86,
+          92
+        ],
+        [
+          14,
+          13,
+          86,
+          92
+        ],
+        [
+          14,
+          13,
+          86,
+          92
+        ],
+        [
+          14,
+          13,
+          86,
+          92
+        ],
+        [
+          14,
+          14,
+          86,
+          92
+        ],
+        [
+          14,
+          15,
+          86,
+          92
+        ],
+        [
+          14,
+          15,
+          86,
+          92
+        ]
+      ]
+    },
+    "assassin": {
+      "files_bytes": {
+        "assassin-avatar.png": 719,
+        "assassin-idle.json": 2977,
+        "assassin-idle.png": 6094
+      },
+      "colors": 16,
+      "frames": 8,
+      "fps": 8,
+      "loop": true,
+      "pivot": [
+        48,
+        92
+      ],
+      "frameSize": [
+        96,
+        96
+      ],
+      "columns": 8,
+      "bounds": [
+        [
+          12,
+          19,
+          82,
+          92
+        ],
+        [
+          12,
+          19,
+          82,
+          92
+        ],
+        [
+          12,
+          18,
+          82,
+          92
+        ],
+        [
+          12,
+          18,
+          82,
+          92
+        ],
+        [
+          12,
+          18,
+          82,
+          92
+        ],
+        [
+          12,
+          19,
+          82,
+          92
+        ],
+        [
+          12,
+          20,
+          82,
+          92
+        ],
+        [
+          12,
+          20,
+          82,
+          92
+        ]
+      ]
+    },
+    "mage": {
+      "files_bytes": {
+        "mage-avatar.png": 685,
+        "mage-idle.json": 2933,
+        "mage-idle.png": 5765
+      },
+      "colors": 16,
+      "frames": 8,
+      "fps": 8,
+      "loop": true,
+      "pivot": [
+        48,
+        92
+      ],
+      "frameSize": [
+        96,
+        96
+      ],
+      "columns": 8,
+      "bounds": [
+        [
+          17,
+          13,
+          81,
+          92
+        ],
+        [
+          17,
+          13,
+          81,
+          92
+        ],
+        [
+          17,
+          12,
+          81,
+          92
+        ],
+        [
+          17,
+          12,
+          81,
+          92
+        ],
+        [
+          17,
+          12,
+          81,
+          92
+        ],
+        [
+          17,
+          13,
+          81,
+          92
+        ],
+        [
+          17,
+          14,
+          81,
+          92
+        ],
+        [
+          17,
+          14,
+          81,
+          92
+        ]
+      ]
+    }
+  },
+  "files": [
+    {
+      "path": "public/characters/NOTICE.md",
+      "bytes": 3827,
+      "sha256": "030f55f9acfd7681410de602f6d7f189dac92658c225d380e54ec86ff381d1d8"
+    },
+    {
+      "path": "public/characters/assassin-avatar.png",
+      "bytes": 719,
+      "sha256": "99631a2ec64ff512a74638bc733d7d53c3d94b1e734cf93e3b354695c18fae64"
+    },
+    {
+      "path": "public/characters/assassin-idle.json",
+      "bytes": 2977,
+      "sha256": "eb7e814c5e16d8a03db26c5c79faf5aa4f8d3efe578356078bb7fa05fdee7d3d"
+    },
+    {
+      "path": "public/characters/assassin-idle.png",
+      "bytes": 6094,
+      "sha256": "9cc66558a73af8d68653c782b25089696db176dcc47913b887789170dbc00fc5"
+    },
+    {
+      "path": "public/characters/mage-avatar.png",
+      "bytes": 685,
+      "sha256": "5e7480226789d0a393cd278bbbd4739cea6e7054f52ccc68c7ad6599737cc656"
+    },
+    {
+      "path": "public/characters/mage-idle.json",
+      "bytes": 2933,
+      "sha256": "c6e207f0f4fd4c67ac51fa94e0ac11e98e590fd3f8d7d2bf636de63dd647d8a6"
+    },
+    {
+      "path": "public/characters/mage-idle.png",
+      "bytes": 5765,
+      "sha256": "7dc87639ec5bf7a67a65c4dad8cbe733e8269126352040b3c07f705e0b496c72"
+    },
+    {
+      "path": "public/characters/warrior-avatar.png",
+      "bytes": 721,
+      "sha256": "743536c6080dc6037e44709ef1e110e48b0743d8efeaac67d1cb503312bc2c39"
+    },
+    {
+      "path": "public/characters/warrior-idle.json",
+      "bytes": 2966,
+      "sha256": "b1d97d19a27ff50acb067937c9ce1dd42a7faa42b7b09fa1f04d0539adace013"
+    },
+    {
+      "path": "public/characters/warrior-idle.png",
+      "bytes": 5810,
+      "sha256": "0596e2ecf73819bea0ac800c11c4f8e606cc86fbd21d6f7a3d94c1ed9bd9cb2a"
+    },
+    {
+      "path": "tools/portraits/preview-all-frames.png",
+      "bytes": 59495,
+      "sha256": "c65f066359c96cf376fe4112a5acf394510077e0b31186a169294233ff4bc9b2"
+    },
+    {
+      "path": "tools/portraits/preview-assassin.png",
+      "bytes": 12585,
+      "sha256": "8adb62ff31a828051bcf6fbe1143731149bf10d8cc129d137202c0c80a26d17a"
+    },
+    {
+      "path": "tools/portraits/preview-mage.png",
+      "bytes": 12581,
+      "sha256": "fd3da9c25ed9228f4e6e2bb537ff9c03d15584adf14de641f83c6fc18bd3c955"
+    },
+    {
+      "path": "tools/portraits/preview-overview.png",
+      "bytes": 10795,
+      "sha256": "ee3e9cd18d52e3b6046dbf3fc72d5b5cc545849dd58cf1b51fba183ccb13facd"
+    },
+    {
+      "path": "tools/portraits/preview-warrior.png",
+      "bytes": 12674,
+      "sha256": "9ed22b2266173844784bb64f3ece18c2e709aa76c304970ea72ee0c08388d5c1"
+    }
+  ]
+}
