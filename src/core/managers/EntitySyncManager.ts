@@ -6,6 +6,7 @@
  */
 
 import type { ECSStructureManager } from './ECSStructureManager';
+import type { MapManager } from '../map/MapManager';
 import type { ECSCreepManager } from './ECSCreepManager';
 import type { NetEntityKind, NetEntityState } from '../../utils/BinarySerializer';
 import {
@@ -34,10 +35,27 @@ export class EntitySyncManager {
     /** Client：網路 ID → 鏡像 Entity */
     private mirrors: Map<number, EntityId> = new Map();
 
-    constructor(world: World, structureManager: ECSStructureManager, creepManager: ECSCreepManager) {
+    private mapManager: MapManager;
+
+    constructor(world: World, structureManager: ECSStructureManager, creepManager: ECSCreepManager, mapManager: MapManager) {
         this.world = world;
         this.structureManager = structureManager;
         this.creepManager = creepManager;
+        this.mapManager = mapManager;
+    }
+
+    /**
+     * Host 遷移：新 Host 沿用原 Host 的網路 ID，其他 Client 的鏡像才對得上，不會全部重建
+     */
+    adoptMirrors(): void {
+        let maxNetId = 0;
+        for (const [netId, entityId] of this.mirrors) {
+            if (!this.world.hasEntity(entityId)) continue;
+            this.netIds.set(entityId, netId);
+            maxNetId = Math.max(maxNetId, netId);
+        }
+        this.nextNetId = maxNetId >= MAX_NET_ID ? 1 : maxNetId + 1;
+        this.mirrors.clear();
     }
 
     reset(): void {
@@ -146,10 +164,10 @@ export class EntitySyncManager {
     }
 
     private spawnMirror(state: NetEntityState): EntityId {
-        const config = { maxHp: state.maxHp };
-        return state.kind === 'creep'
-            ? this.creepManager.spawnCreep(state.team, state.pos, state.maxHp)
-            : this.structureManager.spawn(state.kind, state.team, state.pos, config);
+        if (state.kind === 'creep') return this.creepManager.spawnCreep(state.team, state.pos, state.maxHp);
+        // 射程與攻擊力取地圖設定：畫面的射程圈要用，Host 遷移後也由這份鏡像繼續攻擊
+        const config = { ...this.mapManager.structureConfigAt(state.kind, state.pos.x, state.pos.z), maxHp: state.maxHp };
+        return this.structureManager.spawn(state.kind, state.team, state.pos, config);
     }
 
     private updateMirror(entityId: EntityId, state: NetEntityState): void {

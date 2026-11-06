@@ -50,6 +50,12 @@ export class RoomService {
             if (this.roomStore.isHost) this.broadcastRoomState()
         }
 
+        // Host 遷移：房主斷線後由新 Host 接手房間狀態（GameEngine 在遊戲中另外接手模擬）
+        this.networkManager.onHostChanged = () => {
+            this.roomStore.setHost(this.networkManager.isHost)
+            if (this.roomStore.isHost) this.broadcastRoomState()
+        }
+
         this.networkManager.onPlayerReady = (peerId, isReady) => {
             this.roomStore.updatePlayerReady(peerId, isReady)
             eventBus.emit({ type: 'PLAYER_READY', playerId: peerId, isReady })

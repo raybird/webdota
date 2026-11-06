@@ -22,7 +22,7 @@ import { eventBus } from '../../../events/EventBus';
 const TOWER_BOLT_SPEED = 16;
 
 /** 飛行中的防禦塔光彈：命中時才扣血，讓畫面上看得到誰打了誰 */
-interface PendingBolt {
+export interface PendingBolt {
     attackerId: string;
     targetId: string;
     damage: number;
@@ -131,10 +131,15 @@ export class AISystem extends System {
             if (target) {
                 const flightTime = target.distance / TOWER_BOLT_SPEED;
                 this.bolts.push({ attackerId: entityId, targetId: target.entityId, damage: combat.attackPower, timeLeft: flightTime });
-                eventBus.emit({ type: 'TOWER_ATTACK', attackerId: entityId, targetId: target.entityId, flightTime });
+                eventBus.emit({ type: 'TOWER_ATTACK', attackerId: entityId, targetId: target.entityId, flightTime, damage: combat.attackPower });
                 ai.triggerAttack();
             }
         }
+    }
+
+    /** Host 遷移：新 Host 接手原 Host 還在飛的光彈（由 Client 端記錄的轉播訊息換算） */
+    adoptBolts(bolts: PendingBolt[]): void {
+        this.bolts.push(...bolts);
     }
 
     /** 推進飛行中的光彈；目標在飛行途中死亡或移除時光彈落空 */

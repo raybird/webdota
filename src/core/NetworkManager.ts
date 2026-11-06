@@ -79,6 +79,7 @@ export interface TowerAttackMessage {
     from: number;
     target: { netId: number } | { playerId: string };
     flightTime: number;
+    damage: number;
 }
 
 export class NetworkManager {

@@ -102,6 +102,8 @@ export type TowerAttackEvent = {
     attackerId: string
     targetId: string
     flightTime: number
+    /** 命中時的傷害（轉播給 Client 記錄，Host 遷移時新 Host 接手結算） */
+    damage: number
 }
 
 export type EntityDiedEvent = {
