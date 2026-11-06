@@ -16,6 +16,18 @@ import { TeamComponent } from '../components/TeamComponent';
 import { CombatComponent } from '../components/CombatComponent';
 import { AIComponent } from '../components/AIComponent';
 import { HealthSystem } from './HealthSystem';
+import { eventBus } from '../../../events/EventBus';
+
+/** 防禦塔光彈的飛行速度（單位／秒）；射程 12 約 0.75 秒命中 */
+const TOWER_BOLT_SPEED = 16;
+
+/** 飛行中的防禦塔光彈：命中時才扣血，讓畫面上看得到誰打了誰 */
+interface PendingBolt {
+    attackerId: string;
+    targetId: string;
+    damage: number;
+    timeLeft: number;
+}
 
 export class AISystem extends System {
     readonly name = 'AISystem';
@@ -23,7 +35,11 @@ export class AISystem extends System {
 
     priority = 25; // 在 Movement 和 Collision 之間
 
+    private bolts: PendingBolt[] = [];
+
     update(world: World, dt: number): void {
+        this.updateBolts(world, dt);
+
         const entities = world.query(ComponentType.AI, ComponentType.TRANSFORM);
 
         for (const entityId of entities) {
@@ -109,12 +125,27 @@ export class AISystem extends System {
 
         if (!combat || !team) return;
 
-        // 嘗試攻擊範圍內的敵人
+        // 對範圍內最近的敵人發射光彈，命中時才扣血
         if (ai.canAttack()) {
             const target = this.findNearestEnemy(world, entityId, transform.position, ai.attackRange, team.team);
             if (target) {
-                HealthSystem.dealDamage(world, target.entityId, combat.attackPower, entityId);
+                const flightTime = target.distance / TOWER_BOLT_SPEED;
+                this.bolts.push({ attackerId: entityId, targetId: target.entityId, damage: combat.attackPower, timeLeft: flightTime });
+                eventBus.emit({ type: 'TOWER_ATTACK', attackerId: entityId, targetId: target.entityId, flightTime });
                 ai.triggerAttack();
+            }
+        }
+    }
+
+    /** 推進飛行中的光彈；目標在飛行途中死亡或移除時光彈落空 */
+    private updateBolts(world: World, dt: number): void {
+        for (let i = this.bolts.length - 1; i >= 0; i--) {
+            const bolt = this.bolts[i]!;
+            bolt.timeLeft -= dt;
+            if (bolt.timeLeft > 0) continue;
+            this.bolts.splice(i, 1);
+            if (world.hasEntity(bolt.targetId)) {
+                HealthSystem.dealDamage(world, bolt.targetId, bolt.damage, bolt.attackerId);
             }
         }
     }

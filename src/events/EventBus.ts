@@ -78,7 +78,7 @@ class EventBus {
 // 創建全局單例
 export const eventBus = new EventBus()
 
-// 開發環境下暴露到 window
-if (import.meta.env.DEV) {
+// 開發環境下暴露到 window（測試在 Node 執行時沒有 window）
+if (import.meta.env.DEV && typeof window !== 'undefined') {
     (window as any).eventBus = eventBus
 }

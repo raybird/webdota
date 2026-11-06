@@ -14,6 +14,8 @@ import type { Skill } from '../types/Skill';
 import { ECSStructureManager, type StructureKind } from './managers/ECSStructureManager';
 import { ECSCreepManager } from './managers/ECSCreepManager';
 import { EntitySyncManager } from './managers/EntitySyncManager';
+import { TowerFeedback } from './TowerFeedback';
+import type { TowerAttackMessage } from './NetworkManager';
 import { SoundManager } from './SoundManager';
 import { BackgroundTicker } from './BackgroundTicker';
 import { useGameStore } from '../stores/gameStore';
@@ -109,6 +111,7 @@ export class GameEngine {
     soundManager!: SoundManager;
     spriteFx!: SpriteFxManager;
     private pixelActors!: PixelActorManager;
+    private towerFeedback!: TowerFeedback;
 
     // ECS
     ecsWorld!: World;
@@ -210,6 +213,7 @@ export class GameEngine {
         this.creepManager = new ECSCreepManager(this.mapManager, this.uiManager, this.ecsWorld, this.entityFactory);
         this.playerManager = new ECSPlayerManager(this.ecsWorld, this.entityFactory, this.uiManager);
         this.entitySync = new EntitySyncManager(this.ecsWorld, this.structureManager, this.creepManager);
+        this.towerFeedback = new TowerFeedback(this.app, this.ecsWorld, this.spriteFx, this.structureManager, this.mapManager);
 
         this.setupEventListeners();
 
@@ -256,6 +260,7 @@ export class GameEngine {
         this.networkManager.onEntityState = (_frame, entities) => {
             if (!this.isHost && this.isGameStarted) this.entitySync.apply(entities);
         };
+        this.networkManager.onTowerAttack = (attack) => this.playRemoteTowerAttack(attack);
         this.networkManager.onShopRequest = (fromPeerId, request) => this.handleShopRequest(fromPeerId, request);
         this.networkManager.onInventory = (update) => this.applyInventoryUpdate(update);
         this.networkManager.onGameOver = (winnerTeam, reason) => {
@@ -270,6 +275,11 @@ export class GameEngine {
                 this.playSpriteFxAt('death-poof', event.entityId, 0);
             }),
             eventBus.on('ENTITY_TOOK_DAMAGE', (event) => this.playSpriteFxAt('hit-spark', event.targetId, 1)),
+            eventBus.on('TOWER_ATTACK', (event) => {
+                // 只有 Host 的 AISystem 會發出：本地播放並轉播給 Client
+                this.towerFeedback.playBolt(event.attackerId, event.targetId, event.flightTime);
+                this.broadcastTowerAttack(event.attackerId, event.targetId, event.flightTime);
+            }),
             eventBus.on('PLAYER_RESPAWNED', (event) => this.playSpriteFxAt('respawn-beam', event.entityId, 0)),
             eventBus.on('GAME_OVER', (event) => {
                 this.soundManager.playGameOverSound();
@@ -327,6 +337,7 @@ export class GameEngine {
         this.statusVisualSystem.localTeam = (this.roomStore.myPlayer?.team as Team | undefined) ?? null;
         setViewTeam(this.statusVisualSystem.localTeam);
         this.mapManager.applyView();
+        this.towerFeedback.resetRings();
         if (this.playerManager.getPlayer(peerId)) {
             const skills = this.playerManager.getPlayerSkills(peerId);
             const normalSkills = skills.filter(s => s.type === 'normal');
@@ -378,6 +389,32 @@ export class GameEngine {
         this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
         this.spriteFx.update(dt);
         this.pixelActors.update(dt);
+        if (this.isGameStarted) {
+            const me = this.networkManager.peerId;
+            const position = this.playerManager.isDead(me) ? null : this.playerManager.getPlayerPosition(me);
+            this.towerFeedback.update(this.statusVisualSystem.localTeam, position ?? null);
+        }
+    }
+
+    /** Host：把防禦塔光彈轉成兩端共通的 ID 後轉播 */
+    private broadcastTowerAttack(attackerId: EntityId, targetId: EntityId, flightTime: number): void {
+        const from = this.entitySync.netIdOf(attackerId);
+        if (from === undefined) return;
+        const playerId = this.playerManager.getPlayerIdOf(targetId);
+        const netId = playerId ? undefined : this.entitySync.netIdOf(targetId);
+        const target = playerId ? { playerId } : netId !== undefined ? { netId } : null;
+        if (!target) return;
+        this.networkManager.broadcastTowerAttack({ from, target, flightTime });
+    }
+
+    /** Client：播放 Host 轉播的防禦塔光彈 */
+    private playRemoteTowerAttack(attack: TowerAttackMessage): void {
+        if (this.isHost) return;
+        const attackerId = this.entitySync.entityOf(attack.from);
+        const targetId = 'playerId' in attack.target
+            ? this.playerManager.getPlayer(attack.target.playerId)
+            : this.entitySync.entityOf(attack.target.netId);
+        if (attackerId && targetId) this.towerFeedback.playBolt(attackerId, targetId, attack.flightTime);
     }
 
     /**
@@ -695,11 +732,13 @@ export class GameEngine {
         this.networkManager.onShopRequest = undefined;
         this.networkManager.onInventory = undefined;
         this.networkManager.onGameOver = undefined;
+        this.networkManager.onTowerAttack = undefined;
 
         this.isGameStarted = false;
         this.inputManager.destroy();
         this.renderManager.destroy();
         this.soundManager.destroy();
+        this.towerFeedback.destroy();
         this.spriteFx.destroy();
         this.pixelActors.clear();
         this.projectileManager.clearAll();

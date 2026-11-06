@@ -71,6 +71,16 @@ export interface GameState {
     isGameStarted: boolean;
 }
 
+/**
+ * 防禦塔光彈的網路訊息：兩端的 ECS Entity ID 不同，
+ * 建築與小兵用 EntitySyncManager 的網路 ID，玩家用 Peer ID
+ */
+export interface TowerAttackMessage {
+    from: number;
+    target: { netId: number } | { playerId: string };
+    flightTime: number;
+}
+
 export class NetworkManager {
     peer!: Peer;  // 會在 initPeer 中初始化
     peerId: string = '';
@@ -93,6 +103,8 @@ export class NetworkManager {
     onShopRequest?: (fromPeerId: string, request: ShopRequest) => void;
     onInventory?: (update: InventoryUpdate) => void;
     onGameOver?: (winnerTeam: 'red' | 'blue', reason: 'base_destroyed' | 'surrender' | 'timeout') => void;
+    /** Host 轉播的防禦塔光彈（只做畫面表現，傷害由 Host 結算後隨 ENTITY_STATE／GAME_STATE 同步） */
+    onTowerAttack?: (attack: TowerAttackMessage) => void;
     onRoomCode?: (code: string, hostId: string) => void;
     onGetRoomState?: () => { players: RoomPlayerState[] };
     onRoomState?: (players: RoomPlayerState[]) => void;
@@ -310,6 +322,10 @@ export class NetworkManager {
                 if (this.onGameOver) this.onGameOver(data.winnerTeam, data.reason);
                 break;
 
+            case 'tower_attack':
+                if (fromPeerId === this.hostId && this.onTowerAttack) this.onTowerAttack(data.attack);
+                break;
+
             case 'room_code':
                 if (this.onRoomCode) this.onRoomCode(data.code, data.hostId);
                 break;
@@ -468,6 +484,10 @@ export class NetworkManager {
     /**
      * 廣播遊戲結束 (Host Only)
      */
+    broadcastTowerAttack(attack: TowerAttackMessage) {
+        this.connections.forEach(conn => conn.send({ type: 'tower_attack', attack }));
+    }
+
     broadcastGameOver(winnerTeam: 'red' | 'blue', reason: 'base_destroyed' | 'surrender' | 'timeout') {
         this.connections.forEach(conn => conn.send({ type: 'game_over', winnerTeam, reason }));
     }
