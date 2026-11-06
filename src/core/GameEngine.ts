@@ -50,6 +50,8 @@ const FRAME_STALL_MS = 50;
 const STATE_BROADCAST_INTERVAL = 3;
 /** Host 每幾個 fixedUpdate 廣播一次建築與小兵狀態 */
 const ENTITY_BROADCAST_INTERVAL = 6;
+/** 同隊玩家開局位置的間距 */
+const SPAWN_SPACING = 1.5;
 /** 擊殺獎勵金幣（最後一擊的玩家獲得） */
 const KILL_GOLD: Record<'player' | 'creep' | 'tower' | 'base', number> = {
     player: 200,
@@ -156,8 +158,8 @@ export class GameEngine {
         this.spriteFx = new SpriteFxManager(this.app);
         this.spriteFx.setCamera(camera);
         this.spriteFx.preload();
-        this.effectManager = new EffectManager(this.app, this.spriteFx);
-        this.projectileManager = new ProjectileManager(this.app);
+        this.effectManager = new EffectManager(this.spriteFx);
+        this.projectileManager = new ProjectileManager(this.spriteFx);
         this.soundManager = new SoundManager(this.app);
 
         this.ecsWorld = new World();
@@ -276,12 +278,24 @@ export class GameEngine {
         this.collisionSystem.authoritative = this.isHost;
         if (this.isHost) this.spawnStructuresFromMap();
 
+        // 開局在己方基地（與重生位置相同），同隊玩家沿基地兩側錯開；各端依相同排序算出相同位置
         const players = [...this.roomStore.connectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
-        const radius = 5;
-        players.forEach((player, index) => {
-            const angle = (index / players.length) * Math.PI * 2;
-            this.playerManager.spawnPlayer(player.id, { x: Math.cos(angle) * radius, y: 1, z: Math.sin(angle) * radius });
-        });
+        const teamSlots = new Map<Team, number>();
+        for (const player of players) {
+            const team = (player.team || 'neutral') as Team;
+            const slot = teamSlots.get(team) ?? 0;
+            teamSlots.set(team, slot + 1);
+
+            const base = this.getRespawnPosition(team);
+            const len = Math.hypot(base.x, base.z) || 1;
+            // 垂直於基地到地圖中央的方向：0、+1.5、-1.5、+3、-3…
+            const side = (slot % 2 === 1 ? 1 : -1) * Math.ceil(slot / 2) * SPAWN_SPACING;
+            this.playerManager.spawnPlayer(player.id, {
+                x: base.x + (-base.z / len) * side,
+                y: 1,
+                z: base.z + (base.x / len) * side
+            });
+        }
 
         const peerId = this.networkManager.peerId;
         if (this.playerManager.getPlayer(peerId)) {

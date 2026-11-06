@@ -174,6 +174,7 @@ export const SKILLS: Record<string, Skill> = {
         aoe: 5.0,
         knockback: 4.0,
         delay: 1.0, // 延遲傷害
+        targetDistance: 7.0, // 落在前方 7 單位
         animation: 'skill_ultimate'
     }
 };

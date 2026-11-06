@@ -1,0 +1,1381 @@
+{
+ "frames": [
+  {
+   "filename": "smoke-bomb 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 1",
+   "frame": {
+    "x": 197,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 2",
+   "frame": {
+    "x": 394,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 3",
+   "frame": {
+    "x": 591,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 4",
+   "frame": {
+    "x": 788,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 5",
+   "frame": {
+    "x": 985,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 6",
+   "frame": {
+    "x": 1182,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 7",
+   "frame": {
+    "x": 0,
+    "y": 132,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 8",
+   "frame": {
+    "x": 197,
+    "y": 132,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 9",
+   "frame": {
+    "x": 394,
+    "y": 132,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 10",
+   "frame": {
+    "x": 591,
+    "y": 132,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 11",
+   "frame": {
+    "x": 788,
+    "y": 132,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 12",
+   "frame": {
+    "x": 985,
+    "y": 132,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 13",
+   "frame": {
+    "x": 1182,
+    "y": 132,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 14",
+   "frame": {
+    "x": 0,
+    "y": 264,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 15",
+   "frame": {
+    "x": 197,
+    "y": 264,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 16",
+   "frame": {
+    "x": 394,
+    "y": 264,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 17",
+   "frame": {
+    "x": 591,
+    "y": 264,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 18",
+   "frame": {
+    "x": 788,
+    "y": 264,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 19",
+   "frame": {
+    "x": 985,
+    "y": 264,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 20",
+   "frame": {
+    "x": 1182,
+    "y": 264,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 21",
+   "frame": {
+    "x": 0,
+    "y": 396,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 22",
+   "frame": {
+    "x": 197,
+    "y": 396,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 23",
+   "frame": {
+    "x": 394,
+    "y": 396,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 24",
+   "frame": {
+    "x": 591,
+    "y": 396,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 25",
+   "frame": {
+    "x": 788,
+    "y": 396,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 26",
+   "frame": {
+    "x": 985,
+    "y": 396,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 27",
+   "frame": {
+    "x": 1182,
+    "y": 396,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 28",
+   "frame": {
+    "x": 0,
+    "y": 528,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 29",
+   "frame": {
+    "x": 197,
+    "y": 528,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 30",
+   "frame": {
+    "x": 394,
+    "y": 528,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 31",
+   "frame": {
+    "x": 591,
+    "y": 528,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 32",
+   "frame": {
+    "x": 788,
+    "y": 528,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 33",
+   "frame": {
+    "x": 985,
+    "y": 528,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 34",
+   "frame": {
+    "x": 1182,
+    "y": 528,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 35",
+   "frame": {
+    "x": 0,
+    "y": 660,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 36",
+   "frame": {
+    "x": 197,
+    "y": 660,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 37",
+   "frame": {
+    "x": 394,
+    "y": 660,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 38",
+   "frame": {
+    "x": 591,
+    "y": 660,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 39",
+   "frame": {
+    "x": 788,
+    "y": 660,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 40",
+   "frame": {
+    "x": 985,
+    "y": 660,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 41",
+   "frame": {
+    "x": 1182,
+    "y": 660,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 42",
+   "frame": {
+    "x": 0,
+    "y": 792,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 43",
+   "frame": {
+    "x": 197,
+    "y": 792,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 44",
+   "frame": {
+    "x": 394,
+    "y": 792,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 45",
+   "frame": {
+    "x": 591,
+    "y": 792,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 46",
+   "frame": {
+    "x": 788,
+    "y": 792,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 47",
+   "frame": {
+    "x": 985,
+    "y": 792,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 48",
+   "frame": {
+    "x": 1182,
+    "y": 792,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 49",
+   "frame": {
+    "x": 0,
+    "y": 924,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 50",
+   "frame": {
+    "x": 197,
+    "y": 924,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 51",
+   "frame": {
+    "x": 394,
+    "y": 924,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 52",
+   "frame": {
+    "x": 591,
+    "y": 924,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 53",
+   "frame": {
+    "x": 788,
+    "y": 924,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 54",
+   "frame": {
+    "x": 985,
+    "y": 924,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 55",
+   "frame": {
+    "x": 1182,
+    "y": 924,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 56",
+   "frame": {
+    "x": 0,
+    "y": 1056,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 57",
+   "frame": {
+    "x": 197,
+    "y": 1056,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 58",
+   "frame": {
+    "x": 394,
+    "y": 1056,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 59",
+   "frame": {
+    "x": 591,
+    "y": 1056,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  },
+  {
+   "filename": "smoke-bomb 60",
+   "frame": {
+    "x": 788,
+    "y": 1056,
+    "w": 197,
+    "h": 132
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 197,
+    "h": 132
+   },
+   "sourceSize": {
+    "w": 197,
+    "h": 132
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "https://github.com/patch-gg/pixelfx",
+  "version": "1",
+  "image": "smoke-bomb.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 1379,
+   "h": 1188
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "smoke-bomb",
+    "from": 0,
+    "to": 60,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "explosions/smoke-bomb",
+   "name": "Smoke bomb",
+   "fps": 12,
+   "loop": false,
+   "frames": 61,
+   "frameSize": [
+    197,
+    132
+   ],
+   "pivot": [
+    123,
+    112
+   ],
+   "columns": 7
+  }
+ }
+}

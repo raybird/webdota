@@ -138,7 +138,12 @@ Entity ID 不重複使用。
 
 ### 像素連續圖特效（SpriteFxManager）
 `public/fx/` 的連續圖由 [pixelfx](https://github.com/patch-gg/pixelfx)（MIT）輸出，來源、指令與授權見 `public/fx/NOTICE.md`。
-`SpriteFxManager` 用面向鏡頭的平面依 fps 切換 UV 逐格播放，平面與材質以特效名稱分池重複使用；目前用於火球命中、受擊、陣亡與重生。
+`SpriteFxManager` 用面向鏡頭的平面依 fps 切換 UV 逐格播放，平面與材質以特效名稱分池重複使用。
+`play()` 可指定延遲、持續秒數、跟隨位置，以及方向（原圖朝右：投射物與刺擊在畫面上旋轉，揮砍只左右翻轉），傳回可移動或停止的控制代碼。
+
+- `EffectManager`：技能 id 對應特效，位置取施法者地面座標，判定中心與 `ECSSkillExecutor` 同算法（隕石術的落點由 `Skill.targetDistance` 決定，並延遲到隕石落地那一格對上傷害）。
+- `ProjectileManager`：飛行中的火球跟著實際投射物移動，命中或飛滿射程時在停下的位置播放爆炸。
+- `GameEngine`：受擊、陣亡與重生事件。
 比例固定為每單位 19 素材像素：pixelfx 以 38px 高的角色為基準設計，這裡的角色約 2 單位高、在畫面上約 40px，
 維持這個比例才接近 1 素材像素對 1 螢幕像素；縮小顯示會讓 1 像素細線被濾掉。素材請用原始解析度輸出，不要預先縮小。
 

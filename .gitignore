@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 本機 MCP 記憶工具在專案根目錄建立的資料庫
+mcp-memory-libsql.db

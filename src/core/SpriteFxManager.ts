@@ -22,7 +22,36 @@ interface SheetData {
     json: SheetJson;
 }
 
-export type SpriteFxName = 'fireball-impact' | 'hit-spark' | 'respawn-beam' | 'death-poof';
+const FX_NAMES = [
+    'fireball-impact', 'hit-spark', 'respawn-beam', 'death-poof',
+    'skill-slash', 'dash-thrust', 'ground-slam', 'divine-shield', 'spin-slash', 'crit-hit',
+    'smoke-bomb', 'dagger-flurry', 'fireball', 'frost-nova', 'blink-out', 'blink-in', 'meteor'
+] as const;
+
+export type SpriteFxName = typeof FX_NAMES[number];
+
+type Vec3Like = { x: number; y: number; z: number };
+
+export interface SpriteFxOptions {
+    /** 延遲幾秒才開始播放 */
+    delay?: number;
+    /** 播放幾秒後結束；循環特效沒有指定時會一直播放到 stop() */
+    duration?: number;
+    /**
+     * 特效的方向（世界座標 XZ）。pixelfx 有方向的效果原圖朝右：
+     * 'rotate' 在畫面上轉向該方向（投射物、刺擊），'mirror' 只左右翻轉（揮砍，避免上下顛倒）
+     */
+    direction?: { x: number; z: number };
+    facing?: 'rotate' | 'mirror';
+    /** 每幀讀取位置，讓特效跟著單位移動 */
+    follow?: () => Vec3Like;
+}
+
+/** play() 傳回的控制代碼；特效結束後就不再有作用 */
+export interface SpriteFxHandle {
+    moveTo(position: Vec3Like): void;
+    stop(): void;
+}
 
 /**
  * 每個世界單位對應的素材像素數
@@ -30,8 +59,6 @@ export type SpriteFxName = 'fireball-impact' | 'hit-spark' | 'respawn-beam' | 'd
  * 所以用 19 就維持原作的比例，也大約是 1 素材像素對 1 螢幕像素（更小會讓細線被濾掉）
  */
 const PX_PER_UNIT = 19;
-
-const FX_NAMES: SpriteFxName[] = ['fireball-impact', 'hit-spark', 'respawn-beam', 'death-poof'];
 
 const FX_BASE_URL = '/fx/';
 
@@ -42,6 +69,8 @@ interface ActiveFx {
     name: SpriteFxName;
     /** 對齊鏡頭的外層，位置在特效原點 */
     root: pc.Entity;
+    /** 在鏡頭平面內旋轉或翻轉，讓有方向的效果朝向 direction */
+    spin: pc.Entity;
     /** 特效原點的世界座標 */
     origin: pc.Vec3;
     /** 平面，依 pivot 偏移 */
@@ -49,6 +78,13 @@ interface ActiveFx {
     material: pc.StandardMaterial;
     time: number;
     frameIndex: number;
+    duration: number;
+    direction: { x: number; z: number } | null;
+    facing: 'rotate' | 'mirror';
+    follow: (() => Vec3Like) | null;
+    stopped: boolean;
+    /** 每次從池中取出就加一，讓舊的控制代碼失效 */
+    generation: number;
 }
 
 export class SpriteFxManager {
@@ -108,26 +144,38 @@ export class SpriteFxManager {
     }
 
     /**
-     * 在世界座標播放一次特效；尚未載入完成時略過
+     * 在世界座標播放特效（原點是 pixelfx 的 pivot，多數效果在地面上）；尚未載入完成時略過並傳回 null
      */
-    play(name: SpriteFxName, position: { x: number; y: number; z: number }, scale: number = 1): void {
+    play(name: SpriteFxName, position: Vec3Like, options: SpriteFxOptions = {}): SpriteFxHandle | null {
         const sheet = this.sheets.get(name);
-        if (!sheet) return;
+        if (!sheet) return null;
 
         const fx = this.pools.get(name)?.pop() ?? this.create(name, sheet);
         const { frameSize, pivot } = sheet.json.meta.pixelfx;
-        const unit = scale / PX_PER_UNIT;
+        const unit = 1 / PX_PER_UNIT;
 
         fx.origin.set(position.x, position.y, position.z);
-        this.placeFacingCamera(fx);
+        fx.time = -(options.delay ?? 0);
+        fx.frameIndex = -1;
+        fx.duration = options.duration ?? Infinity;
+        fx.direction = options.direction ?? null;
+        fx.facing = options.facing ?? 'rotate';
+        fx.follow = options.follow ?? null;
+        fx.stopped = false;
+        const generation = ++fx.generation;
+
         fx.quad.setLocalScale(frameSize[0] * unit, 1, frameSize[1] * unit);
         // 平面中心相對特效原點的偏移（像素 y 向下，世界 y 向上）
         fx.quad.setLocalPosition((frameSize[0] / 2 - pivot[0]) * unit, (pivot[1] - frameSize[1] / 2) * unit, 0);
-        fx.time = 0;
-        fx.frameIndex = -1;
-        fx.root.enabled = true;
+        this.place(fx);
+        fx.root.enabled = fx.time >= 0;
         this.setFrame(fx, sheet, 0);
         this.active.push(fx);
+
+        return {
+            moveTo: (p) => { if (fx.generation === generation) fx.origin.set(p.x, p.y, p.z); },
+            stop: () => { if (fx.generation === generation) fx.stopped = true; }
+        };
     }
 
     private create(name: SpriteFxName, sheet: SheetData): ActiveFx {
@@ -146,14 +194,19 @@ export class SpriteFxManager {
         material.update();
 
         const root = new pc.Entity(`SpriteFx-${name}`);
+        const spin = new pc.Entity('Spin');
         const quad = new pc.Entity('Quad');
         // plane 的法線是 +Y，轉到 +Z 面向鏡頭
         quad.setLocalEulerAngles(90, 0, 0);
         quad.addComponent('render', { type: 'plane', material, castShadows: false, receiveShadows: false });
-        root.addChild(quad);
+        spin.addChild(quad);
+        root.addChild(spin);
         this.app.root.addChild(root);
 
-        return { name, root, origin: new pc.Vec3(), quad, material, time: 0, frameIndex: -1 };
+        return {
+            name, root, spin, origin: new pc.Vec3(), quad, material, time: 0, frameIndex: -1,
+            duration: Infinity, direction: null, facing: 'rotate', follow: null, stopped: false, generation: 0
+        };
     }
 
     private setFrame(fx: ActiveFx, sheet: SheetData, index: number): void {
@@ -187,24 +240,28 @@ export class SpriteFxManager {
             const count = sheet.json.frames.length;
 
             fx.time += dt;
+            if (fx.time < 0) continue; // 延遲中
             let index = Math.floor(fx.time * fps);
-            if (index >= count) {
-                if (!loop) {
-                    this.release(i);
-                    continue;
-                }
-                index %= count;
+            if (fx.stopped || fx.time >= fx.duration || (index >= count && !loop)) {
+                this.release(i);
+                continue;
             }
+            index %= count;
 
-            this.placeFacingCamera(fx);
+            fx.root.enabled = true;
+            this.place(fx);
             this.setFrame(fx, sheet, index);
         }
     }
 
     /**
-     * 平面與鏡頭同向（spherical billboard），並往鏡頭方向移一點
+     * 平面與鏡頭同向（spherical billboard）、往鏡頭方向移一點，並依 direction 在畫面上轉向
      */
-    private placeFacingCamera(fx: ActiveFx): void {
+    private place(fx: ActiveFx): void {
+        if (fx.follow) {
+            const p = fx.follow();
+            fx.origin.set(p.x, p.y, p.z);
+        }
         if (!this.camera) {
             fx.root.setPosition(fx.origin);
             return;
@@ -216,12 +273,27 @@ export class SpriteFxManager {
             fx.origin.z - back.z * TOWARD_CAMERA
         );
         fx.root.setRotation(this.camera.getRotation());
+
+        if (!fx.direction) return;
+        // 世界方向投影到鏡頭的右與上，得到畫面上的方向
+        const right = this.camera.right, up = this.camera.up;
+        const sx = fx.direction.x * right.x + fx.direction.z * right.z;
+        const sy = fx.direction.x * up.x + fx.direction.z * up.z;
+        if (fx.facing === 'mirror') {
+            fx.spin.setLocalScale(sx < 0 ? -1 : 1, 1, 1);
+        } else {
+            fx.spin.setLocalEulerAngles(0, 0, Math.atan2(sy, sx) * pc.math.RAD_TO_DEG);
+        }
     }
 
     private release(activeIndex: number): void {
         const fx = this.active[activeIndex]!;
         this.active.splice(activeIndex, 1);
         fx.root.enabled = false;
+        fx.stopped = true;
+        fx.follow = null;
+        fx.spin.setLocalScale(1, 1, 1);
+        fx.spin.setLocalEulerAngles(0, 0, 0);
 
         let pool = this.pools.get(fx.name);
         if (!pool) this.pools.set(fx.name, (pool = []));
