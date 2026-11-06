@@ -22,6 +22,9 @@ interface WaveConfig {
     waveIntervalSeconds: number;
 }
 
+/** 小兵出生位置距主堡中心的距離（主堡底面半寬 2.5） */
+const CREEP_SPAWN_OFFSET = 5;
+
 export class ECSCreepManager {
     private mapManager: MapManager;
     private uiManager: UIManager;
@@ -93,11 +96,17 @@ export class ECSCreepManager {
         const spawnPoint = spawnPoints[0];
         if (!spawnPoint) return;
 
+        // 出生點是主堡中心；往地圖中央移出主堡底面（5×5），一出生就在主堡像素圖旁邊看得到，也已朝向兵線
+        const { x, z } = spawnPoint.position;
+        const len = Math.hypot(x, z) || 1;
+        const originX = x - (x / len) * CREEP_SPAWN_OFFSET;
+        const originZ = z - (z / len) * CREEP_SPAWN_OFFSET;
+
         for (let i = 0; i < this.waveConfig.creepsPerWave; i++) {
             this.spawnCreep(team, {
-                x: spawnPoint.position.x + (Math.random() - 0.5) * 2,
+                x: originX + (Math.random() - 0.5) * 2,
                 y: spawnPoint.position.y,
-                z: spawnPoint.position.z + (Math.random() - 0.5) * 2
+                z: originZ + (Math.random() - 0.5) * 2
             });
         }
     }
