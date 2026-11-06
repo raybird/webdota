@@ -9,6 +9,8 @@
 export interface Component {
     /** Component 類型識別符 */
     readonly type: string;
+    /** Entity 被銷毀時呼叫，用來釋放物理、渲染等外部資源 */
+    dispose?(): void;
 }
 
 /**
@@ -27,7 +29,6 @@ export const ComponentType = {
     PLAYER_INPUT: 'PlayerInput',
     ANIMATION: 'Animation',
     INVENTORY: 'Inventory',
-    POOLABLE: 'Poolable',
 } as const;
 
 export type ComponentTypeName = typeof ComponentType[keyof typeof ComponentType];

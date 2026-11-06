@@ -16,9 +16,6 @@ export class HealthSystem extends System {
 
     priority = 50; // 中等優先級
 
-    /** 死亡回調 */
-    onEntityDeath?: (entityId: string, killerId: string | null) => void;
-
     update(world: World, _dt: number): void {
         const entities = world.query(ComponentType.HEALTH);
 
@@ -29,11 +26,6 @@ export class HealthSystem extends System {
 
             // 檢查死亡
             if (health.isDead()) {
-                // 觸發死亡回調
-                if (this.onEntityDeath) {
-                    this.onEntityDeath(entityId, health.lastAttackerId);
-                }
-
                 // 發送全域死亡事件
                 eventBus.emit({
                     type: 'ENTITY_DIED',
@@ -41,16 +33,7 @@ export class HealthSystem extends System {
                     killerId: health.lastAttackerId
                 });
 
-                // 處理渲染組件：如果是可池化的，由 Factory 處理，否則直接銷毀
-                const render = world.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
-                if (render) {
-                    // 如果沒有 POOLABLE 組件，則直接銷毀視覺物件
-                    if (!world.hasComponent(entityId, ComponentType.POOLABLE)) {
-                        render.destroy();
-                    }
-                }
-
-                // 標記 Entity 待刪除
+                // 標記 Entity 待刪除（dispose 會一併釋放物理與渲染資源）
                 world.removeEntity(entityId);
             }
         }
@@ -82,9 +65,7 @@ export class HealthSystem extends System {
 
             // 觸發受擊閃爍 (Hit Flash)
             const render = world.getComponent<RenderComponent>(targetId, ComponentType.RENDER);
-            if (render && render.flashHit) {
-                render.flashHit();
-            }
+            render?.flashHit();
         }
 
         return actualDamage;

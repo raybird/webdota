@@ -8,7 +8,7 @@
 - **核心技術**: Vue 3 (UI), PlayCanvas (3D 渲染), Rapier3D (物理), PeerJS (P2P 網路)。
 - **架構模式**: 
   - **遊戲核心**: Entity Component System (ECS)。
-  - **網路**: Deterministic Lockstep (確定性鎖步) 同步。
+  - **網路**: Host 權威同步（Host 處理所有輸入並每 3 幀廣播狀態，Client 本地預測移動）。
   - **UI 層**: 響應式 Vue 3 + Pinia 狀態管理。
 
 ## 🏗️ 核心架構規範
@@ -20,8 +20,8 @@
 - **Systems** (`src/core/ecs/systems/`): 唯一的邏輯處理者，透過 `World.query()` 篩選實體。
 - **Managers** (`src/core/managers/`): 負責實體的生命週期管理與外部接口對接。
 
-### 2. 確定性網路同步 (Networking)
-- 遊戲狀態必須保持**確定性**以支持鎖步同步。
+### 2. 網路同步 (Networking)
+- 遊戲邏輯（AI、傷害判定、小兵生成）以 Host 為準；Client 只送輸入並套用 Host 狀態。
 - 嚴禁在 System 中使用 `Math.random()` 或 `Date.now()`；應使用遊戲內部的隨機種子或 `fixedUpdate` 提供的時間步長。
 - 所有物理操作必須透過 `Rapier3D` 進行，以確保跨平台一致性。
 
@@ -55,5 +55,6 @@
 4. **性能**: 在 `update` 循環中避免分配對象（如 `new Vector3()`），應使用對象池或預分配緩存。
 
 ## ⚠️ 已知限制與注意點
-- 專案正處於從 `PlayerEntity.ts` 等 OOP 類向 ECS 遷移的過渡期。新功能應直接在 ECS 框架下開發。
+- 新功能直接在 ECS 框架下開發；Entity 銷毀一律走 `World.destroyEntity`，外部資源在 Component 的 `dispose()` 釋放。
+- 小兵、防禦塔、主堡的狀態尚未同步給 Client。
 - P2P Mesh 架構下，連線數隨玩家增加呈平方增長，目前建議上限為 8 人。

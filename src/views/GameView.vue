@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, inject, onMounted, onUnmounted } from 'vue'
 import { GameService } from '../services/GameService'
+import type { RoomService } from '../services/RoomService'
+import type { MinimapEntity } from '../core/GameEngine'
 import { eventBus } from '../events/EventBus'
 import { useGameStore } from '../stores/gameStore'
 import SkillPanel from '../components/SkillPanel.vue'
 import VirtualJoystick from '../components/VirtualJoystick.vue'
-import EntityStatus from '../components/game/EntityStatus.vue'
 import GameOverOverlay from '../components/game/GameOverOverlay.vue'
 import Minimap from '../components/game/Minimap.vue'
 import Shop from '../components/game/Shop.vue'
@@ -25,7 +26,11 @@ const props = defineProps<{
   gameService: GameService
 }>()
 
+const roomService = inject<RoomService>('roomService')
+
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+// gameService 不是響應式物件，用這個旗標讓模板在引擎就緒後重新渲染
+const engineReady = ref(false)
 const currentCooldowns = ref<Map<string, number>>(new Map())
 const currentPing = ref<number>(0)
 
@@ -42,8 +47,6 @@ const refreshSkills = () => {
       cooldown: s.cooldown,
       type: s.type
     })).filter((s: any) => s.type !== 'combo') // 過濾掉接招技能，它們由 SkillPanel 內部處理
-    
-    console.log('[GameView] Skills loaded:', skills.value)
   }
 }
 
@@ -70,127 +73,71 @@ const toggleShop = () => {
   gameStore.toggleShop()
 }
 
-const animationFrameId = ref<number>(0)
-
-// 取得所有可見實體 (用於渲染血量條)
-const allEntities = ref<any[]>([])
-
 // 小地圖專用資料
-const minimapEntities = ref<Array<{
-  id: string
-  type: 'player' | 'tower' | 'creep' | 'base'
-  team: 'red' | 'blue' | 'neutral'
-  position: { x: number; z: number }
-}>>([])
+const minimapEntities = ref<MinimapEntity[]>([])
 
-const updateEntities = () => {
-  if (props.gameService.gameEngine) {
-    // 取得塔、小兵、主堡
-    const towers = props.gameService.gameEngine.towerManager?.getAllTowersAsEntities() || []
-    const creeps = props.gameService.gameEngine.creepManager?.getAllCreepsAsEntities() || []
-    const bases = props.gameService.gameEngine.baseManager?.getAllBasesAsEntities() || []
-    const players = props.gameService.gameEngine.playerManager?.getAllPlayers() || new Map()
-    
-    allEntities.value = [
-      ...towers.map((e: any) => ({ entity: e, type: 'tower' })),
-      ...creeps.map((e: any) => ({ entity: e, type: 'creep' })),
-      ...bases.map((e: any) => ({ entity: e, type: 'base' }))
-    ]
+/** HUD（冷卻、小地圖、金幣）更新間隔；不需要跟著畫面每幀更新 */
+const HUD_UPDATE_INTERVAL_MS = 100
+let hudTimer: number | undefined
+let skillRetryTimer: number | undefined
+const unsubscribers: Array<() => void> = []
 
-    // 更新小地圖資料
-    const minimapData: typeof minimapEntities.value = []
-    
-    // 加入塔
-    towers.forEach((t: any) => {
-      const pos = t.getPosition()
-      minimapData.push({ id: t.entityId, type: 'tower', team: t.team, position: { x: pos.x, z: pos.z } })
-    })
-    // 加入主堡
-    bases.forEach((b: any) => {
-      const pos = b.getPosition()
-      minimapData.push({ id: b.entityId, type: 'base', team: b.team, position: { x: pos.x, z: pos.z } })
-    })
-    // 加入小兵
-    creeps.forEach((c: any) => {
-      const pos = c.getPosition()
-      minimapData.push({ id: c.entityId, type: 'creep', team: c.team, position: { x: pos.x, z: pos.z } })
-    })
-    // 加入玩家
-    players.forEach((p: any, id: string) => {
-      const pos = p.getPosition()
-      minimapData.push({ id, type: 'player', team: p.team || 'neutral', position: { x: pos.x, z: pos.z } })
-    })
+const updateHud = () => {
+  const engine = props.gameService.gameEngine
+  if (!engine) return
+  currentCooldowns.value = props.gameService.getCooldowns()
+  minimapEntities.value = engine.getMinimapEntities()
+  props.gameService.syncInventory()
+}
 
-    minimapEntities.value = minimapData
-  }
+const leaveToLobby = () => {
+  props.gameService.leaveGame()
+  roomService?.leaveRoom()
 }
 
 onMounted(async () => {
-  // 監聽遊戲開始事件以更新技能
-  eventBus.on('GAME_STARTED', refreshSkills)
-  
-  // 監聽角色選擇事件 (如果有的話，或者重試機制)
-  // 監聽遊戲結束事件
-  eventBus.on('GAME_OVER', (event) => {
-    isGameOver.value = true
-    winnerTeam.value = event.winnerTeam
-    gameOverReason.value = event.reason
-    console.log('[GameView] GAME OVER:', event)
-  })
+  unsubscribers.push(
+    // 監聽遊戲開始事件以更新技能
+    eventBus.on('GAME_STARTED', refreshSkills),
+    eventBus.on('GAME_OVER', (event) => {
+      isGameOver.value = true
+      winnerTeam.value = event.winnerTeam
+      gameOverReason.value = event.reason
+    }),
+    eventBus.on('PING_UPDATED', (event) => {
+      currentPing.value = event.ping
+    }),
+  )
 
-  // 簡單起見，設定一個定時器檢查技能是否已載入
-  const checkInterval = setInterval(() => {
+  // 技能要等本地玩家生成後才拿得到，未載入前定時重試
+  skillRetryTimer = window.setInterval(() => {
     if (skills.value.length === 0) {
       refreshSkills()
     } else {
-      clearInterval(checkInterval)
+      window.clearInterval(skillRetryTimer)
     }
   }, 500)
 
-  // 先等待 GameEngine 初始化完成
   if (canvasRef.value) {
     await props.gameService.init(canvasRef.value)
+    engineReady.value = true
     props.gameService.startGame()
-    
-    // 強制 PlayCanvas 重新計算尺寸以解決 Viewport 衝突
-    if (props.gameService.gameEngine && props.gameService.gameEngine.app) {
-      props.gameService.gameEngine.app.resizeCanvas()
-      console.log('[GameView] Canvas resized after initialization')
-    }
 
-    // 監聽視窗縮放
-    window.addEventListener('resize', () => {
-      props.gameService.gameEngine?.app?.resizeCanvas()
-    })
-    
-    // init 完成後才啟動冷卻與實體更新循環
-    const updateLoop = () => {
-      currentCooldowns.value = props.gameService.getCooldowns()
-      updateEntities()
-      // 同步庫存狀態
-      props.gameService.syncInventory()
-      animationFrameId.value = requestAnimationFrame(updateLoop)
-    }
-    updateLoop()
-    
-    eventBus.on('PING_UPDATED', handlePingUpdate)
+    // 強制 PlayCanvas 重新計算尺寸以解決 Viewport 衝突
+    props.gameService.gameEngine?.app.resizeCanvas()
+
+    hudTimer = window.setInterval(updateHud, HUD_UPDATE_INTERVAL_MS)
   }
 
-  // 監聯 Shop 快捷鍵
+  // 監聽 Shop 快捷鍵
   window.addEventListener('keydown', handleKeyDown)
 })
 
-const handlePingUpdate = (e: any) => {
-  if (e.type === 'PING_UPDATED') {
-    currentPing.value = e.ping
-  }
-}
-
 onUnmounted(() => {
-  // 清理資源
-  cancelAnimationFrame(animationFrameId.value)
+  window.clearInterval(hudTimer)
+  window.clearInterval(skillRetryTimer)
   window.removeEventListener('keydown', handleKeyDown)
-  eventBus.off('PING_UPDATED', handlePingUpdate)
+  unsubscribers.forEach(unsubscribe => unsubscribe())
   props.gameService.destroy()
 })
 </script>
@@ -275,20 +222,10 @@ onUnmounted(() => {
         />
       </div>
 
-      <!-- 螢幕空間 UI 層：血量條 -->
-      <div class="entity-ui-layer">
-        <EntityStatus
-          v-for="item in allEntities"
-          :key="`${item.type}_${item.entity.entityId}`"
-          :app="gameService.gameEngine.app"
-          :entity="item.entity"
-          :type="item.type"
-        />
-      </div>
 
       <!-- 螢幕空間 UI 層：傷害跳字 -->
       <DamageNumberLayer
-        v-if="gameService.gameEngine && gameService.gameEngine.app"
+        v-if="engineReady && gameService.gameEngine"
         :app="gameService.gameEngine.app"
         :game-service="gameService"
       />
@@ -301,7 +238,7 @@ onUnmounted(() => {
         :is-visible="isGameOver"
         :winner-team="winnerTeam"
         :reason="gameOverReason"
-        @back-to-lobby="gameService.leaveRoom()"
+        @back-to-lobby="leaveToLobby"
       />
 
       <!-- 商店 -->
@@ -448,15 +385,6 @@ onUnmounted(() => {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
 }
 
-.entity-ui-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: hidden;
-}
 
 .minimap-area {
   position: absolute;

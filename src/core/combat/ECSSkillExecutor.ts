@@ -12,7 +12,7 @@ import { CollisionSystem } from '../ecs/systems/CollisionSystem';
 import { EffectManager } from '../EffectManager';
 import { ProjectileManager } from './ProjectileManager';
 import type { SoundManager } from '../SoundManager';
-import type { Skill } from './SkillManager';
+import type { Skill } from '../../types/Skill';
 
 /**
  * ECS 版技能執行器
@@ -69,7 +69,7 @@ export class ECSSkillExecutor {
         if (skill.projectile && projectileManager) {
             const startPos = new pc.Vec3(casterPos.x, casterPos.y, casterPos.z);
             startPos.add(direction.clone().mulScalar(1.0));
-            projectileManager.createProjectile(casterId, skill, startPos, direction);
+            projectileManager.createProjectile(casterId, team.team, skill, startPos, direction);
         } else if (skill.delay && skill.delay > 0) {
             this.handleDelayedHitbox(skill, casterId, casterPos, direction, team.team);
         } else {
@@ -116,17 +116,16 @@ export class ECSSkillExecutor {
         const targetX = origin.x + direction.x * 3.0;
         const targetZ = origin.z + direction.z * (skill.id === 'mage_r' ? 7.0 : 3.0);
 
-        setTimeout(() => {
-            this.collisionSystem.createHitbox(
-                { x: targetX, y: origin.y, z: targetZ },
-                skill.aoe || 3.0,
-                skill.damage,
-                { x: direction.x * (skill.knockback || 0), z: direction.z * (skill.knockback || 0) },
-                casterId,
-                team,
-                0.2
-            );
-        }, delay * 1000);
+        this.collisionSystem.scheduleHitbox(
+            delay,
+            { x: targetX, y: origin.y, z: targetZ },
+            skill.aoe || 3.0,
+            skill.damage,
+            { x: direction.x * (skill.knockback || 0), z: direction.z * (skill.knockback || 0) },
+            casterId,
+            team,
+            0.2
+        );
     }
 
     /**
@@ -154,7 +153,5 @@ export class ECSSkillExecutor {
             team,
             0.2
         );
-
-        console.log(`[ECSSkillExecutor] Created hitbox for ${skill.id} at (${hitboxX.toFixed(1)}, ${hitboxZ.toFixed(1)})`);
     }
 }

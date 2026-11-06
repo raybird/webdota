@@ -1,67 +1,44 @@
 /**
- * InventoryComponent.ts - 物品欄 Component
- * 管理金幣與物品加成
+ * InventoryComponent.ts - 背包 Component
+ * 金幣與 6 格物品欄
  */
 
 import { type Component, ComponentType } from '../Component';
+import type { Item } from '../../../types/Item';
 
-export interface ItemStats {
-    attackPower?: number;
-    defense?: number;
-    maxHp?: number;
-    moveSpeed?: number;
-}
+export const MAX_INVENTORY_SLOTS = 6;
+
+/** 賣出物品時退回的金幣比例 */
+const SELL_RATIO = 0.5;
 
 export class InventoryComponent implements Component {
     readonly type = ComponentType.INVENTORY;
 
-    /** 金幣 */
     gold: number;
-
-    /** 物品 ID 列表 */
-    items: string[] = [];
-
-    /** 物品加成統計 */
-    private itemStats: ItemStats = {};
+    slots: (Item | null)[] = new Array(MAX_INVENTORY_SLOTS).fill(null);
 
     constructor(initialGold: number = 500) {
         this.gold = initialGold;
     }
 
-    /**
-     * 添加物品
-     */
-    addItem(itemId: string, stats: ItemStats): boolean {
-        this.items.push(itemId);
+    buyItem(item: Item): boolean {
+        const emptySlot = this.slots.indexOf(null);
+        if (emptySlot === -1 || this.gold < item.cost) return false;
 
-        // 累加加成
-        this.itemStats.attackPower = (this.itemStats.attackPower ?? 0) + (stats.attackPower ?? 0);
-        this.itemStats.defense = (this.itemStats.defense ?? 0) + (stats.defense ?? 0);
-        this.itemStats.maxHp = (this.itemStats.maxHp ?? 0) + (stats.maxHp ?? 0);
-        this.itemStats.moveSpeed = (this.itemStats.moveSpeed ?? 0) + (stats.moveSpeed ?? 0);
-
+        this.gold -= item.cost;
+        this.slots[emptySlot] = item;
         return true;
     }
 
-    /**
-     * 取得總加成
-     */
-    getTotalStats(): ItemStats {
-        return { ...this.itemStats };
-    }
+    sellItem(slotIndex: number): boolean {
+        const item = this.slots[slotIndex];
+        if (!item) return false;
 
-    /**
-     * 消費金幣
-     */
-    spendGold(amount: number): boolean {
-        if (this.gold < amount) return false;
-        this.gold -= amount;
+        this.gold += Math.floor(item.cost * SELL_RATIO);
+        this.slots[slotIndex] = null;
         return true;
     }
 
-    /**
-     * 獲得金幣
-     */
     earnGold(amount: number): void {
         this.gold += amount;
     }

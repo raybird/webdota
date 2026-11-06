@@ -4,7 +4,7 @@
  */
 
 import { type Component, ComponentType } from '../Component';
-import type { Skill } from '../../combat/SkillManager';
+import type { Skill } from '../../../types/Skill';
 
 export interface SkillState {
     skill: Skill;

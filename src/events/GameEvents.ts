@@ -102,12 +102,6 @@ export type EntityDiedEvent = {
     killerId: string | null
 }
 
-// 系統規訓事件
-export type PowerEconomyTriggeredEvent = {
-    type: 'POWER_ECONOMY_TRIGGERED'
-    data: { hz: number }
-}
-
 // 聯合類型
 export type GameEvent =
     | PlayerJoinedEvent
@@ -127,18 +121,8 @@ export type GameEvent =
     | PlayerHealedEvent
     | EntityTookDamageEvent
     | EntityDiedEvent
-    | SkillEffectEvent
     | GameOverEvent
     | PingUpdatedEvent
-    | PowerEconomyTriggeredEvent
-
-export type SkillEffectEvent = {
-    type: 'SKILL_EFFECT'
-    playerId: string
-    skillId: string
-    position: { x: number, y: number, z: number }
-    direction: { x: number, y: number, z: number }
-}
 
 // 遊戲結束事件
 export type GameOverEvent = {

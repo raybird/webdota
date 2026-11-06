@@ -19,7 +19,6 @@ import { PlayerInputComponent } from './components/PlayerInputComponent';
 import { SkillComponent } from './components/SkillComponent';
 import { AnimationComponent } from './components/AnimationComponent';
 import { InventoryComponent } from './components/InventoryComponent';
-import { PoolableComponent } from './components/PoolableComponent';
 import { CollisionSystem } from './systems/CollisionSystem';
 import { MaterialCache } from './MaterialCache';
 import { ObjectPool } from '../../utils/ObjectPool';
@@ -230,9 +229,6 @@ export class EntityFactory {
             attackCooldown: config.attackCooldown ?? 2.0
         }));
 
-        // Poolable
-        this.world.addComponent(entityId, new PoolableComponent('creep'));
-
         // Physics
         const physics = this.createKinematicBody(config.position, { halfWidth: 0.3, halfHeight: 0.5, halfDepth: 0.3 });
         this.world.addComponent(entityId, physics);
@@ -245,29 +241,19 @@ export class EntityFactory {
         // Render
         const pool = this.creepVisualPools.get(config.team);
         const pcEntity = pool ? pool.acquire() : this.createCreepVisual(config.position, config.team);
+        const release = pool ? (e: pc.Entity) => pool.release(e) : null;
         
         pcEntity.enabled = true;
         pcEntity.setPosition(config.position.x, config.position.y + 0.4, config.position.z);
         this.app.root.addChild(pcEntity);
 
-        this.world.addComponent(entityId, new RenderComponent(pcEntity));
+        this.world.addComponent(entityId, new RenderComponent(pcEntity, release));
 
         console.log(`[EntityFactory] Created creep (${entityId.substring(0, 8)}) team=${config.team} (Pooled)`);
 
         return entityId;
     }
 
-    /**
-     * 釋放小兵實體視覺物件
-     */
-    releaseCreepVisual(team: Team, pcEntity: pc.Entity): void {
-        const pool = this.creepVisualPools.get(team);
-        if (pool) {
-            pool.release(pcEntity);
-        } else {
-            pcEntity.destroy();
-        }
-    }
 
     /**
      * 建立防禦塔 Entity

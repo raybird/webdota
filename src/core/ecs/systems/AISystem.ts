@@ -114,7 +114,6 @@ export class AISystem extends System {
             if (target) {
                 HealthSystem.dealDamage(world, target.entityId, combat.attackPower, entityId);
                 ai.triggerAttack();
-                console.log(`[AISystem] Tower ${entityId.substring(0, 6)} attacked ${target.entityId.substring(0, 6)}`);
             }
         }
     }

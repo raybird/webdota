@@ -24,8 +24,6 @@ class EventBus {
             })
         }
 
-        // Debug 日誌
-        console.log(`[EventBus] Emitted: ${eventType}`, event)
     }
 
     /**

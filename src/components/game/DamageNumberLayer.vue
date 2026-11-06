@@ -4,7 +4,6 @@ import * as pc from 'playcanvas'
 import { eventBus } from '../../events/EventBus'
 import { GameService } from '../../services/GameService'
 
-// Props
 const props = defineProps<{
   app: pc.Application | null
   gameService: GameService | null
@@ -12,105 +11,64 @@ const props = defineProps<{
 
 interface DamageNumber {
   id: number
-  targetId: string
   amount: number
   isCrit: boolean
   x: number
   y: number
-  opacity: number
-  scale: number
-  offsetY: number
 }
+
+/** 與 CSS 動畫時間一致 */
+const LIFETIME_MS = 900
 
 const damageNumbers = ref<DamageNumber[]>([])
 let nextId = 0
-let animationFrameId = 0
+let unsubscribe: (() => void) | null = null
+const screenPos = new pc.Vec3()
+const worldPos = new pc.Vec3()
 
-// Random scatter offset generator
+// 隨機散開，避免數字完全重疊
 const randOffset = (max: number) => (Math.random() - 0.5) * max * 2
 
-const onEntityTookDamage = (event: any) => {
-  if (event.type !== 'ENTITY_TOOK_DAMAGE') return
-  const { targetId, damage, isCrit } = event
+const onEntityTookDamage = (event: { targetId: string; damage: number; isCrit: boolean }) => {
+  const engine = props.gameService?.gameEngine
+  const camera = engine?.getCamera()?.camera
+  const position = engine?.getEntityPosition(event.targetId)
+  if (!camera || !position) return
 
-  if (!props.app || !props.gameService || !props.gameService.gameEngine) return
+  worldPos.set(position.x, position.y + 2, position.z)
+  camera.worldToScreen(worldPos, screenPos)
+  if (screenPos.z <= 0) return // 在攝影機後方
 
-  // Find entity roughly among managers
-  const engine = props.gameService.gameEngine
-  let entityObj: any = null
-  
-  if (engine.playerManager) entityObj = engine.playerManager.getPlayer(targetId)
-  if (!entityObj && engine.creepManager) entityObj = engine.creepManager.getAllCreepsAsEntities().find((c:any) => c.entityId === targetId)
-  if (!entityObj && engine.towerManager) entityObj = engine.towerManager.getAllTowersAsEntities().find((t:any) => t.entityId === targetId)
-  if (!entityObj && engine.baseManager) entityObj = engine.baseManager.getAllBasesAsEntities().find((b:any) => b.entityId === targetId)
-
-  if (!entityObj || typeof entityObj.getPosition !== 'function') return
-
-  const camera = props.app.root.findByName('Camera') as pc.Entity
-  if (!camera || !camera.camera) return
-
-  const worldPos = entityObj.getPosition().clone()
-  worldPos.y += 2 // Offset slightly above entity
-
-  const screenCoord = camera.camera.worldToScreen(worldPos)
-  const device = props.app.graphicsDevice
-
-  if (screenCoord.z > 0 && screenCoord.x >= 0 && screenCoord.x <= device.width && screenCoord.y >= 0 && screenCoord.y <= device.height) {
-    damageNumbers.value.push({
-      id: nextId++,
-      targetId,
-      amount: damage,
-      isCrit,
-      x: screenCoord.x + randOffset(20), // Slight scatter so they don't perfectly stack
-      y: screenCoord.y + randOffset(10),
-      opacity: 1,
-      scale: isCrit ? 1.5 : 1,
-      offsetY: 0
-    })
-  }
-}
-
-const updateLoop = () => {
-  const speed = 1.5
-  for (let i = damageNumbers.value.length - 1; i >= 0; i--) {
-    const dn = damageNumbers.value[i]
-    if (!dn) continue
-    dn.offsetY -= speed // Float upwards
-    if (dn.offsetY < -30) {
-        dn.opacity -= 0.04 // Fade out
-    }
-    if (dn.opacity <= 0) {
-      damageNumbers.value.splice(i, 1)
-    }
-  }
-
-  animationFrameId = requestAnimationFrame(updateLoop)
+  const id = nextId++
+  damageNumbers.value.push({
+    id,
+    amount: event.damage,
+    isCrit: event.isCrit,
+    x: screenPos.x + randOffset(20),
+    y: screenPos.y + randOffset(10)
+  })
+  window.setTimeout(() => {
+    damageNumbers.value = damageNumbers.value.filter(dn => dn.id !== id)
+  }, LIFETIME_MS)
 }
 
 onMounted(() => {
-  eventBus.on('ENTITY_TOOK_DAMAGE', onEntityTookDamage)
-  updateLoop()
+  unsubscribe = eventBus.on('ENTITY_TOOK_DAMAGE', onEntityTookDamage)
 })
 
 onUnmounted(() => {
-  eventBus.off('ENTITY_TOOK_DAMAGE', onEntityTookDamage)
-  cancelAnimationFrame(animationFrameId)
+  unsubscribe?.()
 })
 </script>
 
 <template>
   <div class="damage-layer">
-    <div 
-      v-for="dn in damageNumbers" 
+    <div
+      v-for="dn in damageNumbers"
       :key="dn.id"
       class="damage-number"
       :class="{ crit: dn.isCrit }"
-      :style="{
-        left: `${dn.x}px`,
-        top: `${dn.y + dn.offsetY}px`,
-        opacity: dn.opacity,
-        transform: `translate(-50%, -50%) scale(${dn.scale})`
-      }"
+      :style="{ left: `${dn.x}px`, top: `${dn.y}px` }"
     >
       -{{ Math.round(dn.amount) }}
     </div>
@@ -134,7 +92,14 @@ onUnmounted(() => {
   color: white;
   text-shadow: 0 0 4px #000, 0 0 8px var(--c-cta, #F43F5E), 0 0 12px var(--c-cta, #F43F5E);
   pointer-events: none;
-  will-change: transform, opacity, top;
+  transform: translate(-50%, -50%);
+  animation: damage-float 0.9s ease-out forwards;
+}
+
+@keyframes damage-float {
+  0% { transform: translate(-50%, -50%); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(-50%, calc(-50% - 60px)); opacity: 0; }
 }
 
 .damage-number.crit {
@@ -142,5 +107,12 @@ onUnmounted(() => {
   text-shadow: 0 0 5px var(--c-cta), 0 0 15px orange;
   font-style: italic;
   font-size: 32px;
+  animation-name: damage-float-crit;
+}
+
+@keyframes damage-float-crit {
+  0% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(-50%, calc(-50% - 60px)) scale(1.5); opacity: 0; }
 }
 </style>

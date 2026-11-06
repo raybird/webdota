@@ -5,6 +5,7 @@
 
 import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
+import type { Skill } from '../../types/Skill';
 import type { UIManager } from '../UIManager';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useRoomStore } from '../../stores/roomStore';
@@ -15,9 +16,7 @@ import {
     EntityFactory,
     ComponentType,
     HealthComponent,
-    TeamComponent,
     RenderComponent,
-    PlayerInputComponent,
     SkillComponent,
     CombatComponent,
     InventoryComponent,
@@ -129,12 +128,8 @@ export class ECSPlayerManager {
 
         // 建立 UI
         const displayName = normalizedId.substring(0, 8);
-        const ui = this.uiManager.createPlayerUI(normalizedId, displayName);
-
         const render = this.world.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
-        if (render && ui.hpBarEntity) {
-            render.pcEntity.addChild(ui.hpBarEntity);
-        }
+        render?.setHpBar(this.uiManager.createPlayerUI(normalizedId, displayName), 2);
 
         console.log(`[ECSPlayerManager] Spawned player ${normalizedId} (${entityId.substring(0, 8)}) team=${playerTeam} at (${x.toFixed(2)}, ${z.toFixed(2)})`);
 
@@ -151,7 +146,6 @@ export class ECSPlayerManager {
         if (!entityId) return;
 
         this.world.destroyEntity(entityId);
-        this.uiManager.removePlayerUI(normalizedId);
         this.players.delete(normalizedId);
 
         console.log(`[ECSPlayerManager] Removed player ${normalizedId}`);
@@ -172,51 +166,20 @@ export class ECSPlayerManager {
     }
 
     /**
-     * 取得所有玩家 EntityId
-     */
-    getAllPlayerIds(): EntityId[] {
-        return Array.from(this.players.values());
-    }
-
-    /**
-     * 取得指定隊伍的玩家
-     */
-    getPlayersByTeam(team: Team): EntityId[] {
-        return Array.from(this.players.values()).filter(id => {
-            const teamComp = this.world.getComponent<TeamComponent>(id, ComponentType.TEAM);
-            return teamComp?.team === team;
-        });
-    }
-
-    /**
      * 清除所有玩家
      */
     clearAll(): void {
-        for (const [playerId, entityId] of this.players) {
+        for (const entityId of this.players.values()) {
             this.world.destroyEntity(entityId);
-            this.uiManager.removePlayerUI(playerId);
         }
         this.players.clear();
         console.log('[ECSPlayerManager] Cleared all players');
     }
 
     /**
-     * 處理玩家移動輸入
-     */
-    handlePlayerInput(playerId: string, moveX: number, moveZ: number): void {
-        const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return;
-
-        const playerInput = this.world.getComponent<PlayerInputComponent>(entityId, ComponentType.PLAYER_INPUT);
-        if (playerInput) {
-            playerInput.setMoveInput(moveX, moveZ);
-        }
-    }
-
-    /**
      * 使用技能 (委託給 SkillComponent)
      */
-    useSkill(playerId: string, skillId: string): import('../combat/SkillManager').Skill | null {
+    useSkill(playerId: string, skillId: string): Skill | null {
         const entityId = this.players.get(playerId.toUpperCase());
         if (!entityId) return null;
 
@@ -241,22 +204,17 @@ export class ECSPlayerManager {
         return null;
     }
 
-    /**
-     * 更新邏輯 (由 GameEngine 呼叫)
-     * 注意：大部分邏輯由 ECS Systems 處理
-     */
-    update(dt: number): void {
-        void dt; // ECS systems handle player logic
-
-        // 檢查死亡的玩家 (選擇性 - 玩家死亡可能有其他處理邏輯)
-        // 這裡先不自動移除，讓 GameEngine 決定如何處理
-    }
-
     // ========== GameEngine 兼容性方法 ==========
 
     /**
      * 取得玩家的 RigidBody
      */
+    getInventory(playerId: string): InventoryComponent | undefined {
+        const entityId = this.players.get(playerId.toUpperCase());
+        if (!entityId) return undefined;
+        return this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
+    }
+
     getPlayerRigidBody(playerId: string): RAPIER.RigidBody | null {
         const entityId = this.players.get(playerId.toUpperCase());
         if (!entityId) return null;
@@ -329,46 +287,9 @@ export class ECSPlayerManager {
     }
 
     /**
-     * 讓玩家受傷
-     */
-    damagePlayer(playerId: string, damage: number, attackerId?: string): void {
-        const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return;
-
-        const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
-        if (health) {
-            health.takeDamage(damage, attackerId);
-        }
-    }
-
-    /**
-     * 取得玩家的金幣
-     */
-    getPlayerGold(playerId: string): number {
-        const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return 0;
-
-        const inv = this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
-        return inv?.gold ?? 0;
-    }
-
-    /**
-     * 給予玩家金幣
-     */
-    givePlayerGold(playerId: string, amount: number): void {
-        const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return;
-
-        const inv = this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
-        if (inv) {
-            inv.earnGold(amount);
-        }
-    }
-
-    /**
      * 取得玩家的技能列表
      */
-    getPlayerSkills(playerId: string): import('../combat/SkillManager').Skill[] {
+    getPlayerSkills(playerId: string): Skill[] {
         const entityId = this.players.get(playerId.toUpperCase());
         if (!entityId) return [];
 
@@ -378,7 +299,7 @@ export class ECSPlayerManager {
         // 使用公開的 getSkillIds() 和 getSkill()
         return skillComp.getSkillIds()
             .map(id => skillComp.getSkill(id))
-            .filter((s): s is import('../combat/SkillManager').Skill => s !== undefined);
+            .filter((s): s is Skill => s !== undefined);
     }
 
     /**

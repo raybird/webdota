@@ -23,8 +23,6 @@ export class World {
     /** 待刪除的 Entity（延遲刪除避免迭代問題） */
     private entitiesToRemove: Set<EntityId> = new Set();
 
-    /** 可複用的 Entity ID 池 */
-    private freeIds: EntityId[] = [];
 
     // ==================== Entity 管理 ====================
 
@@ -32,7 +30,7 @@ export class World {
      * 建立新 Entity
      */
     createEntity(): EntityId {
-        const id = this.freeIds.pop() || createEntityId();
+        const id = createEntityId();
         this.entities.add(id);
         return id;
     }
@@ -48,12 +46,15 @@ export class World {
      * 刪除 Entity 並移除其所有 Component
      */
     destroyEntity(entityId: EntityId): void {
-        // 移除所有 Component
+        // 冪等：同一個 Entity 可能同時被 HealthSystem 與 Manager 要求銷毀
+        if (!this.entities.has(entityId)) return;
+        this.entities.delete(entityId);
         for (const componentMap of this.components.values()) {
+            const component = componentMap.get(entityId);
+            if (!component) continue;
+            component.dispose?.();
             componentMap.delete(entityId);
         }
-        this.entities.delete(entityId);
-        this.freeIds.push(entityId); // 將 ID 放入池中複用
     }
 
     /**
@@ -122,20 +123,20 @@ export class World {
      * 查詢擁有所有指定 Component 類型的 Entity
      */
     query(...componentTypes: string[]): EntityId[] {
-        if (componentTypes.length === 0) {
-            return Array.from(this.entities);
+        const [firstType, ...restTypes] = componentTypes;
+        if (!firstType) return Array.from(this.entities);
+
+        const candidates = this.components.get(firstType);
+        if (!candidates) return [];
+
+        const restMaps = restTypes.map(type => this.components.get(type));
+        if (restMaps.some(map => !map)) return [];
+
+        const result: EntityId[] = [];
+        for (const entityId of candidates.keys()) {
+            if (restMaps.every(map => map!.has(entityId))) result.push(entityId);
         }
-
-        // 找出第一個 Component 類型的所有 Entity
-        const firstType = componentTypes[0];
-        if (!firstType) return [];
-
-        const candidates = this.getEntitiesWithComponent(firstType);
-
-        // 過濾出同時擁有所有其他 Component 的 Entity
-        return candidates.filter(entityId =>
-            componentTypes.every(type => this.hasComponent(entityId, type))
-        );
+        return result;
     }
 
     // ==================== System 管理 ====================
@@ -210,6 +211,11 @@ export class World {
      * 清空所有資料
      */
     clear(): void {
+        // 先銷毀所有 Entity，讓 Component 釋放物理與渲染資源
+        for (const entityId of Array.from(this.entities)) {
+            this.destroyEntity(entityId);
+        }
+
         // 銷毀所有 System
         for (const system of this.systems) {
             system.destroy(this);

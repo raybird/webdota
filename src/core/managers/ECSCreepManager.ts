@@ -12,8 +12,6 @@ import {
     World,
     EntityFactory,
     ComponentType,
-    HealthComponent,
-    TeamComponent,
     RenderComponent,
     type EntityId,
     type Team,
@@ -79,9 +77,6 @@ export class ECSCreepManager {
         return new pc.Vec3(sumX / spawnPoints.length, 1, sumZ / spawnPoints.length);
     }
 
-    setWaveConfig(config: Partial<WaveConfig>): void {
-        this.waveConfig = { ...this.waveConfig, ...config };
-    }
 
     spawnWave(): void {
         this.waveCount++;
@@ -127,68 +122,34 @@ export class ECSCreepManager {
 
             this.creeps.add(creepId);
 
-            // 建立 UI
-            const teamStr = team as 'red' | 'blue' | 'neutral';
-            const ui = this.uiManager.createEntityUI(creepId, teamStr);
-
-            // 設定 UI 參考到 RenderComponent (簡化：直接存到 World)
             const render = this.world.getComponent<RenderComponent>(creepId, ComponentType.RENDER);
-            if (render && ui.hpBarEntity) {
-                // 將 UI bar 作為子實體附加
-                render.pcEntity.addChild(ui.hpBarEntity);
-            }
+            render?.setHpBar(this.uiManager.createEntityUI(creepId, team), 1.5);
         }
     }
 
-    removeCreep(id: EntityId): void {
-        if (!this.creeps.has(id)) return;
-
-        // 銷毀 ECS Entity
-        this.world.destroyEntity(id);
-        this.uiManager.removePlayerUI(id);
-        this.creeps.delete(id);
-    }
-
     /**
-     * 每幀更新（主要用於波次計時）
-     * AI 邏輯已由 AISystem 處理
+     * 每幀更新（Host）：波次計時，並移除已被 HealthSystem 銷毀的小兵
+     * AI 邏輯由 AISystem 處理
      */
     update(dt: number): void {
-        // 波次計時器
         this.waveTimer += dt;
         if (this.waveTimer >= this.waveConfig.waveIntervalSeconds) {
             this.waveTimer = 0;
             this.spawnWave();
         }
 
-        // 檢查死亡的小兵並移除
-        const creepsToRemove: EntityId[] = [];
-
         for (const creepId of this.creeps) {
-            const health = this.world.getComponent<HealthComponent>(creepId, ComponentType.HEALTH);
-            if (health && health.isDead()) {
-                creepsToRemove.push(creepId);
-            }
+            if (!this.world.hasEntity(creepId)) this.creeps.delete(creepId);
         }
-
-        creepsToRemove.forEach(id => this.removeCreep(id));
     }
 
-    getAllCreepIds(): EntityId[] {
-        return Array.from(this.creeps);
-    }
-
-    getCreepsByTeam(team: Team): EntityId[] {
-        return Array.from(this.creeps).filter(id => {
-            const teamComp = this.world.getComponent<TeamComponent>(id, ComponentType.TEAM);
-            return teamComp?.team === team;
-        });
+    getAllCreepIds(): ReadonlySet<EntityId> {
+        return this.creeps;
     }
 
     clearAll(): void {
         for (const id of this.creeps) {
             this.world.destroyEntity(id);
-            this.uiManager.removePlayerUI(id);
         }
         this.creeps.clear();
     }

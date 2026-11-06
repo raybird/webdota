@@ -8,9 +8,7 @@ Web MOBA 遊戲技術文件
 1. [整體架構](#整體架構)
 2. [技術選型](#技術選型)
 3. [核心模組](#核心模組)
-4. [主權存封](#主權存封)
-5. [物理能耗規訓](#物理能耗規訓)
-6. [網路架構](#網路架構)
+4. [網路架構](#網路架構)
 5. [同步機制](#同步機制)
 6. [資料流](#資料流)
 7. [目錄結構](#目錄結構)
@@ -124,12 +122,17 @@ Web MOBA 遊戲技術文件
 
 **資料流：**
 ```
-User Input → ECSPlayerManager (InputComponent)
-→ PlayerInputSystem (Update Velocity)
-→ MovementSystem (Apply Physics)
+User Input → InputManager.collectInput()
+→ GameEngine.applyMovement / applySkill（設定 Kinematic 位置、執行技能）
 → Physics Engine (Step)
-→ ECSRenderSystem (Sync to Visuals)
+→ MovementSystem（物理位置同步到 Transform）
+→ RenderSystem（Transform 同步到視覺與頭頂血條）
 ```
+
+**Entity 銷毀：**
+`World.destroyEntity()` 是冪等的，會呼叫每個 Component 的 `dispose()`：
+`PhysicsComponent` 移除剛體與碰撞體註冊，`RenderComponent` 銷毀模型與血條（小兵視覺交還物件池）。
+Entity ID 不重複使用。
 
 ---
 
@@ -138,21 +141,19 @@ User Input → ECSPlayerManager (InputComponent)
 - WebRTC 連線建立與維護
 - 輸入廣播與接收
 - 遊戲狀態同步
-- Frame 同步
 
 **關鍵功能：**
 - `createRoom()` - 建立房間（成為 Host）
 - `joinRoom(id)` - 加入房間
-- `broadcastInput()` - 廣播玩家輸入
-- `sendGameState()` - 發送完整遊戲狀態（新玩家加入時）
+- `sendInput()` - Client 送出輸入（二進位，含技能 ID 與方向）
+- `broadcastGameState()` - Host 廣播玩家狀態（二進位）
 
 **訊息類型：**
-```typescript
-{
-  type: 'input' | 'sync_frame' | 'player_ready' | 
-        'game_start_countdown' | 'game_started' | 'game_state'
-}
-```
+- 二進位（`BinarySerializer`）：`INPUT`、`GAME_STATE`
+- JSON：`peer_list`、`room_state`、`room_code`、`player_ready`、`character_selected`、
+  `game_start_countdown`、`game_started`、`host_migration`、`ping`、`pong`
+
+Peer ID 在程式內以大寫正規化作為查詢 key，但 PeerJS 的 ID 區分大小寫，建立連線時使用原始的 `conn.peer`。
 
 ---
 
@@ -160,7 +161,7 @@ User Input → ECSPlayerManager (InputComponent)
 **所有遊戲物件皆為 ECS Entity：**
 - **Player**: 由 `ECSPlayerManager` 管理。包含 Input, Skill, Stats, Physics 組件。
 - **Creep**: 由 `ECSCreepManager` 管理。大量生成的 AI 單位。
-- **Tower**: 由 `ECSTowerManager` 管理。防禦塔。
+- **Tower / Base**: 由 `ECSStructureManager` 管理。主堡被摧毀時發出 `GAME_OVER`。
 
 **ECS Managers 職責：**
 - 負責 Entity 的生命週期 (Create/Destroy)
@@ -171,15 +172,9 @@ User Input → ECSPlayerManager (InputComponent)
 
 ---
 
-### 4. HostManager.ts (Host 管理)
-**職責：**
-- 判定當前 Host
-- Host 切換邏輯
-- Host 專屬權限（遊戲開始、Frame 同步）
-
-**機制：**
-- 最早加入的玩家為 Host
-- Host 離開時自動轉移（按加入順序）
+### 4. Host 判定
+- 建立房間的玩家為 Host（`NetworkManager.isHost`）
+- Host 斷線時，剩下的玩家選 Peer ID 字典序最小者為新 Host，並廣播 `host_migration`
 
 ---
 
@@ -189,25 +184,6 @@ User Input → ECSPlayerManager (InputComponent)
 - 等待室（玩家列表、準備狀態）
 - 遊戲中 HUD（血條、MP、小地圖）
 - Debug 面板
-
----
-
-### 6. 主權存封 (Provenance & Causal Guard)
-WebDota 採用段落級因果存證機制，確保戰局關鍵事件的不可篡改性。由 `ProvenanceManager.ts` 統一管理。
-
-*   **因果指紋 (Causal Fingerprint)**：對關鍵事件 Payload 執行 SHA-256 雜湊，產生具備證據力的雜湊憑證。
-*   **持久化層 (Persistence)**：
-    *   **v26.0328 升級**：全面平移至 **IndexedDB** (`WebDotaProvenanceDB`)，支持大容量戰局快照與高頻因果紀錄，確保資料不因頁面重新整理而丟失。
-*   **物理主權**：預演向 RWA (Real World Assets) 鏈上錨定，將遊戲內的競爭結果轉化為可驗證的物理事實。
-
----
-
-### 7. 物理能耗規訓 (Physical Power Economy)
-WebDota 實作了主動式效能規訓機制，確保代理人能在極端環境（如算力受限或高能耗溢價）下維持核心邏輯的穩定性。
-
-*   **動態頻率規訓 (Dynamic Hz)**：GameEngine 即時監測 FPS。若平均幀率低於臨界值（30 FPS），系統自動將 ECS 模擬頻率從 60Hz 降至 30Hz，以降低 CPU/GPU 瞬時負載。
-*   **能耗感知 UI**：透過 EventBus 發送能耗觸發訊號，允許前端 UI 同步進入節能模式（如降低特效粒子量）。
-*   **物理地板保護**：此機制對齊 TeleNexus 的全域能耗自律規訓，確保代理人在物理資源匱乏時仍能完成關鍵因果結算。
 
 ---
 
@@ -272,49 +248,33 @@ Host                          PeerJS Server              Client
 
 ## ⚙️ 同步機制
 
-### Deterministic Lockstep (確定性鎖步)
+### Host 權威 (Host-Authoritative)
 
 **核心概念：**
-所有客戶端執行相同的輸入序列，得到相同的遊戲狀態。
+Host 是唯一處理所有玩家輸入、模擬小兵與防禦塔 AI 的節點；Client 只送出輸入並套用 Host 廣播的狀態。
 
-**實作流程：**
+**每個 fixedUpdate（60Hz）：**
 ```
-Frame N:
-1. 收集本地輸入 → Input_A
-2. 廣播 Input_A 給所有玩家
-3. 等待接收所有玩家的 Input (A, B, C, D)
-4. 排序輸入（按 PlayerId）
-5. 依序處理所有輸入
-6. 執行物理模擬
-7. 同步視覺
-8. Frame N+1
+Client:
+1. 收集本地輸入，送給 Host
+2. 本地先行套用移動與技能（預測）
+3. 物理模擬、ECS 更新
+
+Host:
+1. 收集本地輸入
+2. 套用本地輸入，以及各 Client 最新的移動輸入與尚未處理的技能輸入
+3. 小兵波次、建築判定、物理模擬、ECS 更新
+4. 每 3 幀廣播所有玩家的位置、旋轉、血量、能量
 ```
 
-**關鍵要素：**
-1. **確定性**：相同輸入 → 相同輸出
-   - 使用固定時間步長（16.67ms）
-   - Rapier 物理引擎確保一致性
-   
-2. **輸入排序**：確保所有客戶端處理順序一致
-   ```typescript
-   allInputs.sort((a, b) => a.playerId.localeCompare(b.playerId))
-   ```
+**Client 收到狀態時：**
+其他玩家的位置以 Host 為準；本地玩家保留本地預測的位置，只同步血量與能量。
 
-3. **Frame 同步**：Host 定期廣播標準 Frame
-   ```typescript
-   if (isHost && currentFrame % 60 === 0) {
-     broadcastFrameSync(currentFrame)
-   }
-   ```
+**遊戲迴圈：**
+固定 1/60 秒步長的 accumulator，每個畫面幀最多補跑 5 次，追不上時丟棄剩餘時間。
 
-4. **容錯機制**：允許 N 幀內的輸入
-   ```typescript
-   // 尋找最近 10 幀內的輸入
-   for (let offset = 0; offset <= 10; offset++) {
-     const checkFrame = currentFrame - offset
-     if (inputBuffer.has(checkFrame)) return input
-   }
-   ```
+**已知限制：**
+小兵、防禦塔、主堡的狀態尚未同步給 Client，`GAME_OVER` 也只在 Host 觸發。
 
 ---
 
@@ -395,13 +355,16 @@ webdota/
 │
 ├── src/
 │   ├── core/                # 🎮 遊戲核心模組
-│   │   ├── GameApp.ts       # 遊戲主程式
+│   │   ├── GameEngine.ts    # 遊戲主迴圈與子系統協調
 │   │   ├── NetworkManager.ts# 網路管理
-│   │   ├── PlayerEntity.ts  # 玩家實體
-│   │   └── HostManager.ts   # Host 管理
+│   │   ├── ecs/             # ECS 框架、Components、Systems、EntityFactory
+│   │   ├── managers/        # 玩家、小兵、建築、輸入、攝影機管理
+│   │   ├── combat/          # 技能執行與投射物
+│   │   └── map/             # 地圖載入
 │   │
-│   ├── components/          # Vue 元件
-│   │   └── HelloWorld.vue
+│   ├── components/          # Vue 元件（HUD、商店、小地圖、房間）
+│   ├── services/            # RoomService、GameService
+│   ├── stores/              # Pinia 狀態
 │   │
 │   ├── assets/              # 資源檔案
 │   │   └── vue.svg
@@ -570,5 +533,8 @@ webdota/
 **文件版本：** v1.0  
 **最後更新：** 2025-11-30  
 **維護者：** [Your Name]
-\n### 2026-03-22: 裁判主權硬化 (Referee Hardening)\n- **分層指紋技術**: 將 ECS 狀態分為物理層 (Physics) 與邏輯層 (Logic)，分別計算高精度指紋。\n- **自癒協議**: 實作 `WEBDOTA_RESYNC_REQUEST` 事件，當偵測到因果分歧時自動觸發狀態回溯與重同步。
-\n### 2026-03-23: 因果自癒與 Checkpoint 系統 (Causal Healing)\n- **物理快照技術**: 每 60 幀執行 `physicsWorld.takeSnapshot()`，實現物理與邏輯狀態的完整持久化。\n- **自癒回溯協議**: 監聽 `WEBDOTA_RESYNC_REQUEST` 事件，支援根據幀號自動召回最後一個有效檢查點並重塑戰局。
+
+### 2026-11-06: 核心修正與精簡
+- 移除未生效的狀態指紋裁判（RefereeManager）、檢查點回溯、事件存證（ProvenanceManager）與動態降頻
+- 輸入封包加入技能欄位，Client 的技能會送到 Host 執行；技能執行器改用 ECS Entity ID 查詢施放者
+- Entity 銷毀改為冪等並釋放物理與渲染資源；血條統一由 RenderSystem 更新
