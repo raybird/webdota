@@ -174,7 +174,16 @@ Entity ID 不重複使用。
 - **光彈**：`AISystem`（只在 Host 執行）發射時不再立即扣血，而是發出 `TOWER_ATTACK` 事件並記下飛行中的光彈，飛行時間 = 距離 ÷ 16 單位／秒，命中時才呼叫 `HealthSystem.dealDamage`；目標在途中消失時光彈落空。
 - **轉播**：Host 收到事件後由 `TowerFeedback.playBolt` 播放，並以 `tower_attack` 訊息轉播。兩端的 ECS Entity ID 不同，所以建築與小兵用 `EntitySyncManager` 的網路 ID（`netIdOf`／`entityOf`），玩家用 Peer ID（`getPlayerIdOf`）。Client 只播放畫面，傷害照常由血量同步帶過來（`syncHp` 觸發傷害數字與閃白）。
 - **畫面**：塔頂水晶射出隊伍色光彈（`public/env/tower-bolt-*`），追著目標飛，抵達時播命中特效（`tower-impact-*`）；素材未載入時退回火球。
-- **射程圈**：本地玩家距敵方建築在「射程 + 4」以內時，地面出現米色虛線橢圓；進入射程後變紅色。射程取地圖設定（Client 的建築鏡像沒有同步射程）。貼圖照畫面比例畫、平面依視角轉向，所以像素與螢幕 1:1；建築被摧毀時一併移除。
+- **射程圈**：本地玩家距敵方建築在「射程 + 4」以內時，地面出現米色虛線橢圓；進入射程後變紅色。射程讀建築的 AIComponent；Client 的建築鏡像由 `MapManager.structureConfigAt` 依位置補上地圖設定（Host 只同步血量）。貼圖照畫面比例畫、平面依視角轉向，所以像素與螢幕 1:1；建築被摧毀時一併移除。
+- **鎖定指示（2026-11-06）**：敵方建築最近一發光彈的目標腳下出現準星，地面有一條從建築底面流向目標的虛線；鎖定的是自己時為紅色，其他目標為米色。目標離開射程、死亡，或建築超過「冷卻 + 0.6 秒」沒再開火時消失。
+
+### Host 遷移（2026-11-06）
+原 Host 在遊戲中斷線時，NetworkManager 依 Peer ID 字典序選出新 Host 並呼叫 `onHostChanged`：
+
+- `RoomService` 更新 `roomStore.isHost`（HUD 的 HOST／CLIENT 標示與房間狀態廣播跟著換手）。
+- `GameEngine.takeOverAsHost` 打開 AISystem、StatusSystem 與碰撞的傷害判定；`EntitySyncManager.adoptMirrors` 沿用原 Host 的網路 ID，其他 Client 的鏡像不必重建；由旗標套用、沒有剩餘時間的狀態在 1 秒後到期。
+- 飛行中的光彈：Client 用 `RemoteBoltLog` 記錄轉播的光彈（含傷害），每次收到狀態同步就丟掉結果已同步的；接手時，命中時間晚於最後一次同步的光彈交給 AISystem 補算（已過命中時間的立即結算）。玩家血量走 GAME_STATE、建築與小兵走 ENTITY_STATE，各自比對。
+- 沒有同步的倒數從接手時重新起算：小兵波次計時、狀態剩餘時間。
 
 ### 狀態效果（StatusComponent，2026-11-06）
 技能的 `effect` 欄位：`invincible`（戰士 E）、`invisible`（刺客 E）施放時加在自己身上，`slow`（法師 W）由 Hitbox 命中時加在目標身上。

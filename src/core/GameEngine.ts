@@ -15,6 +15,7 @@ import { ECSStructureManager, type StructureKind } from './managers/ECSStructure
 import { ECSCreepManager } from './managers/ECSCreepManager';
 import { EntitySyncManager } from './managers/EntitySyncManager';
 import { TowerFeedback } from './TowerFeedback';
+import { RemoteBoltLog } from './RemoteBoltLog';
 import type { TowerAttackMessage } from './NetworkManager';
 import { SoundManager } from './SoundManager';
 import { BackgroundTicker } from './BackgroundTicker';
@@ -46,6 +47,7 @@ import {
     type EntityId,
     type Team,
     RenderComponent,
+    StatusComponent,
 } from './ecs';
 
 /**
@@ -66,6 +68,8 @@ const FRAME_STALL_MS = 50;
 const STATE_BROADCAST_INTERVAL = 3;
 /** Host 每幾個 fixedUpdate 廣播一次建築與小兵狀態 */
 const ENTITY_BROADCAST_INTERVAL = 6;
+/** Host 遷移時，沒有剩餘時間的狀態（原 Host 未同步）在幾秒後到期 */
+const TAKEOVER_STATUS_SECONDS = 1;
 /** 同隊玩家開局位置的間距 */
 const SPAWN_SPACING = 1.5;
 /** 擊殺獎勵金幣（最後一擊的玩家獲得） */
@@ -112,6 +116,8 @@ export class GameEngine {
     spriteFx!: SpriteFxManager;
     private pixelActors!: PixelActorManager;
     private towerFeedback!: TowerFeedback;
+    /** Client：Host 轉播的光彈，Host 遷移時由新 Host 接手結算 */
+    private boltLog = new RemoteBoltLog();
 
     // ECS
     ecsWorld!: World;
@@ -212,8 +218,8 @@ export class GameEngine {
         this.structureManager = new ECSStructureManager(this.ecsWorld, this.entityFactory, this.uiManager);
         this.creepManager = new ECSCreepManager(this.mapManager, this.uiManager, this.ecsWorld, this.entityFactory);
         this.playerManager = new ECSPlayerManager(this.ecsWorld, this.entityFactory, this.uiManager);
-        this.entitySync = new EntitySyncManager(this.ecsWorld, this.structureManager, this.creepManager);
-        this.towerFeedback = new TowerFeedback(this.app, this.ecsWorld, this.spriteFx, this.structureManager, this.mapManager);
+        this.entitySync = new EntitySyncManager(this.ecsWorld, this.structureManager, this.creepManager, this.mapManager);
+        this.towerFeedback = new TowerFeedback(this.app, this.ecsWorld, this.spriteFx, this.structureManager);
 
         this.setupEventListeners();
 
@@ -256,10 +262,22 @@ export class GameEngine {
             this.playerManager.removePlayer(peerId);
         };
         this.disposers.push(() => { this.networkManager.onPeerLeft = roomOnPeerLeft; });
-        this.networkManager.onGameState = (state) => this.handleGameState(state);
-        this.networkManager.onEntityState = (_frame, entities) => {
-            if (!this.isHost && this.isGameStarted) this.entitySync.apply(entities);
+        this.networkManager.onGameState = (state) => {
+            if (!this.isHost) this.boltLog.markState('player', performance.now());
+            this.handleGameState(state);
         };
+        this.networkManager.onEntityState = (_frame, entities) => {
+            if (this.isHost || !this.isGameStarted) return;
+            this.entitySync.apply(entities);
+            this.boltLog.markState('entity', performance.now());
+        };
+        // onHostChanged 也可能被房間流程使用，這裡接在後面並在 destroy 時還原
+        const roomOnHostChanged = this.networkManager.onHostChanged;
+        this.networkManager.onHostChanged = (newHostId) => {
+            roomOnHostChanged?.(newHostId);
+            if (this.isHost && this.isGameStarted && !this.aiSystem.enabled) this.takeOverAsHost();
+        };
+        this.disposers.push(() => { this.networkManager.onHostChanged = roomOnHostChanged; });
         this.networkManager.onTowerAttack = (attack) => this.playRemoteTowerAttack(attack);
         this.networkManager.onShopRequest = (fromPeerId, request) => this.handleShopRequest(fromPeerId, request);
         this.networkManager.onInventory = (update) => this.applyInventoryUpdate(update);
@@ -278,7 +296,7 @@ export class GameEngine {
             eventBus.on('TOWER_ATTACK', (event) => {
                 // 只有 Host 的 AISystem 會發出：本地播放並轉播給 Client
                 this.towerFeedback.playBolt(event.attackerId, event.targetId, event.flightTime);
-                this.broadcastTowerAttack(event.attackerId, event.targetId, event.flightTime);
+                this.broadcastTowerAttack(event.attackerId, event.targetId, event.flightTime, event.damage);
             }),
             eventBus.on('PLAYER_RESPAWNED', (event) => this.playSpriteFxAt('respawn-beam', event.entityId, 0)),
             eventBus.on('GAME_OVER', (event) => {
@@ -337,7 +355,8 @@ export class GameEngine {
         this.statusVisualSystem.localTeam = (this.roomStore.myPlayer?.team as Team | undefined) ?? null;
         setViewTeam(this.statusVisualSystem.localTeam);
         this.mapManager.applyView();
-        this.towerFeedback.resetRings();
+        this.towerFeedback.reset();
+        this.boltLog.clear();
         if (this.playerManager.getPlayer(peerId)) {
             const skills = this.playerManager.getPlayerSkills(peerId);
             const normalSkills = skills.filter(s => s.type === 'normal');
@@ -391,30 +410,51 @@ export class GameEngine {
         this.pixelActors.update(dt);
         if (this.isGameStarted) {
             const me = this.networkManager.peerId;
-            const position = this.playerManager.isDead(me) ? null : this.playerManager.getPlayerPosition(me);
-            this.towerFeedback.update(this.statusVisualSystem.localTeam, position ?? null);
+            const localPlayer = this.playerManager.isDead(me) ? null : this.playerManager.getPlayer(me) ?? null;
+            this.towerFeedback.update(dt, this.statusVisualSystem.localTeam, localPlayer);
         }
     }
 
     /** Host：把防禦塔光彈轉成兩端共通的 ID 後轉播 */
-    private broadcastTowerAttack(attackerId: EntityId, targetId: EntityId, flightTime: number): void {
+    private broadcastTowerAttack(attackerId: EntityId, targetId: EntityId, flightTime: number, damage: number): void {
         const from = this.entitySync.netIdOf(attackerId);
         if (from === undefined) return;
         const playerId = this.playerManager.getPlayerIdOf(targetId);
         const netId = playerId ? undefined : this.entitySync.netIdOf(targetId);
         const target = playerId ? { playerId } : netId !== undefined ? { netId } : null;
         if (!target) return;
-        this.networkManager.broadcastTowerAttack({ from, target, flightTime });
+        this.networkManager.broadcastTowerAttack({ from, target, flightTime, damage });
     }
 
     /** Client：播放 Host 轉播的防禦塔光彈 */
     private playRemoteTowerAttack(attack: TowerAttackMessage): void {
         if (this.isHost) return;
         const attackerId = this.entitySync.entityOf(attack.from);
+        const isPlayer = 'playerId' in attack.target;
         const targetId = 'playerId' in attack.target
             ? this.playerManager.getPlayer(attack.target.playerId)
             : this.entitySync.entityOf(attack.target.netId);
-        if (attackerId && targetId) this.towerFeedback.playBolt(attackerId, targetId, attack.flightTime);
+        if (!attackerId || !targetId) return;
+        this.towerFeedback.playBolt(attackerId, targetId, attack.flightTime);
+        this.boltLog.record(attackerId, targetId, isPlayer ? 'player' : 'entity', attack.damage, attack.flightTime, performance.now());
+    }
+
+    /**
+     * Host 遷移：原 Host 在遊戲中斷線、由本端接手時，打開只在 Host 執行的系統並接手原 Host 的狀態。
+     * 小兵、建築、玩家的位置與血量本來就在本端（鏡像），沿用原 Host 的網路 ID 讓其他 Client 對得上；
+     * 原 Host 的倒數（狀態剩餘時間、小兵波次）沒有同步，從接手時重新起算。
+     */
+    private takeOverAsHost(): void {
+        const bolts = this.boltLog.takeOver(performance.now());
+        console.log(`[GameEngine] Taking over as host (${bolts.length} tower bolts adopted)`);
+        this.aiSystem.enabled = true;
+        this.statusSystem.enabled = true;
+        this.collisionSystem.authoritative = true;
+        this.entitySync.adoptMirrors();
+        for (const entityId of this.ecsWorld.query(ComponentType.STATUS)) {
+            this.ecsWorld.getComponent<StatusComponent>(entityId, ComponentType.STATUS)?.adoptAsHost(TAKEOVER_STATUS_SECONDS);
+        }
+        this.aiSystem.adoptBolts(bolts);
     }
 
     /**

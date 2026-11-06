@@ -79,6 +79,16 @@ export class StatusComponent implements Component {
         return flags;
     }
 
+    /**
+     * Host 遷移：Client 由旗標套用的狀態沒有剩餘時間（Infinity），成為 Host 後改為 seconds 秒後到期，
+     * 否則會永遠不消失（原 Host 的剩餘時間沒有同步，取短一點的值寧可提早結束）
+     */
+    adoptAsHost(seconds: number): void {
+        for (const status of this.active.values()) {
+            if (status.remaining === Infinity) status.remaining = seconds;
+        }
+    }
+
     /** Client 套用 Host 同步的旗標 */
     setFlags(flags: number): void {
         for (const kind of KINDS) {

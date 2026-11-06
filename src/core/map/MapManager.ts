@@ -396,4 +396,10 @@ export class MapManager {
         if (!this.currentMapConfig) return [];
         return this.currentMapConfig.entities.filter(e => e.type === type);
     }
+
+    /** 地圖上位於 (x, z) 的建築設定（射程、攻擊力等）；Client 生成建築鏡像時補上 Host 沒同步的數值 */
+    structureConfigAt(type: 'tower' | 'base', x: number, z: number): Record<string, any> {
+        const entity = this.getEntitiesByType(type).find(({ position: [ex = 0, , ez = 0] }) => Math.hypot(ex - x, ez - z) < 0.5);
+        return entity?.config ?? {};
+    }
 }
