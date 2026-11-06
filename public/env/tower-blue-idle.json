@@ -1,0 +1,127 @@
+{
+ "frames": [
+  {
+   "filename": "tower-blue-idle 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 167
+  },
+  {
+   "filename": "tower-blue-idle 1",
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 167
+  },
+  {
+   "filename": "tower-blue-idle 2",
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 167
+  },
+  {
+   "filename": "tower-blue-idle 3",
+   "frame": {
+    "x": 144,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 112
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 112
+   },
+   "duration": 167
+  }
+ ],
+ "meta": {
+  "app": "webdota/tools/env/generate.py",
+  "version": "2",
+  "image": "tower-blue-idle.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 192,
+   "h": 112
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "idle",
+    "from": 0,
+    "to": 3,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "env/tower-blue-idle",
+   "name": "tower blue idle",
+   "fps": 6,
+   "loop": true,
+   "frames": 4,
+   "frameSize": [
+    48,
+    112
+   ],
+   "pivot": [
+    24,
+    108
+   ],
+   "columns": 4
+  }
+ }
+}

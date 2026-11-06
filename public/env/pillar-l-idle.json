@@ -1,0 +1,61 @@
+{
+ "frames": [
+  {
+   "filename": "pillar-l-idle 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 136
+   },
+   "duration": 1000
+  }
+ ],
+ "meta": {
+  "app": "webdota/tools/env/generate.py",
+  "version": "2",
+  "image": "pillar-l-idle.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 64,
+   "h": 136
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "idle",
+    "from": 0,
+    "to": 0,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "env/pillar-l-idle",
+   "name": "pillar l idle",
+   "fps": 1,
+   "loop": true,
+   "frames": 1,
+   "frameSize": [
+    64,
+    136
+   ],
+   "pivot": [
+    32,
+    132
+   ],
+   "columns": 1
+  }
+ }
+}

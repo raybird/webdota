@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { viewYawDeg } from '../../core/view'
+
+// 畫布以世界座標俯視繪製（x 向右、z 向下），再旋轉成與遊戲鏡頭同方向（自家主堡在左下）；
+// 視角在遊戲開始時才依隊伍決定，所以每次繪製時更新
 
 const props = defineProps<{
   // 地圖尺寸
@@ -40,6 +44,7 @@ const draw = () => {
   if (!ctx) return
 
   // 清空畫布
+  canvas.style.transform = `rotate(${viewYawDeg()}deg)`
   ctx.clearRect(0, 0, minimapSize, minimapSize)
 
   // 繪製背景 (深綠色地圖)

@@ -8,8 +8,8 @@ import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
 import { SpriteFxManager, type SpriteFxName } from './SpriteFxManager';
-import { CharacterSpriteManager, type CharacterAction } from './CharacterSpriteManager';
-import { getAllCharacters } from '../data/characters';
+import { PixelActorManager, type ActorAction } from './PixelActorManager';
+import { screenToWorld, setViewTeam } from './view';
 import type { Skill } from '../types/Skill';
 import { ECSStructureManager, type StructureKind } from './managers/ECSStructureManager';
 import { ECSCreepManager } from './managers/ECSCreepManager';
@@ -49,7 +49,7 @@ import {
 /**
  * 技能對應的角色動作：法師的技能與沒有傷害的增益技能是施法，其餘（含法師普攻）是近戰揮擊
  */
-function characterActionOf(skill: Skill): CharacterAction {
+function characterActionOf(skill: Skill): ActorAction {
     if (skill.type === 'basic') return 'attack';
     return skill.damage <= 0 || skill.id.startsWith('mage_') ? 'cast' : 'attack';
 }
@@ -108,7 +108,7 @@ export class GameEngine {
     entitySync!: EntitySyncManager;
     soundManager!: SoundManager;
     spriteFx!: SpriteFxManager;
-    private characterSprites!: CharacterSpriteManager;
+    private pixelActors!: PixelActorManager;
 
     // ECS
     ecsWorld!: World;
@@ -176,9 +176,9 @@ export class GameEngine {
         this.spriteFx = new SpriteFxManager(this.app);
         this.spriteFx.setCamera(camera);
         this.spriteFx.preload();
-        this.characterSprites = new CharacterSpriteManager(this.app);
-        this.characterSprites.setCamera(camera);
-        await this.characterSprites.preload(getAllCharacters().map(c => c.id));
+        this.pixelActors = new PixelActorManager(this.app);
+        this.pixelActors.setCamera(camera);
+        await this.pixelActors.preload();
         this.effectManager = new EffectManager(this.spriteFx);
         this.projectileManager = new ProjectileManager(this.spriteFx);
         this.soundManager = new SoundManager(this.app);
@@ -187,7 +187,7 @@ export class GameEngine {
         this.collisionSystem = new CollisionSystem(this.physicsWorld);
         this.entityFactory = new EntityFactory(this.app, this.physicsWorld, this.ecsWorld);
         this.entityFactory.setCollisionSystem(this.collisionSystem);
-        this.entityFactory.setCharacterSprites(this.characterSprites);
+        this.entityFactory.setPixelActors(this.pixelActors);
 
         const renderSystem = new RenderSystem();
         renderSystem.camera = camera;
@@ -325,6 +325,8 @@ export class GameEngine {
 
         const peerId = this.networkManager.peerId;
         this.statusVisualSystem.localTeam = (this.roomStore.myPlayer?.team as Team | undefined) ?? null;
+        setViewTeam(this.statusVisualSystem.localTeam);
+        this.mapManager.applyView();
         if (this.playerManager.getPlayer(peerId)) {
             const skills = this.playerManager.getPlayerSkills(peerId);
             const normalSkills = skills.filter(s => s.type === 'normal');
@@ -375,7 +377,7 @@ export class GameEngine {
         this.simulate();
         this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
         this.spriteFx.update(dt);
-        this.characterSprites.update(dt);
+        this.pixelActors.update(dt);
     }
 
     /**
@@ -403,6 +405,10 @@ export class GameEngine {
         if (!this.isGameStarted) return;
 
         const localInput = this.inputManager.collectInput(this.currentFrame);
+        // 輸入是畫面方向，轉成世界方向後再送出與套用（applyMovement 的 z = -moveY）
+        const world = screenToWorld(localInput.moveX, localInput.moveY);
+        localInput.moveX = world.x;
+        localInput.moveY = -world.z;
         if (this.pendingSkillUse) {
             localInput.skillUsed = this.pendingSkillUse.skillId;
             localInput.skillDirection = this.pendingSkillUse.direction;
@@ -527,15 +533,16 @@ export class GameEngine {
     }
 
     /**
-     * 重生位置：己方出生點往地圖中央退 3 單位，避開與主堡重疊；沒有出生點時回到中央
+     * 重生位置：己方出生點沿 z 往地圖中央移 7 單位；沒有出生點時回到中央。
+     * 兩隊鏡頭都沿 x 軸看（見 view.ts），z 方向是畫面左右，所以玩家出現在主堡右側，
+     * 不會在主堡像素圖（寬約 6.7 單位）後方被整個擋住
      */
     private getRespawnPosition(team: Team): { x: number; y: number; z: number } {
         const spawnPoints = team === 'neutral' ? [] : this.mapManager.getSpawnPoints(team);
         const sp = spawnPoints[spawnPoints.length - 1]?.position;
         if (!sp) return { x: 0, y: 1, z: 0 };
 
-        const len = Math.hypot(sp.x, sp.z) || 1;
-        return { x: sp.x - (sp.x / len) * 3, y: 1, z: sp.z - (sp.z / len) * 3 };
+        return { x: sp.x, y: 1, z: sp.z - Math.sign(sp.z) * 7 };
     }
 
     private applyMovement(input: PlayerInput, dt: number) {
@@ -575,7 +582,7 @@ export class GameEngine {
         );
 
         const visual = this.ecsWorld.getComponent<RenderComponent>(casterEntityId, ComponentType.RENDER)?.pcEntity;
-        if (visual) this.characterSprites.playAction(visual, characterActionOf(skill), input.skillDirection);
+        if (visual) this.pixelActors.playAction(visual, characterActionOf(skill), input.skillDirection);
     }
 
     private broadcastState() {
@@ -694,7 +701,7 @@ export class GameEngine {
         this.renderManager.destroy();
         this.soundManager.destroy();
         this.spriteFx.destroy();
-        this.characterSprites.clear();
+        this.pixelActors.clear();
         this.projectileManager.clearAll();
         this.ecsWorld.clear();
         colliderRegistry.clear();

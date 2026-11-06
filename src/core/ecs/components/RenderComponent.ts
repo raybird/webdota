@@ -43,9 +43,17 @@ export class RenderComponent implements Component {
     /** 狀態效果的色調（覆寫 emissive）；null 為原色 */
     private tint: Float32Array | null = null;
 
-    constructor(pcEntity: pc.Entity, release: ((pcEntity: pc.Entity) => void) | null = null) {
+    /** 視覺物件交還或銷毀前呼叫（釋放掛在上面的像素圖） */
+    private onDispose: ((pcEntity: pc.Entity) => void) | null;
+
+    constructor(
+        pcEntity: pc.Entity,
+        release: ((pcEntity: pc.Entity) => void) | null = null,
+        onDispose: ((pcEntity: pc.Entity) => void) | null = null
+    ) {
         this.pcEntity = pcEntity;
         this.release = release;
+        this.onDispose = onDispose;
     }
 
     /**
@@ -139,6 +147,7 @@ export class RenderComponent implements Component {
             mi.deleteParameter('material_opacity');
         }
         this.hpBarEntity?.destroy();
+        this.onDispose?.(this.pcEntity);
         if (this.release) {
             this.release(this.pcEntity);
         } else {

@@ -27,14 +27,15 @@ export interface PixelSheet {
  */
 export const PX_PER_UNIT = 19;
 
-/** 載入 `${baseUrl}${name}.json` 與它指向的 PNG */
-export async function loadPixelSheet(device: pc.GraphicsDevice, baseUrl: string, name: string): Promise<PixelSheet> {
-    const json = await fetch(`${baseUrl}${name}.json`).then(r => {
+/** 載入 `${path}.json` 與它指向的 PNG（meta.image 相對於 JSON 所在目錄） */
+export async function loadPixelSheet(device: pc.GraphicsDevice, path: string): Promise<PixelSheet> {
+    const jsonUrl = new URL(`${path}.json`, location.href);
+    const json = await fetch(jsonUrl).then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<PixelSheetJson>;
     });
     const image = new Image();
-    image.src = `${baseUrl}${json.meta.image}`;
+    image.src = new URL(json.meta.image, jsonUrl).href;
     await image.decode();
 
     const texture = new pc.Texture(device, {
@@ -47,7 +48,7 @@ export async function loadPixelSheet(device: pc.GraphicsDevice, baseUrl: string,
         magFilter: pc.FILTER_NEAREST,
         addressU: pc.ADDRESS_CLAMP_TO_EDGE,
         addressV: pc.ADDRESS_CLAMP_TO_EDGE,
-        name
+        name: path
     });
     texture.setSource(image);
     return { texture, json };

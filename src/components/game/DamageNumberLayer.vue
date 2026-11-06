@@ -25,6 +25,7 @@ let nextId = 0
 let unsubscribe: (() => void) | null = null
 const screenPos = new pc.Vec3()
 const worldPos = new pc.Vec3()
+const toTarget = new pc.Vec3()
 
 // 隨機散開，避免數字完全重疊
 const randOffset = (max: number) => (Math.random() - 0.5) * max * 2
@@ -36,8 +37,11 @@ const onEntityTookDamage = (event: { targetId: string; damage: number; isCrit: b
   if (!camera || !position) return
 
   worldPos.set(position.x, position.y + 2, position.z)
+  // 在攝影機後方不顯示；正交鏡頭的 worldToScreen 的 z 不是與鏡頭的距離（會是負值），改用鏡頭前方向判斷
+  const cameraEntity = camera.entity
+  toTarget.sub2(worldPos, cameraEntity.getPosition())
+  if (toTarget.dot(cameraEntity.forward) <= 0) return
   camera.worldToScreen(worldPos, screenPos)
-  if (screenPos.z <= 0) return // 在攝影機後方
 
   const id = nextId++
   damageNumbers.value.push({
