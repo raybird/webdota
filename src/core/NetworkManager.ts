@@ -1,6 +1,6 @@
 import Peer, { type DataConnection } from 'peerjs';
 import { eventBus } from '../events/EventBus';
-import { BinarySerializer, PacketType } from '../utils/BinarySerializer';
+import { BinarySerializer, PacketType, type NetEntityState } from '../utils/BinarySerializer';
 
 export interface PlayerInput {
     frame: number;
@@ -48,6 +48,8 @@ export class NetworkManager {
     onGameStartCountdown?: (seconds: number) => void;
     onGameStarted?: () => void;
     onGameState?: (state: GameState) => void;
+    onEntityState?: (frame: number, entities: NetEntityState[]) => void;
+    onGameOver?: (winnerTeam: 'red' | 'blue', reason: 'base_destroyed' | 'surrender' | 'timeout') => void;
     onRoomCode?: (code: string, hostId: string) => void;
     onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }> };
     onRoomState?: (players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }>) => void;
@@ -205,6 +207,9 @@ export class NetworkManager {
             } else if (type === PacketType.GAME_STATE) {
                 const state = BinarySerializer.deserializeGameState(data);
                 if (this.onGameState) this.onGameState(state);
+            } else if (type === PacketType.ENTITY_STATE) {
+                const { frame, entities } = BinarySerializer.deserializeEntityState(data);
+                if (this.onEntityState) this.onEntityState(frame, entities);
             }
             return;
         }
@@ -244,6 +249,10 @@ export class NetworkManager {
 
             case 'game_started':
                 if (this.onGameStarted) this.onGameStarted();
+                break;
+
+            case 'game_over':
+                if (this.onGameOver) this.onGameOver(data.winnerTeam, data.reason);
                 break;
 
             case 'room_code':
@@ -349,10 +358,15 @@ export class NetworkManager {
 
     /**
      * 發送輸入
+     * 移動輸入每幀都送，只需要給 Host；帶技能的輸入廣播給所有人，讓其他 Client 也能播放技能表現
      */
     sendInput(input: PlayerInput) {
         const binaryData = BinarySerializer.serializeInput(input);
-        this.connections.forEach(conn => conn.send(binaryData));
+        if (input.skillUsed) {
+            this.connections.forEach(conn => conn.send(binaryData));
+        } else {
+            this.connections.get(this.hostId)?.send(binaryData);
+        }
     }
 
     /**
@@ -361,6 +375,21 @@ export class NetworkManager {
     broadcastGameState(state: GameState) {
         const binaryData = BinarySerializer.serializeGameState(state);
         this.connections.forEach(conn => conn.send(binaryData));
+    }
+
+    /**
+     * 廣播建築與小兵狀態 (Host Only)
+     */
+    broadcastEntityState(frame: number, entities: NetEntityState[]) {
+        const binaryData = BinarySerializer.serializeEntityState(frame, entities);
+        this.connections.forEach(conn => conn.send(binaryData));
+    }
+
+    /**
+     * 廣播遊戲結束 (Host Only)
+     */
+    broadcastGameOver(winnerTeam: 'red' | 'blue', reason: 'base_destroyed' | 'surrender' | 'timeout') {
+        this.connections.forEach(conn => conn.send({ type: 'game_over', winnerTeam, reason }));
     }
 
     /**

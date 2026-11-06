@@ -7,8 +7,33 @@ import type { PlayerInput, GameState, PlayerState } from '../core/NetworkManager
 
 export const PacketType = {
     INPUT: 1,
-    GAME_STATE: 5
+    GAME_STATE: 5,
+    ENTITY_STATE: 6
 } as const;
+
+/** 非玩家實體種類（建築與小兵） */
+export const EntityKindCode = { tower: 0, base: 1, creep: 2 } as const;
+export type NetEntityKind = keyof typeof EntityKindCode;
+const KIND_BY_CODE: NetEntityKind[] = ['tower', 'base', 'creep'];
+
+const TeamCode = { red: 0, blue: 1, neutral: 2 } as const;
+type NetTeam = keyof typeof TeamCode;
+const TEAM_BY_CODE: NetTeam[] = ['red', 'blue', 'neutral'];
+
+/** Host 同步給 Client 的建築與小兵狀態 */
+export interface NetEntityState {
+    netId: number;
+    kind: NetEntityKind;
+    team: NetTeam;
+    pos: { x: number; y: number; z: number };
+    /** 繞 Y 軸的朝向（弧度） */
+    yaw: number;
+    hp: number;
+    maxHp: number;
+}
+
+/** 每個實體: [NetId(2), Kind(1), Team(1), Pos(12), Yaw(4), HP(4), MaxHP(4)] */
+const ENTITY_BYTES = 28;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -158,5 +183,60 @@ export class BinarySerializer {
             players,
             isGameStarted: true // 進入 GameState 通常表示遊戲已開始
         };
+    }
+
+    /**
+     * 序列化建築與小兵狀態
+     * 格式: [Type(1), Frame(4), Count(2), ...Entities]
+     */
+    static serializeEntityState(frame: number, entities: NetEntityState[]): ArrayBuffer {
+        const buffer = new ArrayBuffer(7 + entities.length * ENTITY_BYTES);
+        const view = new DataView(buffer);
+
+        view.setUint8(0, PacketType.ENTITY_STATE);
+        view.setUint32(1, frame);
+        view.setUint16(5, entities.length);
+
+        let offset = 7;
+        for (const e of entities) {
+            view.setUint16(offset, e.netId);
+            view.setUint8(offset + 2, EntityKindCode[e.kind]);
+            view.setUint8(offset + 3, TeamCode[e.team]);
+            view.setFloat32(offset + 4, e.pos.x);
+            view.setFloat32(offset + 8, e.pos.y);
+            view.setFloat32(offset + 12, e.pos.z);
+            view.setFloat32(offset + 16, e.yaw);
+            view.setFloat32(offset + 20, e.hp);
+            view.setFloat32(offset + 24, e.maxHp);
+            offset += ENTITY_BYTES;
+        }
+
+        return buffer;
+    }
+
+    static deserializeEntityState(buffer: ArrayBuffer): { frame: number; entities: NetEntityState[] } {
+        const view = new DataView(buffer);
+        const count = view.getUint16(5);
+        const entities: NetEntityState[] = [];
+
+        let offset = 7;
+        for (let i = 0; i < count; i++) {
+            entities.push({
+                netId: view.getUint16(offset),
+                kind: KIND_BY_CODE[view.getUint8(offset + 2)] ?? 'creep',
+                team: TEAM_BY_CODE[view.getUint8(offset + 3)] ?? 'neutral',
+                pos: {
+                    x: view.getFloat32(offset + 4),
+                    y: view.getFloat32(offset + 8),
+                    z: view.getFloat32(offset + 12)
+                },
+                yaw: view.getFloat32(offset + 16),
+                hp: view.getFloat32(offset + 20),
+                maxHp: view.getFloat32(offset + 24)
+            });
+            offset += ENTITY_BYTES;
+        }
+
+        return { frame: view.getUint32(1), entities };
     }
 }

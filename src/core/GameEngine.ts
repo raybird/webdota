@@ -8,6 +8,7 @@ import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
 import { ECSStructureManager, type StructureKind } from './managers/ECSStructureManager';
 import { ECSCreepManager } from './managers/ECSCreepManager';
+import { EntitySyncManager } from './managers/EntitySyncManager';
 import { SoundManager } from './SoundManager';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
@@ -36,8 +37,12 @@ import {
 
 /** 每個畫面幀最多補跑的 fixedUpdate 次數，避免分頁切回來時一次追太多幀 */
 const MAX_STEPS_PER_FRAME = 5;
-/** Host 每幾個 fixedUpdate 廣播一次狀態 */
+/** Host 每幾個 fixedUpdate 廣播一次玩家狀態 */
 const STATE_BROADCAST_INTERVAL = 3;
+/** Host 每幾個 fixedUpdate 廣播一次建築與小兵狀態 */
+const ENTITY_BROADCAST_INTERVAL = 6;
+/** 本地玩家預測位置與 Host 差距超過這個距離就拉回（擊退、被拒絕的位移等） */
+const RECONCILE_DISTANCE = 2;
 
 export interface MinimapEntity {
     id: string;
@@ -50,8 +55,8 @@ export interface MinimapEntity {
  * 遊戲引擎核心
  * 負責協調各個子系統與驅動遊戲循環
  *
- * 網路模型為 Host 權威：Host 處理所有玩家的輸入並模擬小兵、防禦塔，
- * 每 STATE_BROADCAST_INTERVAL 幀廣播玩家狀態；Client 送出自己的輸入並在本地先行預測移動。
+ * 網路模型為 Host 權威：Host 處理所有玩家的輸入並模擬小兵、防禦塔，廣播玩家與建築、小兵狀態；
+ * Client 送出自己的輸入並在本地先行預測移動，建築與小兵是 Host 狀態的鏡像，不跑 AI 也不判定傷害。
  */
 export class GameEngine {
     app!: pc.Application;
@@ -68,12 +73,14 @@ export class GameEngine {
     mapManager!: MapManager;
     structureManager!: ECSStructureManager;
     creepManager!: ECSCreepManager;
+    entitySync!: EntitySyncManager;
     soundManager!: SoundManager;
 
     // ECS
     ecsWorld!: World;
     entityFactory!: EntityFactory;
     collisionSystem!: CollisionSystem;
+    aiSystem!: AISystem;
     ecsSkillExecutor!: ECSSkillExecutor;
 
     readonly FIXED_TIMESTEP = 1 / 60;
@@ -88,7 +95,7 @@ export class GameEngine {
     private pendingSkillUse: { skillId: string; direction: { x: number; z: number } } | null = null;
     /** Host：各 Client 最新的移動輸入（封包沒到的幀沿用上一筆，避免抖動） */
     private remoteMoves: Map<string, PlayerInput> = new Map();
-    /** Host：尚未處理的 Client 技能輸入 */
+    /** 尚未處理的其他玩家技能輸入（Host 權威執行；Client 只播放表現） */
     private remoteSkills: PlayerInput[] = [];
 
     /** destroy 時要執行的清理（事件監聽等） */
@@ -140,7 +147,8 @@ export class GameEngine {
         this.ecsWorld.addSystem(new CombatSystem());
         this.ecsWorld.addSystem(this.collisionSystem);
         this.ecsWorld.addSystem(new SpatialSystem());
-        this.ecsWorld.addSystem(new AISystem());
+        this.aiSystem = new AISystem();
+        this.ecsWorld.addSystem(this.aiSystem);
         this.ecsWorld.addSystem(new HealthSystem());
         this.ecsWorld.addSystem(renderSystem);
 
@@ -148,6 +156,7 @@ export class GameEngine {
         this.structureManager = new ECSStructureManager(this.ecsWorld, this.entityFactory, this.uiManager);
         this.creepManager = new ECSCreepManager(this.mapManager, this.uiManager, this.ecsWorld, this.entityFactory);
         this.playerManager = new ECSPlayerManager(this.ecsWorld, this.entityFactory, this.uiManager);
+        this.entitySync = new EntitySyncManager(this.ecsWorld, this.structureManager, this.creepManager);
 
         this.setupEventListeners();
 
@@ -177,9 +186,8 @@ export class GameEngine {
         this.inputManager.setPlayerId(this.networkManager.peerId);
 
         this.networkManager.onInputReceived = (input) => {
-            // 只有 Host 需要處理其他玩家的輸入；Client 之間也會互相收到輸入，直接丟棄
-            if (!this.isHost) return;
-            this.remoteMoves.set(input.playerId, input);
+            // 移動以 Host 為準；Client 收到其他玩家的技能輸入只用來播放表現
+            if (this.isHost) this.remoteMoves.set(input.playerId, input);
             if (input.skillUsed) this.remoteSkills.push(input);
         };
         // onPeerLeft 同時被 RoomService 用來更新房間名單，這裡接在後面並在 destroy 時還原
@@ -191,11 +199,21 @@ export class GameEngine {
         };
         this.disposers.push(() => { this.networkManager.onPeerLeft = roomOnPeerLeft; });
         this.networkManager.onGameState = (state) => this.handleGameState(state);
+        this.networkManager.onEntityState = (_frame, entities) => {
+            if (!this.isHost && this.isGameStarted) this.entitySync.apply(entities);
+        };
+        this.networkManager.onGameOver = (winnerTeam, reason) => {
+            if (!this.isHost) eventBus.emit({ type: 'GAME_OVER', winnerTeam, reason });
+        };
 
         this.disposers.push(
             eventBus.on('GAME_STARTED', () => this.startGame()),
             eventBus.on('SKILL_USED', (event) => this.useSkill(event.skillId)),
-            eventBus.on('GAME_OVER', () => this.soundManager.playGameOverSound()),
+            eventBus.on('GAME_OVER', (event) => {
+                this.soundManager.playGameOverSound();
+                // 主堡死亡只在 Host 判定，再通知 Client
+                if (this.isHost) this.networkManager.broadcastGameOver(event.winnerTeam, event.reason);
+            }),
         );
 
         const onResize = () => this.app.resizeCanvas();
@@ -216,8 +234,12 @@ export class GameEngine {
         this.creepManager.clearAll();
         this.creepManager.resetWaveTimer();
         this.projectileManager.clearAll();
+        this.entitySync.reset();
 
-        this.spawnStructuresFromMap();
+        // Client 的 AI 與傷害判定交給 Host；建築與小兵由 Host 同步生成
+        this.aiSystem.enabled = this.isHost;
+        this.collisionSystem.authoritative = this.isHost;
+        if (this.isHost) this.spawnStructuresFromMap();
 
         const players = [...this.roomStore.connectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
         const radius = 5;
@@ -241,7 +263,7 @@ export class GameEngine {
 
     /**
      * Client：套用 Host 廣播的權威狀態
-     * 本地玩家的位置保留本地預測，只同步血量與能量
+     * 本地玩家保留本地預測的位置，偏離 Host 太多時才拉回
      */
     private handleGameState(state: GameState) {
         this.currentFrame = state.frame;
@@ -250,11 +272,14 @@ export class GameEngine {
             if (!this.playerManager.getPlayer(pData.id)) {
                 this.playerManager.spawnPlayer(pData.id, pData.pos);
             }
-            if (pData.id !== this.networkManager.peerId) {
-                const rb = this.playerManager.getPlayerRigidBody(pData.id);
-                if (rb) {
+            const rb = this.playerManager.getPlayerRigidBody(pData.id);
+            if (rb) {
+                const isLocal = pData.id === this.networkManager.peerId;
+                const pos = rb.translation();
+                const drift = Math.hypot(pos.x - pData.pos.x, pos.z - pData.pos.z);
+                if (!isLocal || drift > RECONCILE_DISTANCE) {
                     rb.setNextKinematicTranslation(pData.pos);
-                    rb.setNextKinematicRotation(pData.rot);
+                    if (!isLocal) rb.setNextKinematicRotation(pData.rot);
                 }
             }
             this.playerManager.setPlayerHp(pData.id, pData.stats.hp);
@@ -288,15 +313,17 @@ export class GameEngine {
             this.pendingSkillUse = null;
         }
 
-        if (!this.isHost) this.networkManager.sendInput(localInput);
+        // Client 每幀送輸入給 Host；Host 只在放技能時送，讓 Client 播放表現
+        if (!this.isHost || localInput.skillUsed) this.networkManager.sendInput(localInput);
 
         this.applyMovement(localInput, dt);
         this.applySkill(localInput);
 
+        for (const input of this.remoteSkills) this.applySkill(input);
+        this.remoteSkills = [];
+
         if (this.isHost) {
             for (const input of this.remoteMoves.values()) this.applyMovement(input, dt);
-            for (const input of this.remoteSkills) this.applySkill(input);
-            this.remoteSkills = [];
 
             this.creepManager.update(dt);
             this.structureManager.update();
@@ -306,8 +333,11 @@ export class GameEngine {
         this.physicsWorld.step();
         this.ecsWorld.update(dt);
 
-        if (this.isHost && this.currentFrame % STATE_BROADCAST_INTERVAL === 0) {
-            this.broadcastState();
+        if (this.isHost) {
+            if (this.currentFrame % STATE_BROADCAST_INTERVAL === 0) this.broadcastState();
+            if (this.currentFrame % ENTITY_BROADCAST_INTERVAL === 0) {
+                this.networkManager.broadcastEntityState(this.currentFrame, this.entitySync.collect());
+            }
         }
 
         this.currentFrame++;
@@ -442,6 +472,8 @@ export class GameEngine {
 
         this.networkManager.onInputReceived = undefined;
         this.networkManager.onGameState = undefined;
+        this.networkManager.onEntityState = undefined;
+        this.networkManager.onGameOver = undefined;
 
         this.isGameStarted = false;
         this.inputManager.destroy();

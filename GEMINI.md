@@ -56,5 +56,5 @@
 
 ## ⚠️ 已知限制與注意點
 - 新功能直接在 ECS 框架下開發；Entity 銷毀一律走 `World.destroyEntity`，外部資源在 Component 的 `dispose()` 釋放。
-- 小兵、防禦塔、主堡的狀態尚未同步給 Client。
+- 建築與小兵在 Client 是 Host 狀態的鏡像（`EntitySyncManager`），Client 不跑 AI、不判定傷害。
 - P2P Mesh 架構下，連線數隨玩家增加呈平方增長，目前建議上限為 8 人。

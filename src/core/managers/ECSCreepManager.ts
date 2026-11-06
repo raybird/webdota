@@ -93,38 +93,40 @@ export class ECSCreepManager {
         const spawnPoint = spawnPoints[0];
         if (!spawnPoint) return;
 
+        for (let i = 0; i < this.waveConfig.creepsPerWave; i++) {
+            this.spawnCreep(team, {
+                x: spawnPoint.position.x + (Math.random() - 0.5) * 2,
+                y: spawnPoint.position.y,
+                z: spawnPoint.position.z + (Math.random() - 0.5) * 2
+            });
+        }
+    }
+
+    /**
+     * 生成單一小兵（Host 生成波次，Client 依 Host 同步的狀態生成鏡像）
+     */
+    spawnCreep(team: Team, position: { x: number; y: number; z: number }, maxHp: number = 200): EntityId {
         const targetPosition = team === 'red' ? this.blueBasePosition : this.redBasePosition;
 
         // 判斷敵我 (灰色敵人)
-        const roomStore = useRoomStore();
-        const myTeam = roomStore.myPlayer?.team;
+        const myTeam = useRoomStore().myPlayer?.team;
         const isEnemy = myTeam && myTeam !== team && myTeam !== 'neutral';
 
-        for (let i = 0; i < this.waveConfig.creepsPerWave; i++) {
-            const offsetX = (Math.random() - 0.5) * 2;
-            const offsetZ = (Math.random() - 0.5) * 2;
-            const position = {
-                x: spawnPoint.position.x + offsetX,
-                y: spawnPoint.position.y,
-                z: spawnPoint.position.z + offsetZ
-            };
+        const creepId = this.entityFactory.createCreep({
+            team,
+            position,
+            targetPosition: { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z },
+            maxHp,
+            attackPower: 5,
+            moveSpeed: 2.5,
+            isEnemy
+        });
+        this.creeps.add(creepId);
 
-            // 使用 EntityFactory 建立 ECS 小兵
-            const creepId = this.entityFactory.createCreep({
-                team,
-                position,
-                targetPosition: { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z },
-                maxHp: 200,
-                attackPower: 5,
-                moveSpeed: 2.5,
-                isEnemy
-            });
+        const render = this.world.getComponent<RenderComponent>(creepId, ComponentType.RENDER);
+        render?.setHpBar(this.uiManager.createEntityUI(creepId, team), 1.5);
 
-            this.creeps.add(creepId);
-
-            const render = this.world.getComponent<RenderComponent>(creepId, ComponentType.RENDER);
-            render?.setHpBar(this.uiManager.createEntityUI(creepId, team), 1.5);
-        }
+        return creepId;
     }
 
     /**
@@ -138,6 +140,13 @@ export class ECSCreepManager {
             this.spawnWave();
         }
 
+        this.prune();
+    }
+
+    /**
+     * 移除已被銷毀（HealthSystem 或同步移除）的小兵
+     */
+    prune(): void {
         for (const creepId of this.creeps) {
             if (!this.world.hasEntity(creepId)) this.creeps.delete(creepId);
         }

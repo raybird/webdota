@@ -40,3 +40,18 @@ describe('BinarySerializer game state', () => {
         expect(decoded.players).toEqual(state.players);
     });
 });
+
+describe('BinarySerializer entity state', () => {
+    it('round-trips structures and creeps', () => {
+        const entities = [
+            { netId: 1, kind: 'tower' as const, team: 'blue' as const, pos: { x: -10, y: 0, z: 5 }, yaw: 0, hp: 1992, maxHp: 2000 },
+            { netId: 65535, kind: 'creep' as const, team: 'red' as const, pos: { x: 1.5, y: 1, z: -2.25 }, yaw: -1.5, hp: 0, maxHp: 200 }
+        ];
+        const buffer = BinarySerializer.serializeEntityState(120, entities);
+        const decoded = BinarySerializer.deserializeEntityState(buffer);
+
+        expect(buffer.byteLength).toBe(7 + 2 * 28);
+        expect(decoded.frame).toBe(120);
+        expect(decoded.entities).toEqual(entities);
+    });
+});

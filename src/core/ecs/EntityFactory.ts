@@ -222,12 +222,15 @@ export class EntityFactory {
             moveSpeed: config.moveSpeed ?? 2.5
         }));
 
-        // AI
-        this.world.addComponent(entityId, new AIComponent({
+        // AI：沿路朝敵方主堡前進
+        const ai = new AIComponent({
             aiType: 'creep',
             attackRange: config.attackRange ?? 1.5,
             attackCooldown: config.attackCooldown ?? 2.0
-        }));
+        });
+        const target = config.targetPosition;
+        if (target) ai.setTargetPosition(new pc.Vec3(target.x, target.y, target.z));
+        this.world.addComponent(entityId, ai);
 
         // Physics
         const physics = this.createKinematicBody(config.position, { halfWidth: 0.3, halfHeight: 0.5, halfDepth: 0.3 });

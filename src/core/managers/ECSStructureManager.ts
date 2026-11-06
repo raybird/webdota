@@ -77,6 +77,15 @@ export class ECSStructureManager {
         }
     }
 
+    /**
+     * 移除已被銷毀的建築（Client 由同步移除時使用）
+     */
+    prune(): void {
+        for (const entityId of this.structures.keys()) {
+            if (!this.world.hasEntity(entityId)) this.structures.delete(entityId);
+        }
+    }
+
     getAll(): ReadonlyMap<EntityId, { kind: StructureKind; team: Team }> {
         return this.structures;
     }

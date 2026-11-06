@@ -149,9 +149,9 @@ Entity ID 不重複使用。
 - `broadcastGameState()` - Host 廣播玩家狀態（二進位）
 
 **訊息類型：**
-- 二進位（`BinarySerializer`）：`INPUT`、`GAME_STATE`
+- 二進位（`BinarySerializer`）：`INPUT`、`GAME_STATE`、`ENTITY_STATE`
 - JSON：`peer_list`、`room_state`、`room_code`、`player_ready`、`character_selected`、
-  `game_start_countdown`、`game_started`、`host_migration`、`ping`、`pong`
+  `game_start_countdown`、`game_started`、`game_over`、`host_migration`、`ping`、`pong`
 
 Peer ID 在程式內以大寫正規化作為查詢 key，但 PeerJS 的 ID 區分大小寫，建立連線時使用原始的 `conn.peer`。
 
@@ -273,8 +273,14 @@ Host:
 **遊戲迴圈：**
 固定 1/60 秒步長的 accumulator，每個畫面幀最多補跑 5 次，追不上時丟棄剩餘時間。
 
-**已知限制：**
-小兵、防禦塔、主堡的狀態尚未同步給 Client，`GAME_OVER` 也只在 Host 觸發。
+**建築與小兵：**
+Host 每 6 幀廣播所有建築與小兵的網路 ID、種類、隊伍、位置、朝向、血量（`ENTITY_STATE`，每個實體 28 bytes）。
+各端的 ECS Entity ID 是各自產生的 UUID，所以由 `EntitySyncManager` 在 Host 配發 Uint16 網路 ID，Client 依此生成、更新、移除鏡像實體。
+Client 關閉 AISystem，CollisionSystem 只做表現不扣血，血量一律以 Host 為準；血量下降時同樣顯示傷害數字。
+主堡被摧毀只在 Host 判定，再以 `game_over` 訊息通知 Client。
+
+**輸入轉送：**
+移動輸入只送給 Host；帶技能的輸入廣播給所有人，讓其他 Client 播放技能表現。
 
 ---
 

@@ -40,6 +40,22 @@ export class HealthSystem extends System {
     }
 
     /**
+     * 套用權威端（Host）的血量
+     * 血量下降時與 dealDamage 一樣觸發傷害數字與受擊閃白，讓 Client 也看得到所有傷害
+     */
+    static syncHp(world: World, targetId: string, hp: number): void {
+        const health = world.getComponent<HealthComponent>(targetId, ComponentType.HEALTH);
+        if (!health || health.currentHp === hp) return;
+
+        const damage = health.currentHp - hp;
+        health.currentHp = hp;
+        if (damage <= 0) return;
+
+        eventBus.emit({ type: 'ENTITY_TOOK_DAMAGE', targetId, damage, isCrit: false });
+        world.getComponent<RenderComponent>(targetId, ComponentType.RENDER)?.flashHit();
+    }
+
+    /**
      * 對實體造成傷害
      */
     static dealDamage(

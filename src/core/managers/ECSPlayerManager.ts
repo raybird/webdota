@@ -23,6 +23,7 @@ import {
     PhysicsComponent,
     type EntityId,
     type Team,
+    HealthSystem,
 } from '../ecs';
 
 export class ECSPlayerManager {
@@ -254,10 +255,7 @@ export class ECSPlayerManager {
         const entityId = this.players.get(playerId.toUpperCase());
         if (!entityId) return;
 
-        const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
-        if (health) {
-            health.currentHp = current;
-        }
+        HealthSystem.syncHp(this.world, entityId, current);
     }
 
     /**

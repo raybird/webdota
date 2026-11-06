@@ -40,6 +40,8 @@ export class CollisionSystem extends System {
 
     /** 待移除的 Hitbox (handle) */
     private hitboxesToRemove: number[] = [];
+    /** 只有權威端（Host）的命中會扣血與擊退；Client 的 Hitbox 只做表現，血量以 Host 同步為準 */
+    authoritative: boolean = true;
     /** 延遲生成的 Hitbox（以遊戲時間倒數，分頁暫停時不會提前觸發） */
     private delayedHitboxes: Array<{ delay: number; spawn: () => void }> = [];
 
@@ -130,7 +132,11 @@ export class CollisionSystem extends System {
         this.removeExpiredHitboxes();
 
         // 4. 應用命中效果
-        this.applyPendingHits(world);
+        if (this.authoritative) {
+            this.applyPendingHits(world);
+        } else {
+            this.pendingHits = [];
+        }
     }
 
     /**
