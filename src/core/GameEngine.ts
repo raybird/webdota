@@ -11,6 +11,7 @@ import { ECSStructureManager, type StructureKind } from './managers/ECSStructure
 import { ECSCreepManager } from './managers/ECSCreepManager';
 import { EntitySyncManager } from './managers/EntitySyncManager';
 import { SoundManager } from './SoundManager';
+import { BackgroundTicker } from './BackgroundTicker';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
@@ -39,6 +40,10 @@ import {
 
 /** 每個畫面幀最多補跑的 fixedUpdate 次數，避免分頁切回來時一次追太多幀 */
 const MAX_STEPS_PER_FRAME = 5;
+/** Worker 檢查模擬是否停滯的間隔（毫秒） */
+const BACKGROUND_TICK_MS = 33;
+/** 畫面更新超過這個時間沒來，就由 Worker 補跑模擬（分頁在背景或被節流） */
+const FRAME_STALL_MS = 50;
 /** Host 每幾個 fixedUpdate 廣播一次玩家狀態 */
 const STATE_BROADCAST_INTERVAL = 3;
 /** Host 每幾個 fixedUpdate 廣播一次建築與小兵狀態 */
@@ -109,6 +114,12 @@ export class GameEngine {
 
     /** destroy 時要執行的清理（事件監聽等） */
     private disposers: Array<() => void> = [];
+    /** 上次推進模擬與上次畫面更新的時間（performance.now） */
+    private lastSimTime = 0;
+    private lastFrameTime = 0;
+    private backgroundTicker = new BackgroundTicker(() => {
+        if (performance.now() - this.lastFrameTime > FRAME_STALL_MS) this.simulate();
+    }, BACKGROUND_TICK_MS);
 
     constructor(networkManager: NetworkManager) {
         this.networkManager = networkManager;
@@ -172,6 +183,7 @@ export class GameEngine {
         const onUpdate = (dt: number) => this.gameLoop(dt);
         this.app.on('update', onUpdate);
         this.app.start();
+        this.backgroundTicker.start();
 
         console.log("[GameEngine] Initialized");
     }
@@ -308,7 +320,22 @@ export class GameEngine {
     }
 
     gameLoop(dt: number) {
-        this.accumulator += dt;
+        this.lastFrameTime = performance.now();
+        this.simulate();
+        this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
+    }
+
+    /**
+     * 依實際經過時間以固定步長推進模擬
+     * 前景由 PlayCanvas update 呼叫；畫面更新停滯時由 BackgroundTicker 補跑，兩者共用時間基準不會重複推進
+     */
+    private simulate() {
+        const now = performance.now();
+        const elapsed = this.lastSimTime === 0 ? 0 : (now - this.lastSimTime) / 1000;
+        this.lastSimTime = now;
+
+        // 超過 MAX_STEPS_PER_FRAME 的部分在迴圈後丟棄
+        this.accumulator += elapsed;
         let steps = 0;
         while (this.accumulator >= this.FIXED_TIMESTEP && steps < MAX_STEPS_PER_FRAME) {
             this.fixedUpdate(this.FIXED_TIMESTEP);
@@ -317,8 +344,6 @@ export class GameEngine {
         }
         // 追不上時丟掉剩餘時間，而不是越積越多
         if (steps === MAX_STEPS_PER_FRAME) this.accumulator = 0;
-
-        this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
     }
 
     fixedUpdate(dt: number) {
@@ -585,6 +610,7 @@ export class GameEngine {
     destroy() {
         this.disposers.forEach(dispose => dispose());
         this.disposers = [];
+        this.backgroundTicker.destroy();
 
         this.networkManager.onInputReceived = undefined;
         this.networkManager.onGameState = undefined;

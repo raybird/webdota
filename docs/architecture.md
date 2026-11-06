@@ -271,7 +271,9 @@ Host:
 其他玩家的位置以 Host 為準；本地玩家保留本地預測的位置，只同步血量與能量。
 
 **遊戲迴圈：**
-固定 1/60 秒步長的 accumulator，每個畫面幀最多補跑 5 次，追不上時丟棄剩餘時間。
+依實際經過時間以固定 1/60 秒步長推進，每次最多補跑 5 步，追不上時丟棄剩餘時間。
+前景由 PlayCanvas 的 update 驅動；分頁在背景或被節流時 requestAnimationFrame 會停或變慢（實測被遮住的分頁仍回報 `visible`，卻只剩約每秒 5 幀），
+所以 `BackgroundTicker` 用 Dedicated Worker 的計時器每 33ms 檢查一次，畫面更新停滯超過 50ms 就補跑模擬，Host 在背景時遊戲不會停住。
 
 **建築與小兵：**
 Host 每 6 幀廣播所有建築與小兵的網路 ID、種類、隊伍、位置、朝向、血量（`ENTITY_STATE`，每個實體 28 bytes）。
