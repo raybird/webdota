@@ -16,6 +16,9 @@ export class HealthComponent implements Component {
     /** 防禦力 */
     defense: number;
 
+    /** 每秒回復的生命值（裝備加成，只在 Host 生效） */
+    hpRegen: number = 0;
+
     /** 最後攻擊者 ID（用於擊殺獎勵） */
     lastAttackerId: string | null = null;
 

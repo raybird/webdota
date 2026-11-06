@@ -22,6 +22,9 @@ export class CombatComponent implements Component {
     /** 移動速度 */
     moveSpeed: number;
 
+    /** 技能額外傷害（裝備攻擊力加成） */
+    bonusDamage: number = 0;
+
     constructor(config: {
         attackPower?: number;
         attackRange?: number;

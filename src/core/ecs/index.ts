@@ -19,7 +19,7 @@ export { RenderComponent } from './components/RenderComponent';
 export { PhysicsComponent } from './components/PhysicsComponent';
 export { AIComponent, type AIType } from './components/AIComponent';
 export { PlayerInputComponent } from './components/PlayerInputComponent';
-export { SkillComponent, type SkillState } from './components/SkillComponent';
+export { SkillComponent, MAX_COOLDOWN_REDUCTION, type SkillState } from './components/SkillComponent';
 export { AnimationComponent, type AnimationType, type AnimationState } from './components/AnimationComponent';
 export { InventoryComponent, MAX_INVENTORY_SLOTS } from './components/InventoryComponent';
 

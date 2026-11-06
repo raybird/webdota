@@ -1,6 +1,7 @@
 import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
-import { NetworkManager, type PlayerInput, type GameState, type PlayerState } from './NetworkManager';
+import { NetworkManager, type PlayerInput, type GameState, type PlayerState, type ShopRequest, type InventoryUpdate } from './NetworkManager';
+import { getItem } from '../data/items';
 import { UIManager } from './UIManager';
 import { ECSPlayerManager } from './managers/ECSPlayerManager';
 import { InputManager } from './managers/InputManager';
@@ -42,6 +43,13 @@ const MAX_STEPS_PER_FRAME = 5;
 const STATE_BROADCAST_INTERVAL = 3;
 /** Host 每幾個 fixedUpdate 廣播一次建築與小兵狀態 */
 const ENTITY_BROADCAST_INTERVAL = 6;
+/** 擊殺獎勵金幣（最後一擊的玩家獲得） */
+const KILL_GOLD: Record<'player' | 'creep' | 'tower' | 'base', number> = {
+    player: 200,
+    creep: 40,
+    tower: 150,
+    base: 0
+};
 /** 本地玩家預測位置與 Host 差距超過這個距離就拉回（擊退、被拒絕的位移等） */
 const RECONCILE_DISTANCE = 2;
 
@@ -203,6 +211,8 @@ export class GameEngine {
         this.networkManager.onEntityState = (_frame, entities) => {
             if (!this.isHost && this.isGameStarted) this.entitySync.apply(entities);
         };
+        this.networkManager.onShopRequest = (fromPeerId, request) => this.handleShopRequest(fromPeerId, request);
+        this.networkManager.onInventory = (update) => this.applyInventoryUpdate(update);
         this.networkManager.onGameOver = (winnerTeam, reason) => {
             if (!this.isHost) eventBus.emit({ type: 'GAME_OVER', winnerTeam, reason });
         };
@@ -210,6 +220,9 @@ export class GameEngine {
         this.disposers.push(
             eventBus.on('GAME_STARTED', () => this.startGame()),
             eventBus.on('SKILL_USED', (event) => this.useSkill(event.skillId)),
+            eventBus.on('ENTITY_DIED', (event) => {
+                if (this.isHost) this.awardKillGold(event.entityId, event.killerId);
+            }),
             eventBus.on('GAME_OVER', (event) => {
                 this.soundManager.playGameOverSound();
                 // 主堡死亡只在 Host 判定，再通知 Client
@@ -348,6 +361,80 @@ export class GameEngine {
 
         this.currentFrame++;
         this.gameStore.setFrame(this.currentFrame);
+    }
+
+    /**
+     * 商店操作：Host 直接驗證並執行，Client 送給 Host，結果由 Host 廣播的物品欄回來
+     */
+    requestShop(request: ShopRequest): void {
+        if (this.isHost) {
+            this.handleShopRequest(this.networkManager.peerId, request);
+        } else {
+            this.networkManager.sendShopRequest(request);
+        }
+    }
+
+    private handleShopRequest(playerId: string, request: ShopRequest): void {
+        const inventory = this.playerManager.getInventory(playerId);
+        if (!inventory) return;
+
+        let changed = false;
+        if (request.action === 'buy') {
+            const item = getItem(request.itemId);
+            changed = !!item && inventory.buyItem(item);
+        } else {
+            changed = inventory.sellItem(request.slot);
+        }
+        if (changed) this.commitInventory(playerId);
+    }
+
+    /**
+     * Host：重算裝備屬性並廣播物品欄
+     */
+    private commitInventory(playerId: string): void {
+        const inventory = this.playerManager.getInventory(playerId);
+        if (!inventory) return;
+
+        this.playerManager.applyItemStats(playerId);
+        this.networkManager.broadcastInventory({
+            playerId,
+            gold: inventory.gold,
+            items: inventory.slots.map(item => item?.id ?? null)
+        });
+    }
+
+    /**
+     * Client：套用 Host 廣播的物品欄
+     */
+    private applyInventoryUpdate(update: InventoryUpdate): void {
+        const inventory = this.playerManager.getInventory(update.playerId);
+        if (!inventory) return;
+
+        inventory.gold = update.gold;
+        inventory.slots = inventory.slots.map((_, i) => {
+            const itemId = update.items[i];
+            return itemId ? getItem(itemId) ?? null : null;
+        });
+        this.playerManager.applyItemStats(update.playerId);
+    }
+
+    /**
+     * Host：最後一擊的玩家獲得擊殺金幣
+     */
+    private awardKillGold(victimId: EntityId, killerId: string | null): void {
+        if (!killerId) return;
+        const killerPlayerId = this.playerManager.findPlayerIdByEntity(killerId);
+        const inventory = killerPlayerId ? this.playerManager.getInventory(killerPlayerId) : undefined;
+        if (!killerPlayerId || !inventory) return;
+
+        const kind = this.playerManager.findPlayerIdByEntity(victimId) ? 'player'
+            : this.creepManager.getAllCreepIds().has(victimId) ? 'creep'
+            : this.structureManager.getAll().get(victimId)?.kind;
+        const reward = kind ? KILL_GOLD[kind] : 0;
+        if (reward <= 0) return;
+
+        inventory.earnGold(reward);
+        this.commitInventory(killerPlayerId);
     }
 
     /**
@@ -502,6 +589,8 @@ export class GameEngine {
         this.networkManager.onInputReceived = undefined;
         this.networkManager.onGameState = undefined;
         this.networkManager.onEntityState = undefined;
+        this.networkManager.onShopRequest = undefined;
+        this.networkManager.onInventory = undefined;
         this.networkManager.onGameOver = undefined;
 
         this.isGameStarted = false;

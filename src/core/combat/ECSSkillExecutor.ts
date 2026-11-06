@@ -8,6 +8,7 @@ import { World } from '../ecs/World';
 import { ComponentType } from '../ecs/Component';
 import { PhysicsComponent } from '../ecs/components/PhysicsComponent';
 import { TeamComponent } from '../ecs/components/TeamComponent';
+import { CombatComponent } from '../ecs/components/CombatComponent';
 import { CollisionSystem } from '../ecs/systems/CollisionSystem';
 import { EffectManager } from '../EffectManager';
 import { ProjectileManager } from './ProjectileManager';
@@ -45,6 +46,10 @@ export class ECSSkillExecutor {
         }
 
         const casterPos = physics.getPosition();
+
+        // 裝備攻擊力加到技能傷害上，之後的判定與投射物都用這份
+        const bonusDamage = world.getComponent<CombatComponent>(casterId, ComponentType.COMBAT)?.bonusDamage ?? 0;
+        if (bonusDamage > 0) skill = { ...skill, damage: skill.damage + bonusDamage };
 
         // 0. 播放技能音效
         if (soundManager) {

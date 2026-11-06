@@ -151,7 +151,7 @@ Entity ID 不重複使用。
 **訊息類型：**
 - 二進位（`BinarySerializer`）：`INPUT`、`GAME_STATE`、`ENTITY_STATE`
 - JSON：`peer_list`、`room_state`、`room_code`、`player_ready`、`character_selected`、
-  `game_start_countdown`、`game_started`、`game_over`、`host_migration`、`ping`、`pong`
+  `game_start_countdown`、`game_started`、`game_over`、`shop`、`inventory`、`host_migration`、`ping`、`pong`
 
 Peer ID 在程式內以大寫正規化作為查詢 key，但 PeerJS 的 ID 區分大小寫，建立連線時使用原始的 `conn.peer`。
 
@@ -282,6 +282,11 @@ Client 關閉 AISystem，CollisionSystem 只做表現不扣血，血量一律以
 **玩家陣亡：**
 玩家血量歸零時不移除實體，改為隱藏並停用剛體，忽略移動與技能輸入；Host 倒數 5 秒（`RESPAWN_SECONDS`）後回滿血量與能量，
 在己方出生點往地圖中央 3 單位處重生。Client 依 Host 同步的血量判斷陣亡與重生，本地玩家的位置偏離時直接瞬移。
+
+**商店與裝備：**
+購買與賣出由 Client 送 `shop` 請求給 Host，Host 驗證金幣與空格後重算裝備屬性，並以 `inventory` 廣播該玩家的金幣與物品 ID。
+裝備加成：最大生命值、防禦、移動速度直接加在基礎值上；攻擊力加到技能傷害；冷卻縮減上限 40%；生命回復只在 Host 計算。
+最後一擊的玩家獲得擊殺金幣（玩家 200、防禦塔 150、小兵 40）。
 
 **輸入轉送：**
 移動輸入只送給 Host；帶技能的輸入廣播給所有人，讓其他 Client 播放技能表現。

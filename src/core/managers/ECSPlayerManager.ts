@@ -23,6 +23,7 @@ import {
     InventoryComponent,
     PhysicsComponent,
     TeamComponent,
+    MAX_COOLDOWN_REDUCTION,
     type EntityId,
     type Team,
     HealthSystem,
@@ -41,6 +42,9 @@ export class ECSPlayerManager {
 
     /** 所有玩家 EntityId，以 playerId 為 key */
     private players: Map<string, EntityId> = new Map();
+
+    /** 生成時的基礎屬性，裝備加成以此為基準重算 */
+    private baseStats: Map<string, { maxHp: number; defense: number; moveSpeed: number }> = new Map();
 
     /** 陣亡中的玩家與剩餘重生秒數 */
     private respawnTimers: Map<string, number> = new Map();
@@ -136,6 +140,13 @@ export class ECSPlayerManager {
         });
 
         this.players.set(normalizedId, entityId);
+        const baseHealth = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
+        const baseCombat = this.world.getComponent<CombatComponent>(entityId, ComponentType.COMBAT);
+        this.baseStats.set(normalizedId, {
+            maxHp: baseHealth?.maxHp ?? 1000,
+            defense: baseHealth?.defense ?? 0,
+            moveSpeed: baseCombat?.moveSpeed ?? 5
+        });
 
         // 建立 UI
         const displayName = normalizedId.substring(0, 8);
@@ -159,6 +170,7 @@ export class ECSPlayerManager {
         this.world.destroyEntity(entityId);
         this.players.delete(normalizedId);
         this.respawnTimers.delete(normalizedId);
+        this.baseStats.delete(normalizedId);
 
         console.log(`[ECSPlayerManager] Removed player ${normalizedId}`);
     }
@@ -186,6 +198,7 @@ export class ECSPlayerManager {
         }
         this.players.clear();
         this.respawnTimers.clear();
+        this.baseStats.clear();
         console.log('[ECSPlayerManager] Cleared all players');
     }
 
@@ -200,7 +213,11 @@ export class ECSPlayerManager {
 
             const remaining = this.respawnTimers.get(playerId);
             if (remaining === undefined) {
-                if (!health.isDead()) continue;
+                if (!health.isDead()) {
+                    // 生命回復只在權威端計算，Client 的血量由 Host 同步
+                    if (authoritative && health.hpRegen > 0) health.heal(health.hpRegen * dt);
+                    continue;
+                }
                 this.respawnTimers.set(playerId, RESPAWN_SECONDS);
                 this.setAlive(entityId, false);
                 eventBus.emit({ type: 'ENTITY_DIED', entityId, killerId: health.lastAttackerId });
@@ -244,6 +261,50 @@ export class ECSPlayerManager {
     private setAlive(entityId: EntityId, alive: boolean): void {
         this.world.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS)?.rigidBody.setEnabled(alive);
         this.world.getComponent<RenderComponent>(entityId, ComponentType.RENDER)?.setVisible(alive);
+    }
+
+    /**
+     * 依物品欄重算裝備加成；最大生命值變動時，目前生命值同步增減
+     */
+    applyItemStats(playerId: string): void {
+        const normalizedId = playerId.toUpperCase();
+        const entityId = this.players.get(normalizedId);
+        const base = this.baseStats.get(normalizedId);
+        if (!entityId || !base) return;
+
+        const inventory = this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
+        if (!inventory) return;
+        const bonus = inventory.getTotalStats();
+
+        const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
+        if (health) {
+            const newMax = base.maxHp + bonus.maxHp;
+            if (!health.isDead()) {
+                health.currentHp = Math.min(newMax, Math.max(1, health.currentHp + newMax - health.maxHp));
+            }
+            health.maxHp = newMax;
+            health.defense = base.defense + bonus.defense;
+            health.hpRegen = bonus.hpRegen;
+        }
+
+        const combat = this.world.getComponent<CombatComponent>(entityId, ComponentType.COMBAT);
+        if (combat) {
+            combat.moveSpeed = base.moveSpeed + bonus.moveSpeed;
+            combat.bonusDamage = bonus.attackPower;
+        }
+
+        const skill = this.world.getComponent<SkillComponent>(entityId, ComponentType.SKILL);
+        if (skill) skill.cooldownReduction = Math.min(MAX_COOLDOWN_REDUCTION, bonus.cooldownReduction);
+    }
+
+    /**
+     * 找出 ECS Entity 對應的玩家 ID（擊殺獎勵用）
+     */
+    findPlayerIdByEntity(entityId: EntityId): string | undefined {
+        for (const [playerId, id] of this.players) {
+            if (id === entityId) return playerId;
+        }
+        return undefined;
     }
 
     isDead(playerId: string): boolean {

@@ -2,7 +2,6 @@ import { useGameStore } from '../stores/gameStore'
 import { eventBus } from '../events/EventBus'
 import { NetworkManager } from '../core/NetworkManager'
 import type { GameEngine } from '../core/GameEngine'
-import { getItem } from '../data/items'
 
 /**
  * 遊戲服務
@@ -46,25 +45,14 @@ export class GameService {
     }
 
     /**
-     * 購買物品（目前只在本地背包生效，尚未同步給 Host）
+     * 購買物品：由 Host 驗證金幣與空格，結果透過物品欄同步回來
      */
-    buyItem(itemId: string): boolean {
-        const item = getItem(itemId)
-        const inventory = this.getLocalInventory()
-        if (!item || !inventory) return false
-
-        const success = inventory.buyItem(item)
-        if (success) this.syncInventory()
-        return success
+    buyItem(itemId: string) {
+        this.gameEngine?.requestShop({ action: 'buy', itemId })
     }
 
-    sellItem(slotIndex: number): boolean {
-        const inventory = this.getLocalInventory()
-        if (!inventory) return false
-
-        const success = inventory.sellItem(slotIndex)
-        if (success) this.syncInventory()
-        return success
+    sellItem(slotIndex: number) {
+        this.gameEngine?.requestShop({ action: 'sell', slot: slotIndex })
     }
 
     /**

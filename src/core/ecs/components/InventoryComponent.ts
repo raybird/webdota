@@ -4,7 +4,7 @@
  */
 
 import { type Component, ComponentType } from '../Component';
-import type { Item } from '../../../types/Item';
+import type { Item, ItemStats } from '../../../types/Item';
 
 export const MAX_INVENTORY_SLOTS = 6;
 
@@ -41,5 +41,21 @@ export class InventoryComponent implements Component {
 
     earnGold(amount: number): void {
         this.gold += amount;
+    }
+
+    /**
+     * 所有裝備的屬性加總
+     */
+    getTotalStats(): Required<ItemStats> {
+        const total: Required<ItemStats> = {
+            maxHp: 0, attackPower: 0, defense: 0, moveSpeed: 0, cooldownReduction: 0, hpRegen: 0
+        };
+        for (const item of this.slots) {
+            if (!item) continue;
+            for (const key of Object.keys(total) as (keyof ItemStats)[]) {
+                total[key] += item.stats[key] ?? 0;
+            }
+        }
+        return total;
     }
 }

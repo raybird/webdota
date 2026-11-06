@@ -2,6 +2,18 @@ import Peer, { type DataConnection } from 'peerjs';
 import { eventBus } from '../events/EventBus';
 import { BinarySerializer, PacketType, type NetEntityState } from '../utils/BinarySerializer';
 
+/** Client 向 Host 提出的商店操作 */
+export type ShopRequest =
+    | { action: 'buy'; itemId: string }
+    | { action: 'sell'; slot: number };
+
+/** Host 廣播的玩家金幣與物品欄（物品以 ID 表示，空格為 null） */
+export interface InventoryUpdate {
+    playerId: string;
+    gold: number;
+    items: (string | null)[];
+}
+
 export interface PlayerInput {
     frame: number;
     playerId: string;
@@ -49,6 +61,8 @@ export class NetworkManager {
     onGameStarted?: () => void;
     onGameState?: (state: GameState) => void;
     onEntityState?: (frame: number, entities: NetEntityState[]) => void;
+    onShopRequest?: (fromPeerId: string, request: ShopRequest) => void;
+    onInventory?: (update: InventoryUpdate) => void;
     onGameOver?: (winnerTeam: 'red' | 'blue', reason: 'base_destroyed' | 'surrender' | 'timeout') => void;
     onRoomCode?: (code: string, hostId: string) => void;
     onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }> };
@@ -251,6 +265,14 @@ export class NetworkManager {
                 if (this.onGameStarted) this.onGameStarted();
                 break;
 
+            case 'shop':
+                if (this.isHost && this.onShopRequest) this.onShopRequest(fromPeerId, data.request);
+                break;
+
+            case 'inventory':
+                if (fromPeerId === this.hostId && this.onInventory) this.onInventory(data.update);
+                break;
+
             case 'game_over':
                 if (this.onGameOver) this.onGameOver(data.winnerTeam, data.reason);
                 break;
@@ -383,6 +405,20 @@ export class NetworkManager {
     broadcastEntityState(frame: number, entities: NetEntityState[]) {
         const binaryData = BinarySerializer.serializeEntityState(frame, entities);
         this.connections.forEach(conn => conn.send(binaryData));
+    }
+
+    /**
+     * 送出商店操作給 Host
+     */
+    sendShopRequest(request: ShopRequest) {
+        this.connections.get(this.hostId)?.send({ type: 'shop', request });
+    }
+
+    /**
+     * 廣播玩家物品欄 (Host Only)
+     */
+    broadcastInventory(update: InventoryUpdate) {
+        this.connections.forEach(conn => conn.send({ type: 'inventory', update }));
     }
 
     /**
