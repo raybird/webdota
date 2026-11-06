@@ -12,14 +12,16 @@ import { TransformComponent } from './components/TransformComponent';
 import { HealthComponent } from './components/HealthComponent';
 import { TeamComponent, type Team } from './components/TeamComponent';
 import { CombatComponent } from './components/CombatComponent';
-import { RenderComponent } from './components/RenderComponent';
+import { RenderComponent, NO_STATUS_FX_TAG } from './components/RenderComponent';
 import { PhysicsComponent } from './components/PhysicsComponent';
 import { AIComponent } from './components/AIComponent';
 import { PlayerInputComponent } from './components/PlayerInputComponent';
 import { SkillComponent } from './components/SkillComponent';
 import { AnimationComponent } from './components/AnimationComponent';
 import { InventoryComponent } from './components/InventoryComponent';
+import { StatusComponent } from './components/StatusComponent';
 import { CollisionSystem } from './systems/CollisionSystem';
+import type { CharacterSpriteManager } from '../CharacterSpriteManager';
 import { MaterialCache } from './MaterialCache';
 import { ObjectPool } from '../../utils/ObjectPool';
 import { getSkill } from '../../data/skills';
@@ -87,6 +89,8 @@ export class EntityFactory {
     private physicsWorld: RAPIER.World;
     private world: World;
     private collisionSystem: CollisionSystem | null = null;
+    /** 有載入角色像素圖時，玩家改用像素圖而不是方塊模型 */
+    private characterSprites: CharacterSpriteManager | null = null;
 
     /** 小兵視覺物件池：Map<Team, ObjectPool<pc.Entity>> */
     private creepVisualPools: Map<Team, ObjectPool<pc.Entity>> = new Map();
@@ -178,6 +182,9 @@ export class EntityFactory {
         // Inventory
         this.world.addComponent(entityId, new InventoryComponent(500));
 
+        // 狀態效果（無敵、隱身、緩速）
+        this.world.addComponent(entityId, new StatusComponent());
+
         // Physics
         const physics = this.createKinematicBody(config.position, { halfWidth: 0.3, halfHeight: 0.5, halfDepth: 0.3 });
         this.world.addComponent(entityId, physics);
@@ -188,7 +195,7 @@ export class EntityFactory {
         }
 
         // Render (建立視覺模型)
-        const pcEntity = this.createPlayerVisual(config.position, config.color);
+        const pcEntity = this.createPlayerVisual(config.position, config.color, config.characterId);
         this.world.addComponent(entityId, new RenderComponent(pcEntity));
 
         console.log(`[EntityFactory] Created player ${config.playerId} (${entityId.substring(0, 8)}) team=${config.team}`);
@@ -231,6 +238,7 @@ export class EntityFactory {
         const target = config.targetPosition;
         if (target) ai.setTargetPosition(new pc.Vec3(target.x, target.y, target.z));
         this.world.addComponent(entityId, ai);
+        this.world.addComponent(entityId, new StatusComponent());
 
         // Physics
         const physics = this.createKinematicBody(config.position, { halfWidth: 0.3, halfHeight: 0.5, halfDepth: 0.3 });
@@ -418,9 +426,27 @@ export class EntityFactory {
 
     // ==================== 私有方法：視覺建立 ====================
 
-    private createPlayerVisual(position: { x: number; y: number; z: number }, color: pc.Color): pc.Entity {
+    setCharacterSprites(characterSprites: CharacterSpriteManager): void {
+        this.characterSprites = characterSprites;
+    }
+
+    private createPlayerVisual(position: { x: number; y: number; z: number }, color: pc.Color, characterId: string): pc.Entity {
         const entity = new pc.Entity('Player');
         entity.setPosition(position.x, position.y, position.z);
+
+        if (this.characterSprites?.has(characterId)) {
+            // 腳下的隊伍色圓環（像素圖本身是角色配色，靠圓環分辨敵我）；實體原點在地面上 1 單位
+            const ring = new pc.Entity('TeamRing');
+            ring.addComponent('render', { type: 'cylinder', castShadows: false });
+            ring.setLocalScale(1.0, 0.04, 1.0);
+            ring.setLocalPosition(0, -0.9, 0);
+            ring.tags.add(NO_STATUS_FX_TAG);
+            this.applyMaterial(ring, color);
+            entity.addChild(ring);
+            this.app.root.addChild(entity);
+            this.characterSprites.attach(entity, characterId);
+            return entity;
+        }
 
         // 身體
         const body = new pc.Entity('Body');

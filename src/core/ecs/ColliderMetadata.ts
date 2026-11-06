@@ -4,6 +4,7 @@
  */
 
 import type { Team } from './components/TeamComponent';
+import type { StatusKind } from './components/StatusComponent';
 
 /**
  * Collider 類型
@@ -34,6 +35,16 @@ export interface ColliderMetadata {
 
     /** Hitbox 持續時間 */
     duration?: number;
+
+    /** 如果是 Hitbox，命中時對目標施加的狀態 */
+    onHitStatus?: HitStatus;
+}
+
+/** 命中時施加的狀態效果 */
+export interface HitStatus {
+    kind: StatusKind;
+    duration: number;
+    value?: number;
 }
 
 /**

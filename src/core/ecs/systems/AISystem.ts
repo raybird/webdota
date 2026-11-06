@@ -1,3 +1,4 @@
+import { StatusSystem } from './StatusSystem';
 import { SpatialSystem } from './SpatialSystem';
 /**
  * AISystem.ts - AI 行為系統
@@ -69,7 +70,7 @@ export class AISystem extends System {
 
             if (distance > 0.5) {
                 direction.normalize();
-                const speed = combat.moveSpeed;
+                const speed = combat.moveSpeed * StatusSystem.speedMultiplier(world, entityId);
                 const newPos = {
                     x: transform.position.x + direction.x * speed * dt,
                     y: transform.position.y,
@@ -149,6 +150,8 @@ export class AISystem extends System {
             // 跳過同隊、中立、已死亡
             if (candidateTeam.team === selfTeam || candidateTeam.team === 'neutral') continue;
             if (candidateHealth.isDead()) continue;
+            // 隱身的單位不會被小兵與防禦塔鎖定（範圍技能仍打得到）
+            if (StatusSystem.has(world, candidateId, 'invisible')) continue;
 
             const dist = position.distance(candidateTransform.position);
             if (dist <= range) {

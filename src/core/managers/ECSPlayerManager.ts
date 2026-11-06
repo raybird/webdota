@@ -27,6 +27,7 @@ import {
     type EntityId,
     type Team,
     HealthSystem,
+    StatusComponent,
 } from '../ecs';
 
 /** 玩家陣亡後幾秒重生 */
@@ -107,27 +108,15 @@ export class ECSPlayerManager {
             characterId = 'warrior';
         }
 
-        // 根據隊伍設定顏色
+        // 隊伍色（腳下圓環；沒有像素圖時是方塊模型的顏色），與等待室的紅藍隊一致
         let color: pc.Color;
-        const myTeam = roomStore.myPlayer?.team;
-        const isEnemy = (myTeam === 'red' || myTeam === 'blue') &&
-            (playerTeam === 'red' || playerTeam === 'blue') &&
-            playerTeam !== myTeam;
-
-        if (isEnemy) {
-            color = new pc.Color(0.5, 0.5, 0.5); // 敵方灰色
-        } else if (playerTeam === 'red') {
+        if (playerTeam === 'red') {
             color = new pc.Color(0.9, 0.3, 0.3);
         } else if (playerTeam === 'blue') {
-            color = new pc.Color(0.3, 0.3, 0.9);
+            color = new pc.Color(0.3, 0.45, 0.95);
         } else {
-            // 中立或未分配隊伍使用角色顏色
             const character = getCharacter(characterId);
-            if (character) {
-                color = new pc.Color().fromString(character.appearance.color);
-            } else {
-                color = new pc.Color(0.7, 0.7, 0.7);
-            }
+            color = character ? new pc.Color().fromString(character.appearance.color) : new pc.Color(0.7, 0.7, 0.7);
         }
 
         // 使用 EntityFactory 建立玩家
@@ -219,6 +208,7 @@ export class ECSPlayerManager {
                     continue;
                 }
                 this.respawnTimers.set(playerId, RESPAWN_SECONDS);
+                this.getStatus(entityId)?.clear();
                 this.setAlive(entityId, false);
                 eventBus.emit({ type: 'ENTITY_DIED', entityId, killerId: health.lastAttackerId });
                 continue;
@@ -375,7 +365,23 @@ export class ECSPlayerManager {
         if (!entityId) return 5.0;
 
         const combat = this.world.getComponent<CombatComponent>(entityId, ComponentType.COMBAT);
-        return combat?.moveSpeed ?? 5.0;
+        return (combat?.moveSpeed ?? 5.0) * (this.getStatus(entityId)?.speedMultiplier ?? 1);
+    }
+
+    private getStatus(entityId: EntityId): StatusComponent | undefined {
+        return this.world.getComponent<StatusComponent>(entityId, ComponentType.STATUS);
+    }
+
+    /** 狀態效果旗標（Host 廣播用） */
+    getPlayerStatusFlags(playerId: string): number {
+        const entityId = this.players.get(playerId.toUpperCase());
+        return entityId ? this.getStatus(entityId)?.flags ?? 0 : 0;
+    }
+
+    /** Client 套用 Host 同步的狀態旗標 */
+    setPlayerStatusFlags(playerId: string, flags: number): void {
+        const entityId = this.players.get(playerId.toUpperCase());
+        if (entityId) this.getStatus(entityId)?.setFlags(flags);
     }
 
     /**

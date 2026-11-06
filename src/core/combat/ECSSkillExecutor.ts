@@ -10,10 +10,20 @@ import { PhysicsComponent } from '../ecs/components/PhysicsComponent';
 import { TeamComponent } from '../ecs/components/TeamComponent';
 import { CombatComponent } from '../ecs/components/CombatComponent';
 import { CollisionSystem } from '../ecs/systems/CollisionSystem';
+import { StatusComponent, type StatusKind } from '../ecs/components/StatusComponent';
+import type { HitStatus } from '../ecs/ColliderMetadata';
 import { EffectManager } from '../EffectManager';
 import { ProjectileManager } from './ProjectileManager';
 import type { SoundManager } from '../SoundManager';
 import type { Skill } from '../../types/Skill';
+
+/** 施放時加在自己身上的狀態；其餘 effect（如緩速）在命中時加在目標身上 */
+const SELF_STATUS: ReadonlySet<StatusKind> = new Set(['invincible', 'invisible']);
+
+/** 技能命中時對目標施加的狀態 */
+function hitStatusOf(skill: Skill): HitStatus | undefined {
+    return skill.effect === 'slow' ? { kind: 'slow', duration: skill.duration ?? 2, value: skill.effectValue } : undefined;
+}
 
 /**
  * ECS 版技能執行器
@@ -59,6 +69,9 @@ export class ECSSkillExecutor {
         // 1. 播放特效
         effectManager.playSkillEffect(skill, casterPos, direction, () => physics.getPosition());
 
+        // 狀態只由 Host 施加，再隨 GAME_STATE 同步
+        if (this.collisionSystem.authoritative) this.applyCasterStatus(skill, casterId, world);
+
         // 2. 處理位移技能
         if (skill.dashDistance && skill.dashDistance > 0) {
             this.handleDash(skill, physics, direction);
@@ -76,6 +89,18 @@ export class ECSSkillExecutor {
         } else {
             // 立即造成傷害
             this.createInstantHitbox(skill, casterId, casterPos, direction, team.team);
+        }
+    }
+
+    /**
+     * 自身增益（無敵、隱身）；放出有傷害的技能會解除隱身
+     */
+    private applyCasterStatus(skill: Skill, casterId: string, world: World): void {
+        const status = world.getComponent<StatusComponent>(casterId, ComponentType.STATUS);
+        if (!status) return;
+        if (skill.damage > 0) status.remove('invisible');
+        if (skill.effect && SELF_STATUS.has(skill.effect as StatusKind)) {
+            status.apply(skill.effect as StatusKind, skill.duration ?? 2, skill.effectValue);
         }
     }
 
@@ -126,7 +151,8 @@ export class ECSSkillExecutor {
             { x: direction.x * (skill.knockback || 0), z: direction.z * (skill.knockback || 0) },
             casterId,
             team,
-            0.2
+            0.2,
+            hitStatusOf(skill)
         );
     }
 
@@ -153,7 +179,8 @@ export class ECSSkillExecutor {
             { x: direction.x * (skill.knockback || 0), z: direction.z * (skill.knockback || 0) },
             casterId,
             team,
-            0.2
+            0.2,
+            hitStatusOf(skill)
         );
     }
 }

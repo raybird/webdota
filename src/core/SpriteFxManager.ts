@@ -6,21 +6,7 @@
  */
 
 import * as pc from 'playcanvas';
-
-/** pixelfx --sheet 輸出的 JSON（只列用到的欄位） */
-interface SheetJson {
-    frames: { frame: { x: number; y: number; w: number; h: number } }[];
-    meta: {
-        image: string;
-        size: { w: number; h: number };
-        pixelfx: { fps: number; loop: boolean; frameSize: [number, number]; pivot: [number, number] };
-    };
-}
-
-interface SheetData {
-    texture: pc.Texture;
-    json: SheetJson;
-}
+import { loadPixelSheet, createPixelMaterial, setSheetFrame, fitQuadToSheet, type PixelSheet } from './pixelSheet';
 
 const FX_NAMES = [
     'fireball-impact', 'hit-spark', 'respawn-beam', 'death-poof',
@@ -53,12 +39,6 @@ export interface SpriteFxHandle {
     stop(): void;
 }
 
-/**
- * 每個世界單位對應的素材像素數
- * pixelfx 的效果以 38px 高的角色為基準設計，這裡的角色約 2 單位高、在畫面上約 40px，
- * 所以用 19 就維持原作的比例，也大約是 1 素材像素對 1 螢幕像素（更小會讓細線被濾掉）
- */
-const PX_PER_UNIT = 19;
 
 const FX_BASE_URL = '/fx/';
 
@@ -90,7 +70,7 @@ interface ActiveFx {
 export class SpriteFxManager {
     private app: pc.Application;
     private camera: pc.Entity | null = null;
-    private sheets: Map<SpriteFxName, SheetData> = new Map();
+    private sheets: Map<SpriteFxName, PixelSheet> = new Map();
     private loading: Set<SpriteFxName> = new Set();
     private active: ActiveFx[] = [];
     private pools: Map<SpriteFxName, ActiveFx[]> = new Map();
@@ -114,28 +94,7 @@ export class SpriteFxManager {
         if (this.sheets.has(name) || this.loading.has(name)) return;
         this.loading.add(name);
         try {
-            const json = await fetch(`${FX_BASE_URL}${name}.json`).then(r => {
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                return r.json() as Promise<SheetJson>;
-            });
-            const image = new Image();
-            image.src = `${FX_BASE_URL}${json.meta.image}`;
-            await image.decode();
-
-            const texture = new pc.Texture(this.app.graphicsDevice, {
-                width: image.width,
-                height: image.height,
-                format: pc.PIXELFORMAT_RGBA8,
-                // 放大保持像素銳利；縮小（小螢幕）用 mipmap 平均，避免 1 像素細線消失
-                mipmaps: true,
-                minFilter: pc.FILTER_LINEAR_MIPMAP_LINEAR,
-                magFilter: pc.FILTER_NEAREST,
-                addressU: pc.ADDRESS_CLAMP_TO_EDGE,
-                addressV: pc.ADDRESS_CLAMP_TO_EDGE,
-                name: `fx-${name}`
-            });
-            texture.setSource(image);
-            this.sheets.set(name, { texture, json });
+            this.sheets.set(name, await loadPixelSheet(this.app.graphicsDevice, FX_BASE_URL, name));
         } catch (error) {
             console.warn(`[SpriteFx] Failed to load ${name}`, error);
         } finally {
@@ -151,8 +110,6 @@ export class SpriteFxManager {
         if (!sheet) return null;
 
         const fx = this.pools.get(name)?.pop() ?? this.create(name, sheet);
-        const { frameSize, pivot } = sheet.json.meta.pixelfx;
-        const unit = 1 / PX_PER_UNIT;
 
         fx.origin.set(position.x, position.y, position.z);
         fx.time = -(options.delay ?? 0);
@@ -164,9 +121,7 @@ export class SpriteFxManager {
         fx.stopped = false;
         const generation = ++fx.generation;
 
-        fx.quad.setLocalScale(frameSize[0] * unit, 1, frameSize[1] * unit);
-        // 平面中心相對特效原點的偏移（像素 y 向下，世界 y 向上）
-        fx.quad.setLocalPosition((frameSize[0] / 2 - pivot[0]) * unit, (pivot[1] - frameSize[1] / 2) * unit, 0);
+        fitQuadToSheet(fx.quad, sheet);
         this.place(fx);
         fx.root.enabled = fx.time >= 0;
         this.setFrame(fx, sheet, 0);
@@ -178,20 +133,8 @@ export class SpriteFxManager {
         };
     }
 
-    private create(name: SpriteFxName, sheet: SheetData): ActiveFx {
-        const material = new pc.StandardMaterial();
-        material.useLighting = false;
-        material.useSkybox = false;
-        material.useFog = false;
-        material.diffuse = new pc.Color(0, 0, 0);
-        material.emissive = new pc.Color(1, 1, 1);
-        material.emissiveMap = sheet.texture;
-        material.opacityMap = sheet.texture;
-        material.opacityMapChannel = 'a';
-        material.blendType = pc.BLEND_NORMAL;
-        material.depthWrite = false;
-        material.cull = pc.CULLFACE_NONE;
-        material.update();
+    private create(name: SpriteFxName, sheet: PixelSheet): ActiveFx {
+        const material = createPixelMaterial(sheet.texture, { depthWrite: false });
 
         const root = new pc.Entity(`SpriteFx-${name}`);
         const spin = new pc.Entity('Spin');
@@ -209,22 +152,11 @@ export class SpriteFxManager {
         };
     }
 
-    private setFrame(fx: ActiveFx, sheet: SheetData, index: number): void {
+    private setFrame(fx: ActiveFx, sheet: PixelSheet, index: number): void {
         if (fx.frameIndex === index) return;
         fx.frameIndex = index;
 
-        const rect = sheet.json.frames[index]?.frame;
-        if (!rect) return;
-        const { w: sheetW, h: sheetH } = sheet.json.meta.size;
-        const tiling = new pc.Vec2(rect.w / sheetW, rect.h / sheetH);
-        // UV 原點在左下，圖片的列從上往下數
-        const offset = new pc.Vec2(rect.x / sheetW, 1 - (rect.y + rect.h) / sheetH);
-
-        fx.material.emissiveMapTiling = tiling;
-        fx.material.emissiveMapOffset = offset;
-        fx.material.opacityMapTiling = tiling;
-        fx.material.opacityMapOffset = offset;
-        fx.material.update();
+        setSheetFrame(fx.material, sheet, index);
     }
 
     /**

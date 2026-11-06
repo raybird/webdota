@@ -3,6 +3,7 @@
  * 處理實體移動邏輯
  */
 
+import { StatusSystem } from './StatusSystem';
 import { System } from '../System';
 import { World } from '../World';
 import { ComponentType } from '../Component';
@@ -49,7 +50,7 @@ export class MovementSystem extends System {
 
         if (!physics) return;
 
-        const speed = combat?.moveSpeed ?? 5.0;
+        const speed = (combat?.moveSpeed ?? 5.0) * StatusSystem.speedMultiplier(world, entityId);
         const currentPos = physics.getPosition();
 
         const newX = currentPos.x + direction.x * speed * dt;
