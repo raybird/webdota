@@ -33,6 +33,7 @@ import {
     TransformComponent,
     colliderRegistry,
     type EntityId,
+    type Team,
 } from './ecs';
 
 /** 每個畫面幀最多補跑的 fixedUpdate 次數，避免分頁切回來時一次追太多幀 */
@@ -277,9 +278,13 @@ export class GameEngine {
                 const isLocal = pData.id === this.networkManager.peerId;
                 const pos = rb.translation();
                 const drift = Math.hypot(pos.x - pData.pos.x, pos.z - pData.pos.z);
-                if (!isLocal || drift > RECONCILE_DISTANCE) {
+                if (!isLocal) {
                     rb.setNextKinematicTranslation(pData.pos);
-                    if (!isLocal) rb.setNextKinematicRotation(pData.rot);
+                    rb.setNextKinematicRotation(pData.rot);
+                } else if (drift > RECONCILE_DISTANCE) {
+                    // 直接瞬移（擊退、重生），不經過插值
+                    rb.setTranslation(pData.pos, true);
+                    rb.setNextKinematicTranslation(pData.pos);
                 }
             }
             this.playerManager.setPlayerHp(pData.id, pData.stats.hp);
@@ -328,6 +333,7 @@ export class GameEngine {
             this.creepManager.update(dt);
             this.structureManager.update();
         }
+        this.playerManager.update(dt, this.isHost, (team) => this.getRespawnPosition(team));
 
         this.projectileManager.update(dt, this.ecsWorld, this.collisionSystem);
         this.physicsWorld.step();
@@ -344,7 +350,20 @@ export class GameEngine {
         this.gameStore.setFrame(this.currentFrame);
     }
 
+    /**
+     * 重生位置：己方出生點往地圖中央退 3 單位，避開與主堡重疊；沒有出生點時回到中央
+     */
+    private getRespawnPosition(team: Team): { x: number; y: number; z: number } {
+        const spawnPoints = team === 'neutral' ? [] : this.mapManager.getSpawnPoints(team);
+        const sp = spawnPoints[spawnPoints.length - 1]?.position;
+        if (!sp) return { x: 0, y: 1, z: 0 };
+
+        const len = Math.hypot(sp.x, sp.z) || 1;
+        return { x: sp.x - (sp.x / len) * 3, y: 1, z: sp.z - (sp.z / len) * 3 };
+    }
+
     private applyMovement(input: PlayerInput, dt: number) {
+        if (this.playerManager.isDead(input.playerId)) return;
         const rb = this.playerManager.getPlayerRigidBody(input.playerId);
         if (!rb) return;
 
@@ -367,6 +386,7 @@ export class GameEngine {
 
     private applySkill(input: PlayerInput) {
         if (!input.skillUsed || !input.skillDirection) return;
+        if (this.playerManager.isDead(input.playerId)) return;
 
         // 技能執行器以 ECS Entity ID 查詢施放者的物理與隊伍，不是玩家（Peer）ID
         const casterEntityId = this.playerManager.getPlayer(input.playerId);
@@ -425,7 +445,9 @@ export class GameEngine {
         for (const [entityId, { kind }] of this.structureManager.getAll()) push(entityId, entityId, kind);
         for (const entityId of this.creepManager.getAllCreepIds()) push(entityId, entityId, 'creep');
         // 玩家用 Peer ID，讓小地圖能標出本地玩家
-        for (const [playerId, entityId] of this.playerManager.getAllPlayers()) push(entityId, playerId, 'player');
+        for (const [playerId, entityId] of this.playerManager.getAllPlayers()) {
+            if (!this.playerManager.isDead(playerId)) push(entityId, playerId, 'player');
+        }
 
         return result;
     }
@@ -455,6 +477,13 @@ export class GameEngine {
     }
 
     getLocalPlayerSkills() { return this.playerManager.getPlayerSkills(this.networkManager.peerId); }
+
+    /**
+     * 本地玩家的剩餘重生秒數；存活時為 null
+     */
+    getLocalRespawnRemaining(): number | null {
+        return this.playerManager.getRespawnRemaining(this.networkManager.peerId);
+    }
 
     getLocalPlayerCooldowns(): Map<string, number> {
         const cooldowns = this.playerManager.getPlayerSkillCooldowns(this.networkManager.peerId);

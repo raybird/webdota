@@ -57,6 +57,14 @@ export class RenderComponent implements Component {
         return renders.flatMap(r => r.meshInstances);
     }
 
+    /**
+     * 顯示或隱藏模型與頭頂血條（玩家陣亡時隱藏）
+     */
+    setVisible(visible: boolean): void {
+        this.pcEntity.enabled = visible;
+        if (this.hpBarEntity) this.hpBarEntity.enabled = visible;
+    }
+
     setHpBar(
         bar: { hpBarEntity: pc.Entity; hpBarFillEntity: pc.Entity; energyBarFillEntity?: pc.Entity },
         offsetY: number

@@ -24,8 +24,8 @@ export class HealthSystem extends System {
 
             if (!health) continue;
 
-            // 檢查死亡
-            if (health.isDead()) {
+            // 玩家陣亡不移除，由 ECSPlayerManager 處理隱藏與重生
+            if (health.isDead() && !world.hasComponent(entityId, ComponentType.PLAYER_INPUT)) {
                 // 發送全域死亡事件
                 eventBus.emit({
                     type: 'ENTITY_DIED',
@@ -65,7 +65,7 @@ export class HealthSystem extends System {
         attackerId?: string
     ): number {
         const health = world.getComponent<HealthComponent>(targetId, ComponentType.HEALTH);
-        if (!health) return 0;
+        if (!health || health.isDead()) return 0;
 
         const actualDamage = health.takeDamage(damage, attackerId);
 

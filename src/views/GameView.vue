@@ -19,6 +19,8 @@ const roomStore = useRoomStore()
 
 // 遊戲結束狀態
 const isGameOver = ref(false)
+/** 本地玩家陣亡時的剩餘重生秒數 */
+const respawnSeconds = ref<number | null>(null)
 const winnerTeam = ref<'red' | 'blue' | null>(null)
 const gameOverReason = ref('')
 
@@ -87,6 +89,8 @@ const updateHud = () => {
   if (!engine) return
   currentCooldowns.value = props.gameService.getCooldowns()
   minimapEntities.value = engine.getMinimapEntities()
+  const remaining = engine.getLocalRespawnRemaining()
+  respawnSeconds.value = remaining === null ? null : Math.ceil(remaining)
   props.gameService.syncInventory()
 }
 
@@ -233,6 +237,12 @@ onUnmounted(() => {
       <!-- 螢幕空間 UI 層：網路狀態通知 -->
       <NotificationLayer />
 
+      <!-- 陣亡倒數 -->
+      <div v-if="respawnSeconds !== null && !isGameOver" class="respawn-banner card-glass">
+        <span class="respawn-title">陣亡</span>
+        <span class="respawn-count">{{ respawnSeconds }} 秒後重生</span>
+      </div>
+
       <!-- 遊戲結束覆蓋層 -->
       <GameOverOverlay
         :is-visible="isGameOver"
@@ -248,6 +258,31 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.respawn-banner {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 32px;
+  pointer-events: none;
+}
+
+.respawn-title {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  color: var(--c-danger);
+  letter-spacing: 0.1em;
+}
+
+.respawn-count {
+  font-size: 16px;
+  color: var(--c-text-main);
+}
+
 .game-view {
   width: 100%;
   height: 100%;

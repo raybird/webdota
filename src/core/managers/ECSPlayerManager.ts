@@ -10,6 +10,7 @@ import type { UIManager } from '../UIManager';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useRoomStore } from '../../stores/roomStore';
 import { getCharacter } from '../../data/characters';
+import { eventBus } from '../../events/EventBus';
 
 import {
     World,
@@ -21,10 +22,16 @@ import {
     CombatComponent,
     InventoryComponent,
     PhysicsComponent,
+    TeamComponent,
     type EntityId,
     type Team,
     HealthSystem,
 } from '../ecs';
+
+/** 玩家陣亡後幾秒重生 */
+export const RESPAWN_SECONDS = 5;
+
+type Vec3Like = { x: number; y: number; z: number };
 
 export class ECSPlayerManager {
     private world: World;
@@ -34,6 +41,9 @@ export class ECSPlayerManager {
 
     /** 所有玩家 EntityId，以 playerId 為 key */
     private players: Map<string, EntityId> = new Map();
+
+    /** 陣亡中的玩家與剩餘重生秒數 */
+    private respawnTimers: Map<string, number> = new Map();
 
     constructor(
         world: World,
@@ -148,6 +158,7 @@ export class ECSPlayerManager {
 
         this.world.destroyEntity(entityId);
         this.players.delete(normalizedId);
+        this.respawnTimers.delete(normalizedId);
 
         console.log(`[ECSPlayerManager] Removed player ${normalizedId}`);
     }
@@ -174,7 +185,76 @@ export class ECSPlayerManager {
             this.world.destroyEntity(entityId);
         }
         this.players.clear();
+        this.respawnTimers.clear();
         console.log('[ECSPlayerManager] Cleared all players');
+    }
+
+    /**
+     * 每幀更新：偵測陣亡並隱藏玩家、停用碰撞；權威端倒數結束後在 respawnAt 回傳的位置重生
+     * Client 不自行重生，等 Host 的血量恢復後才顯示
+     */
+    update(dt: number, authoritative: boolean, respawnAt: (team: Team) => Vec3Like): void {
+        for (const [playerId, entityId] of this.players) {
+            const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
+            if (!health) continue;
+
+            const remaining = this.respawnTimers.get(playerId);
+            if (remaining === undefined) {
+                if (!health.isDead()) continue;
+                this.respawnTimers.set(playerId, RESPAWN_SECONDS);
+                this.setAlive(entityId, false);
+                eventBus.emit({ type: 'ENTITY_DIED', entityId, killerId: health.lastAttackerId });
+                continue;
+            }
+
+            if (!health.isDead()) {
+                // Client：Host 已讓玩家重生
+                this.respawnTimers.delete(playerId);
+                this.setAlive(entityId, true);
+                continue;
+            }
+
+            const left = Math.max(0, remaining - dt);
+            if (left > 0 || !authoritative) {
+                this.respawnTimers.set(playerId, left);
+                continue;
+            }
+
+            const team = this.world.getComponent<TeamComponent>(entityId, ComponentType.TEAM)?.team ?? 'neutral';
+            this.respawn(entityId, respawnAt(team));
+            this.respawnTimers.delete(playerId);
+        }
+    }
+
+    private respawn(entityId: EntityId, position: Vec3Like): void {
+        const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
+        if (health) {
+            health.currentHp = health.maxHp;
+            health.lastAttackerId = null;
+        }
+        const skill = this.world.getComponent<SkillComponent>(entityId, ComponentType.SKILL);
+        if (skill) skill.currentEnergy = skill.maxEnergy;
+
+        const rb = this.world.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS)?.rigidBody;
+        rb?.setTranslation(position, true);
+        rb?.setNextKinematicTranslation(position);
+        this.setAlive(entityId, true);
+    }
+
+    private setAlive(entityId: EntityId, alive: boolean): void {
+        this.world.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS)?.rigidBody.setEnabled(alive);
+        this.world.getComponent<RenderComponent>(entityId, ComponentType.RENDER)?.setVisible(alive);
+    }
+
+    isDead(playerId: string): boolean {
+        return this.respawnTimers.has(playerId.toUpperCase());
+    }
+
+    /**
+     * 陣亡玩家的剩餘重生秒數；存活時為 null
+     */
+    getRespawnRemaining(playerId: string): number | null {
+        return this.respawnTimers.get(playerId.toUpperCase()) ?? null;
     }
 
     /**
