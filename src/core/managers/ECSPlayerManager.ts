@@ -149,7 +149,7 @@ export class ECSPlayerManager {
         });
 
         // 建立 UI
-        const displayName = normalizedId.substring(0, 8);
+        const displayName = playerInfo?.name || normalizedId.substring(0, 6);
         const render = this.world.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
         render?.setHpBar(this.uiManager.createPlayerUI(normalizedId, displayName), 2);
 

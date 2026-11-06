@@ -4,6 +4,8 @@ import { eventBus } from '../events/EventBus'
 import { NetworkManager } from '../core/NetworkManager'
 import { RoomCodeManager } from '../utils/RoomCodeManager'
 import type { GameService } from './GameService'
+import type { PlayerProfile, RoomPlayerState } from '../core/NetworkManager'
+import { loadNickname, normalizeNickname, saveNickname } from '../utils/nickname'
 
 /**
  * 房間服務
@@ -15,6 +17,7 @@ export class RoomService {
     private networkManager: NetworkManager
     private gameService: GameService | null = null
     private countdownTimer: number | null = null
+    private nickname = loadNickname()
 
     constructor(networkManager: NetworkManager) {
         this.networkManager = networkManager
@@ -29,36 +32,22 @@ export class RoomService {
     }
 
     private initListeners() {
-        // 監聽網路事件
-        // 監聽網路事件
         this.networkManager.onPeerJoined = (peerId) => {
-            let team: 'red' | 'blue' | 'neutral' = 'neutral';
-
-            // Host 負責分配隊伍
+            this.roomStore.addPlayer({ id: peerId, isReady: false })
+            // Host 分配隊伍：放到人少的一邊
             if (this.roomStore.isHost) {
-                const redCount = this.roomStore.connectedPlayers.filter(p => p.team === 'red').length;
-                const blueCount = this.roomStore.connectedPlayers.filter(p => p.team === 'blue').length;
-                team = redCount <= blueCount ? 'red' : 'blue';
+                this.roomStore.updatePlayerTeam(peerId, this.teamWithFewerPlayers(peerId))
             }
-
-            this.roomStore.addPlayer({ id: peerId, isReady: false, characterId: undefined, team })
+            // 直接把自己的資料傳給新連上的玩家（Mesh 中每條連線兩端都會觸發）
+            this.networkManager.sendProfile(this.myProfile(), peerId)
             eventBus.emit({ type: 'PLAYER_JOINED', playerId: peerId })
-
-            // Host 廣播更新後的房間狀態
-            if (this.roomStore.isHost) {
-                const players = this.roomStore.connectedPlayers.map(p => ({
-                    id: p.id,
-                    isReady: p.isReady,
-                    characterId: p.characterId,
-                    team: p.team
-                }));
-                this.networkManager.broadcastRoomState(players);
-            }
+            if (this.roomStore.isHost) this.broadcastRoomState()
         }
 
         this.networkManager.onPeerLeft = (peerId) => {
             this.roomStore.removePlayer(peerId)
             eventBus.emit({ type: 'PLAYER_LEFT', playerId: peerId })
+            if (this.roomStore.isHost) this.broadcastRoomState()
         }
 
         this.networkManager.onPlayerReady = (peerId, isReady) => {
@@ -66,12 +55,18 @@ export class RoomService {
             eventBus.emit({ type: 'PLAYER_READY', playerId: peerId, isReady })
         }
 
-        // 監聽角色選擇事件，同步到 RoomStore 和 CharacterStore
-        this.networkManager.onCharacterSelected = (peerId, characterId) => {
-            console.log(`[RoomService] Player ${peerId} selected character ${characterId}`)
-            this.roomStore.updatePlayerCharacter(peerId, characterId)
-            // 同時同步到 characterStore
-            this.characterStore.setPlayerCharacter(peerId, characterId)
+        this.networkManager.onPlayerProfile = (peerId, profile) => {
+            this.roomStore.patchPlayer(peerId, {
+                name: normalizeNickname(profile.name ?? '') || undefined,
+                characterId: profile.characterId,
+                isReady: profile.isReady
+            })
+            if (profile.characterId) this.characterStore.setPlayerCharacter(peerId, profile.characterId)
+            if (this.roomStore.isHost) this.broadcastRoomState()
+        }
+
+        this.networkManager.onTeamRequest = (peerId, team) => {
+            this.setPlayerTeam(peerId, team)
         }
 
         this.networkManager.onGameStartCountdown = (seconds) => {
@@ -93,44 +88,90 @@ export class RoomService {
         }
 
         // Host: 提供房間狀態給新加入的玩家
-        this.networkManager.onGetRoomState = () => {
-            return {
-                players: this.roomStore.connectedPlayers.map(p => ({
-                    id: p.id,
-                    isReady: p.isReady,
-                    characterId: p.characterId,
-                    team: p.team
-                }))
+        this.networkManager.onGetRoomState = () => ({ players: this.roomPlayers() })
+
+        // Client: 以 Host 的房間狀態為準（隊伍由 Host 決定）
+        this.networkManager.onRoomState = (players) => {
+            // 用 Peer ID 判斷自己：這份狀態可能在 joinRoom 回傳、store 設好 myPeerId 之前就送到
+            const myId = this.networkManager.peerId.toUpperCase()
+            for (const p of players) {
+                // 自己的暱稱、角色與準備狀態以本地為準，Host 那份可能還沒收到最新的
+                const isMe = p.id.toUpperCase() === myId
+                this.roomStore.patchPlayer(p.id, isMe
+                    ? { team: p.team }
+                    : { isReady: p.isReady, characterId: p.characterId, team: p.team, name: p.name })
+                if (!isMe && p.characterId) this.characterStore.setPlayerCharacter(p.id, p.characterId)
+            }
+            // Host 名單裡沒有的玩家已經離開
+            const ids = new Set(players.map(p => p.id.toUpperCase()))
+            for (const p of [...this.roomStore.connectedPlayers]) {
+                if (!ids.has(p.id) && p.id !== myId) this.roomStore.removePlayer(p.id)
             }
         }
+    }
 
-        // Client: 接收房間狀態並同步
-        this.networkManager.onRoomState = (players) => {
-            console.log('[RoomService] Received room state, syncing players:', players)
-            players.forEach(p => {
-                // 添加所有玩家到本地 store
-                if (!this.roomStore.connectedPlayers.find(cp => cp.id === p.id)) {
-                    this.roomStore.addPlayer({
-                        id: p.id,
-                        isReady: p.isReady,
-                        characterId: p.characterId,
-                        team: p.team
-                    })
-                } else {
-                    // 更新已存在玩家的狀態
-                    this.roomStore.updatePlayerReady(p.id, p.isReady)
-                    if (p.characterId) {
-                        this.roomStore.updatePlayerCharacter(p.id, p.characterId)
-                    }
-                    if (p.team) {
-                        this.roomStore.updatePlayerTeam(p.id, p.team)
-                    }
-                }
-                // 同時同步到 characterStore
-                if (p.characterId) {
-                    this.characterStore.setPlayerCharacter(p.id, p.characterId)
-                }
-            })
+    private roomPlayers(): RoomPlayerState[] {
+        return this.roomStore.connectedPlayers.map(p => ({
+            id: p.id,
+            isReady: p.isReady,
+            characterId: p.characterId,
+            team: p.team,
+            name: p.name
+        }))
+    }
+
+    private broadcastRoomState() {
+        this.networkManager.broadcastRoomState(this.roomPlayers())
+    }
+
+    private teamWithFewerPlayers(excludeId: string): 'red' | 'blue' {
+        const others = this.roomStore.connectedPlayers.filter(p => p.id !== excludeId.toUpperCase())
+        const red = others.filter(p => p.team === 'red').length
+        const blue = others.filter(p => p.team === 'blue').length
+        return red <= blue ? 'red' : 'blue'
+    }
+
+    /** Host：設定玩家隊伍並廣播；倒數中不能換隊 */
+    private setPlayerTeam(peerId: string, team: 'red' | 'blue') {
+        if (!this.roomStore.isHost || this.roomStore.countdown > 0) return
+        this.roomStore.updatePlayerTeam(peerId, team)
+        this.broadcastRoomState()
+    }
+
+    private myProfile(): PlayerProfile {
+        const me = this.roomStore.myPlayer
+        return {
+            name: this.nickname,
+            characterId: me?.characterId ?? this.characterStore.selectedCharacterId,
+            isReady: me?.isReady ?? false
+        }
+    }
+
+    /** 目前使用的暱稱 */
+    getNickname(): string {
+        return this.nickname
+    }
+
+    /**
+     * 設定暱稱；在房間內時同步給其他玩家
+     */
+    setNickname(name: string) {
+        const normalized = normalizeNickname(name)
+        if (!normalized) return
+        this.nickname = normalized
+        saveNickname(normalized)
+        if (!this.roomStore.isInRoom) return
+        this.roomStore.patchPlayer(this.roomStore.myPeerId, { name: normalized })
+        this.networkManager.sendProfile(this.myProfile())
+    }
+
+    /** 換到指定隊伍：Host 直接套用，Client 向 Host 提出 */
+    requestTeam(team: 'red' | 'blue') {
+        if (this.roomStore.myPlayer?.team === team) return
+        if (this.roomStore.isHost) {
+            this.setPlayerTeam(this.roomStore.myPeerId, team)
+        } else {
+            this.networkManager.sendTeamRequest(team)
         }
     }
 
@@ -171,7 +212,10 @@ export class RoomService {
         this.roomStore.setMyPeerId(roomCode)  // roomCode 就是 peerId
         this.roomStore.setRoomCode(roomCode)
         // Host 預設為紅隊
-        this.roomStore.addPlayer({ id: roomCode, isReady: false, characterId: undefined, team: 'red' })
+        this.roomStore.addPlayer({
+            id: roomCode, isReady: false, team: 'red',
+            name: this.nickname, characterId: this.characterStore.selectedCharacterId
+        })
 
         eventBus.emit({ type: 'ROOM_CREATED', roomId: roomCode, roomCode })
         return roomCode
@@ -190,6 +234,10 @@ export class RoomService {
         this.roomStore.setHost(false)
         this.roomStore.setMyPeerId(this.networkManager.peerId)
         this.roomStore.setRoomCode(normalizedCode)
+        this.roomStore.addPlayer({
+            id: this.networkManager.peerId, isReady: false,
+            name: this.nickname, characterId: this.characterStore.selectedCharacterId
+        })
 
         eventBus.emit({ type: 'ROOM_JOINED', roomId: normalizedCode })
     }

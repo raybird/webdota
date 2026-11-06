@@ -21,8 +21,17 @@
   --c-success: #10b981;
 
   /* Fonts */
-  --font-heading: 'Chakra Petch', sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Chakra Petch', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  --font-body: 'Inter', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  /* 像素字：Logo、房間碼、按鍵提示等英數字 */
+  --font-pixel: 'Silkscreen', 'Chakra Petch', monospace;
+
+  /* 隊伍色 */
+  --c-red: #f05a5a;
+  --c-red-dim: rgba(240, 90, 90, 0.18);
+  --c-blue: #5a8cf0;
+  --c-blue-dim: rgba(90, 140, 240, 0.18);
+  --c-gold: #f5c451;
   
   /* Borders & Shadows */
   --border-neon: 1px solid rgba(124, 58, 237, 0.3);
@@ -136,4 +145,85 @@ body {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--c-primary), transparent);
   opacity: 0.5;
+}
+
+/* ---------- 像素風 UI（大廳與房間） ---------- */
+
+/* 切角面板：clip-path 切出 8px 斜角，內框用 inset 陰影畫 */
+.pixel-panel {
+  --notch: 8px;
+  --panel-bg: rgba(18, 13, 36, 0.88);
+  --panel-border: rgba(167, 139, 250, 0.28);
+  background: var(--panel-bg);
+  clip-path: polygon(
+    var(--notch) 0, calc(100% - var(--notch)) 0, 100% var(--notch),
+    100% calc(100% - var(--notch)), calc(100% - var(--notch)) 100%,
+    var(--notch) 100%, 0 calc(100% - var(--notch)), 0 var(--notch)
+  );
+  box-shadow: inset 0 0 0 2px var(--panel-border);
+}
+
+/* 像素按鈕：實心色塊、下緣厚邊，按下時往下壓 */
+.btn-pixel {
+  --btn-bg: #2a2147;
+  --btn-fg: var(--c-text-main);
+  --btn-edge: rgba(0, 0, 0, 0.45);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 44px;
+  padding: 0.65em 1.4em;
+  border: none;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+  box-shadow: inset 0 -4px 0 var(--btn-edge), inset 0 2px 0 rgba(255, 255, 255, 0.12);
+  transition: filter var(--trans-fast), transform var(--trans-fast);
+}
+
+.btn-pixel:hover:not(:disabled) { filter: brightness(1.15); }
+.btn-pixel:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 -2px 0 var(--btn-edge); }
+.btn-pixel:focus-visible { outline: 2px solid var(--c-gold); outline-offset: 2px; }
+.btn-pixel:disabled { cursor: not-allowed; filter: grayscale(0.7) brightness(0.65); }
+
+.btn-pixel.is-primary { --btn-bg: linear-gradient(180deg, #ffd36b, #f0a83a); --btn-fg: #2b1700; }
+.btn-pixel.is-danger { --btn-bg: #5b1f2e; --btn-fg: #ffd9de; }
+.btn-pixel.is-ghost { --btn-bg: rgba(255, 255, 255, 0.06); --btn-edge: rgba(0, 0, 0, 0.25); }
+.btn-pixel.is-success { --btn-bg: linear-gradient(180deg, #4ade80, #16a34a); --btn-fg: #032b12; }
+
+/* 像素輸入框 */
+.input-pixel {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55em 0.9em;
+  border: 2px solid rgba(167, 139, 250, 0.35);
+  background: rgba(6, 4, 14, 0.75);
+  color: var(--c-text-main);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color var(--trans-fast), box-shadow var(--trans-fast);
+}
+
+.input-pixel:focus { border-color: var(--c-gold); box-shadow: 0 0 0 3px rgba(245, 196, 81, 0.18); }
+.input-pixel::placeholder { color: #6b6488; }
+
+/* 只給螢幕閱讀器的文字 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

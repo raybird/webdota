@@ -1,6 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
+export type RoomTeam = 'red' | 'blue' | 'neutral'
+
+/** 房間中的玩家（id 一律大寫） */
+export interface RoomPlayer {
+    id: string
+    isReady: boolean
+    characterId?: string
+    team?: RoomTeam
+    /** 暱稱；還沒收到對方資料時為空，畫面改顯示 ID 前幾碼 */
+    name?: string
+}
+
 /**
  * 房間與大廳狀態管理
  */
@@ -10,12 +22,7 @@ export const useRoomStore = defineStore('room', () => {
     const isHost = ref(false)
     const myPeerId = ref('')
     const roomCode = ref('')  // 短房間碼 (6位)
-    const connectedPlayers = ref<{
-        id: string
-        isReady: boolean
-        characterId?: string
-        team?: 'red' | 'blue' | 'neutral'
-    }[]>([])
+    const connectedPlayers = ref<RoomPlayer[]>([])
     const countdown = ref(0)
 
     // Getters
@@ -24,6 +31,7 @@ export const useRoomStore = defineStore('room', () => {
         connectedPlayers.value.length > 0 &&
         connectedPlayers.value.every(p => p.isReady)
     )
+    const readyCount = computed(() => connectedPlayers.value.filter(p => p.isReady).length)
     const myPlayer = computed(() =>
         connectedPlayers.value.find(p => p.id === myPeerId.value.toUpperCase())
     )
@@ -46,66 +54,41 @@ export const useRoomStore = defineStore('room', () => {
         roomCode.value = code
     }
 
-    function addPlayer(player: { id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }) {
-        const normalizedId = player.id.toUpperCase()
-        const existingIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
-        if (existingIndex === -1) {
-            connectedPlayers.value.push({ ...player, id: normalizedId })
+    /**
+     * 更新玩家欄位，玩家不存在時新增；值為 undefined 的欄位不覆寫既有資料
+     */
+    function patchPlayer(playerId: string, patch: Partial<Omit<RoomPlayer, 'id'>>) {
+        const id = playerId.toUpperCase()
+        const defined = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
+        const index = connectedPlayers.value.findIndex(p => p.id === id)
+        if (index === -1) {
+            connectedPlayers.value.push({ id, isReady: false, ...defined })
+        } else {
+            connectedPlayers.value[index] = { ...connectedPlayers.value[index]!, ...defined }
         }
+    }
+
+    /** 新增玩家；已存在時不變動 */
+    function addPlayer(player: RoomPlayer) {
+        if (connectedPlayers.value.some(p => p.id === player.id.toUpperCase())) return
+        patchPlayer(player.id, player)
     }
 
     function removePlayer(playerId: string) {
-        const normalizedId = playerId.toUpperCase()
-        const index = connectedPlayers.value.findIndex(p => p.id === normalizedId)
-        if (index !== -1) {
-            connectedPlayers.value.splice(index, 1)
-        }
+        const id = playerId.toUpperCase()
+        connectedPlayers.value = connectedPlayers.value.filter(p => p.id !== id)
     }
 
     function updatePlayerReady(playerId: string, isReady: boolean) {
-        const normalizedId = playerId.toUpperCase()
-        const playerIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
-        if (playerIndex !== -1) {
-            const player = connectedPlayers.value[playerIndex]!
-            connectedPlayers.value[playerIndex] = {
-                id: player.id,
-                isReady,
-                characterId: player.characterId,
-                team: player.team
-            }
-        } else {
-            // 玩家不存在，新增
-            connectedPlayers.value.push({ id: normalizedId, isReady })
-        }
+        patchPlayer(playerId, { isReady })
     }
 
     function updatePlayerCharacter(playerId: string, characterId: string) {
-        const normalizedId = playerId.toUpperCase()
-        const playerIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
-        if (playerIndex !== -1) {
-            const player = connectedPlayers.value[playerIndex]!
-            connectedPlayers.value[playerIndex] = {
-                id: player.id,
-                isReady: player.isReady,
-                characterId,
-                team: player.team
-            }
-        } else {
-            // 玩家不存在，新增
-            connectedPlayers.value.push({ id: normalizedId, isReady: false, characterId })
-        }
+        patchPlayer(playerId, { characterId })
     }
 
-    function updatePlayerTeam(playerId: string, team: 'red' | 'blue' | 'neutral') {
-        const normalizedId = playerId.toUpperCase()
-        const playerIndex = connectedPlayers.value.findIndex(p => p.id === normalizedId)
-        if (playerIndex !== -1) {
-            const player = connectedPlayers.value[playerIndex]!
-            connectedPlayers.value[playerIndex] = {
-                ...player,
-                team
-            }
-        }
+    function updatePlayerTeam(playerId: string, team: RoomTeam) {
+        if (connectedPlayers.value.some(p => p.id === playerId.toUpperCase())) patchPlayer(playerId, { team })
     }
 
     function setCountdown(value: number) {
@@ -128,18 +111,18 @@ export const useRoomStore = defineStore('room', () => {
         roomCode,
         connectedPlayers,
         countdown,
-
         // Getters
         playerCount,
         allPlayersReady,
+        readyCount,
         myPlayer,
         amIReady,
-
         // Actions
         setInRoom,
         setHost,
         setMyPeerId,
         setRoomCode,
+        patchPlayer,
         addPlayer,
         removePlayer,
         updatePlayerReady,

@@ -5,6 +5,7 @@
 export interface Skill {
     id: string;
     name: string;
+    description?: string;    // 選角畫面與技能提示的說明
     icon?: string;           // Emoji or image path
     type: 'normal' | 'ultimate' | 'basic' | 'combo';
 

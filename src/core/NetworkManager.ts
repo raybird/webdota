@@ -14,6 +14,34 @@ export interface InventoryUpdate {
     items: (string | null)[];
 }
 
+/** 房間中一位玩家的狀態（Host 的 room_state 與各自的 player_profile 共用） */
+export interface RoomPlayerState {
+    id: string;
+    isReady: boolean;
+    characterId?: string;
+    team?: 'red' | 'blue' | 'neutral';
+    name?: string;
+}
+
+/** 玩家自己的資料，連上每個 Peer 時直接傳給對方，變更時廣播 */
+export interface PlayerProfile {
+    name: string;
+    characterId?: string;
+    isReady: boolean;
+}
+
+/** 加入房間的連線逾時 */
+const JOIN_TIMEOUT_MS = 12000;
+
+/** 加入房間失敗的原因：房間不存在，或在時限內連不上 Host */
+export class JoinRoomError extends Error {
+    reason: 'not-found' | 'timeout';
+    constructor(reason: 'not-found' | 'timeout') {
+        super(reason === 'not-found' ? '找不到這個房間' : '連線逾時');
+        this.reason = reason;
+    }
+}
+
 export interface PlayerInput {
     frame: number;
     playerId: string;
@@ -65,8 +93,11 @@ export class NetworkManager {
     onInventory?: (update: InventoryUpdate) => void;
     onGameOver?: (winnerTeam: 'red' | 'blue', reason: 'base_destroyed' | 'surrender' | 'timeout') => void;
     onRoomCode?: (code: string, hostId: string) => void;
-    onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }> };
-    onRoomState?: (players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }>) => void;
+    onGetRoomState?: () => { players: RoomPlayerState[] };
+    onRoomState?: (players: RoomPlayerState[]) => void;
+    onPlayerProfile?: (peerId: string, profile: PlayerProfile) => void;
+    /** Host：Client 要求換隊 */
+    onTeamRequest?: (fromPeerId: string, team: 'red' | 'blue') => void;
 
     // Ping tracking
     private pingInterval: number | null = null;
@@ -132,14 +163,15 @@ export class NetworkManager {
     /**
      * 連線到指定的 Peer (用於加入房間)
      */
-    connectToPeer(remotePeerId: string) {
+    connectToPeer(remotePeerId: string): DataConnection | null {
         if (this.connections.has(remotePeerId)) {
             console.warn(`[Network] Already connected to ${remotePeerId}`);
-            return;
+            return null;
         }
 
         const conn = this.peer.connect(remotePeerId, { reliable: true });
         this.handleIncomingConnection(conn);
+        return conn;
     }
 
     /**
@@ -282,7 +314,18 @@ export class NetworkManager {
                 break;
 
             case 'room_state':
-                if (this.onRoomState) this.onRoomState(data.players);
+                if (fromPeerId === this.hostId && this.onRoomState) this.onRoomState(data.players);
+                break;
+
+            case 'player_profile':
+                // 只接受對方描述自己，避免冒用別人的 ID
+                if (this.onPlayerProfile) this.onPlayerProfile(fromPeerId, data.profile);
+                break;
+
+            case 'team_request':
+                if (this.isHost && (data.team === 'red' || data.team === 'blue') && this.onTeamRequest) {
+                    this.onTeamRequest(fromPeerId, data.team);
+                }
                 break;
 
             case 'ping':
@@ -431,12 +474,29 @@ export class NetworkManager {
     /**
      * 廣播房間狀態 (Host Only)
      */
-    broadcastRoomState(players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }>) {
+    broadcastRoomState(players: RoomPlayerState[]) {
         const message = {
             type: 'room_state',
             players
         };
         this.connections.forEach(conn => conn.send(message));
+    }
+
+    /**
+     * 傳送自己的資料；指定 peerId 時只傳給那位玩家，否則廣播
+     */
+    sendProfile(profile: PlayerProfile, peerId?: string) {
+        const message = { type: 'player_profile', profile };
+        if (peerId) {
+            this.connections.get(peerId.toUpperCase())?.send(message);
+        } else {
+            this.connections.forEach(conn => conn.send(message));
+        }
+    }
+
+    /** Client 要求 Host 把自己換到指定隊伍 */
+    sendTeamRequest(team: 'red' | 'blue') {
+        this.connections.get(this.hostId.toUpperCase())?.send({ type: 'team_request', team });
     }
 
     /**
@@ -528,6 +588,27 @@ export class NetworkManager {
 
         // 使用房間碼作為 Host ID 連線 (強制大寫)
         this.hostId = roomCode.toUpperCase();
-        this.connectToPeer(this.hostId);
+        const conn = this.connectToPeer(this.hostId);
+        if (!conn) return;
+
+        // 等到和 Host 的連線真正打開；房間不存在時 PeerJS 會送 peer-unavailable
+        await new Promise<void>((resolve, reject) => {
+            const done = (error?: JoinRoomError) => {
+                window.clearTimeout(timer);
+                this.peer.off('error', onError);
+                if (error) {
+                    conn.close();
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            };
+            const onError = (err: { type?: string }) => {
+                if (err?.type === 'peer-unavailable') done(new JoinRoomError('not-found'));
+            };
+            const timer = window.setTimeout(() => done(new JoinRoomError('timeout')), JOIN_TIMEOUT_MS);
+            this.peer.on('error', onError);
+            conn.once('open', () => done());
+        });
     }
 }

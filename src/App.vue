@@ -54,7 +54,11 @@ const currentView = computed(() => {
 })
 
 // Debug Panel
-const showDebug = ref(true)
+// 除錯面板預設隱藏：網址加 ?debug 或按 ` 鍵切換
+const showDebug = ref(new URLSearchParams(location.search).has('debug'))
+const toggleDebug = (e: KeyboardEvent) => {
+  if (e.key === '`' && !(e.target instanceof HTMLInputElement)) showDebug.value = !showDebug.value
+}
 const networkEvents = ref<string[]>([])
 
 const addNetworkEvent = (event: string) => {
@@ -80,6 +84,7 @@ onMounted(() => {
   // 首次互動初始化音效
   window.addEventListener('click', initAudio)
   window.addEventListener('keydown', initAudio)
+  window.addEventListener('keydown', toggleDebug)
 })
 </script>
 
