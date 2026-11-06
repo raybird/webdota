@@ -1,0 +1,1099 @@
+{
+  "date": "2026-11-06",
+  "version": 2,
+  "seed": 20261106,
+  "pillow": "12.2.0",
+  "projection": {
+    "angle_degrees": 36.87,
+    "sin": 0.6,
+    "cos": 0.8,
+    "horizontal_px_per_world": 19,
+    "ground_depth_px_per_world": 11.4,
+    "vertical_height_px_per_world": 15.2,
+    "light": "screen upper-left",
+    "cast_shadows_baked": false,
+    "designed_heights_px": {
+      "tower_body": 68.5,
+      "base_peak_above_keep_ground": 114.5,
+      "pillar_s": 61,
+      "pillar_l": 91
+    }
+  },
+  "map_source": "src/data/maps/demo_arena.json",
+  "map_sha256": "e159b95ab29d5cc8455f1fa48c78bf929a9c953a6dfd109c48d41507512f3d9e",
+  "routes": [
+    {
+      "team": "blue",
+      "from": [
+        -22,
+        -22
+      ],
+      "to": [
+        -15,
+        -15
+      ],
+      "width_world": 3
+    },
+    {
+      "team": "blue",
+      "from": [
+        -15,
+        -15
+      ],
+      "to": [
+        0,
+        0
+      ],
+      "width_world": 3
+    },
+    {
+      "team": "blue",
+      "from": [
+        -22,
+        -22
+      ],
+      "to": [
+        -10,
+        0
+      ],
+      "width_world": 3
+    },
+    {
+      "team": "blue",
+      "from": [
+        -10,
+        0
+      ],
+      "to": [
+        0,
+        0
+      ],
+      "width_world": 3
+    },
+    {
+      "team": "red",
+      "from": [
+        22,
+        22
+      ],
+      "to": [
+        15,
+        15
+      ],
+      "width_world": 3
+    },
+    {
+      "team": "red",
+      "from": [
+        15,
+        15
+      ],
+      "to": [
+        0,
+        0
+      ],
+      "width_world": 3
+    },
+    {
+      "team": "red",
+      "from": [
+        22,
+        22
+      ],
+      "to": [
+        10,
+        0
+      ],
+      "width_world": 3
+    },
+    {
+      "team": "red",
+      "from": [
+        10,
+        0
+      ],
+      "to": [
+        0,
+        0
+      ],
+      "width_world": 3
+    }
+  ],
+  "platforms": [
+    {
+      "type": "tower",
+      "team": "blue",
+      "world_xz": [
+        -15,
+        -15
+      ],
+      "blue_center": [
+        285,
+        513
+      ],
+      "red_center": [
+        855,
+        171
+      ],
+      "size_px": [
+        57,
+        35
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "blue",
+      "world_xz": [
+        -10,
+        0
+      ],
+      "blue_center": [
+        570,
+        456
+      ],
+      "red_center": [
+        570,
+        228
+      ],
+      "size_px": [
+        57,
+        35
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "red",
+      "world_xz": [
+        15,
+        15
+      ],
+      "blue_center": [
+        855,
+        171
+      ],
+      "red_center": [
+        285,
+        513
+      ],
+      "size_px": [
+        57,
+        35
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "red",
+      "world_xz": [
+        10,
+        0
+      ],
+      "blue_center": [
+        570,
+        228
+      ],
+      "red_center": [
+        570,
+        456
+      ],
+      "size_px": [
+        57,
+        35
+      ]
+    },
+    {
+      "type": "base",
+      "team": "blue",
+      "world_xz": [
+        -22,
+        -22
+      ],
+      "blue_center": [
+        152,
+        593
+      ],
+      "red_center": [
+        988,
+        91
+      ],
+      "size_px": [
+        171,
+        103
+      ]
+    },
+    {
+      "type": "base",
+      "team": "red",
+      "world_xz": [
+        22,
+        22
+      ],
+      "blue_center": [
+        988,
+        91
+      ],
+      "red_center": [
+        152,
+        593
+      ],
+      "size_px": [
+        171,
+        103
+      ]
+    }
+  ],
+  "scene": {
+    "ground_world_x": [
+      -26,
+      -6
+    ],
+    "ground_world_z": [
+      -29,
+      1
+    ],
+    "height_margin_px": 96,
+    "ground_window_px": [
+      570,
+      228
+    ],
+    "nearest_scale": 3,
+    "footprint_center_to_pivot": "add (footprint_depth_px - 1)/2 to projected row",
+    "outside_ground_window_objects_culled": true,
+    "objects": 12,
+    "creep_world_xz": [
+      [
+        -19,
+        -18,
+        "blue"
+      ],
+      [
+        -17.7,
+        -16.8,
+        "blue"
+      ],
+      [
+        -16.3,
+        -14.5,
+        "blue"
+      ],
+      [
+        -11.8,
+        -6,
+        "red"
+      ],
+      [
+        -13.2,
+        -5,
+        "red"
+      ],
+      [
+        -12.5,
+        -2.8,
+        "blue"
+      ]
+    ]
+  },
+  "files": {
+    "public/env/ground-blue.png": {
+      "size": [
+        1140,
+        684
+      ],
+      "bytes": 190613,
+      "sha256": "805d525223e72e7b3ccf13483840368b7623412500f720e8054334b97e002d3d",
+      "colors_including_transparent": 26,
+      "alpha_values": [
+        255
+      ],
+      "binary_alpha": true,
+      "max_bytes": 500000
+    },
+    "public/env/ground-red.png": {
+      "size": [
+        1140,
+        684
+      ],
+      "bytes": 190326,
+      "sha256": "2eed3b928883ca5391fa0143360cc85804f8aa350ee579ae873efb3a4f3be36b",
+      "colors_including_transparent": 26,
+      "alpha_values": [
+        255
+      ],
+      "binary_alpha": true,
+      "max_bytes": 500000
+    },
+    "public/env/wall-side.png": {
+      "size": [
+        95,
+        76
+      ],
+      "bytes": 813,
+      "sha256": "f94c07eee54199f6400da8acadbcd2e8a66fbc18f43512dc4e0ec7f8849f9849",
+      "colors_including_transparent": 9,
+      "alpha_values": [
+        255
+      ],
+      "binary_alpha": true,
+      "seamless": {
+        "left_equals_right": true,
+        "top_equals_bottom": true,
+        "tile_period": [
+          94,
+          75
+        ]
+      }
+    },
+    "public/env/wall-top.png": {
+      "size": [
+        95,
+        57
+      ],
+      "bytes": 657,
+      "sha256": "70e4e3d2ccc802904cbaadcd93a9de6a21b72a11795872d69f3d7727f64fe9ae",
+      "colors_including_transparent": 9,
+      "alpha_values": [
+        255
+      ],
+      "binary_alpha": true,
+      "seamless": {
+        "left_equals_right": true,
+        "top_equals_bottom": true,
+        "tile_period": [
+          94,
+          56
+        ]
+      }
+    },
+    "public/env/crate-side.png": {
+      "size": [
+        95,
+        76
+      ],
+      "bytes": 838,
+      "sha256": "3abe2d5cfdacfb27165fd4570bd22020d3f96c38a20f928754f14345198eef35",
+      "colors_including_transparent": 14,
+      "alpha_values": [
+        255
+      ],
+      "binary_alpha": true,
+      "seamless": {
+        "left_equals_right": true,
+        "top_equals_bottom": true,
+        "tile_period": [
+          94,
+          75
+        ]
+      }
+    },
+    "public/env/crate-top.png": {
+      "size": [
+        95,
+        57
+      ],
+      "bytes": 771,
+      "sha256": "788defa8ac9fe72d0c9ce8760942081b8a012d94ce093a984228e8add557ac7a",
+      "colors_including_transparent": 14,
+      "alpha_values": [
+        255
+      ],
+      "binary_alpha": true,
+      "seamless": {
+        "left_equals_right": true,
+        "top_equals_bottom": true,
+        "tile_period": [
+          94,
+          56
+        ]
+      }
+    },
+    "public/env/tower-blue-idle.json": {
+      "bytes": 1772,
+      "sha256": "f40c1134841d7b2cc2dc8bd5f8200a94d15e16efbc6cd5c44e51838d80b0d2aa"
+    },
+    "public/env/tower-blue-idle.png": {
+      "size": [
+        192,
+        112
+      ],
+      "bytes": 2563,
+      "sha256": "cc059530e73f7df3357fda09e882c24b154083e58759f1498577fea90e480907",
+      "colors_including_transparent": 19,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        48,
+        112
+      ],
+      "fps": 6,
+      "loop": true,
+      "pivot": [
+        24,
+        108
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          5,
+          6,
+          43,
+          109
+        ],
+        [
+          5,
+          6,
+          43,
+          109
+        ],
+        [
+          5,
+          6,
+          43,
+          109
+        ],
+        [
+          5,
+          6,
+          43,
+          109
+        ]
+      ],
+      "distinct_frames": 4,
+      "transparent_rows_below_object": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "fixed_silhouette": true,
+      "footprint_px": [
+        38,
+        23
+      ]
+    },
+    "public/env/base-blue-idle.json": {
+      "bytes": 1780,
+      "sha256": "8bb41751d81fbabf7080867e725fd6cf5397060a354635ee6b67b0f3dc75200c"
+    },
+    "public/env/base-blue-idle.png": {
+      "size": [
+        512,
+        176
+      ],
+      "bytes": 6737,
+      "sha256": "96d2776db2d49489e45914228480c93f0ef58912c320a6ce52257500ffed8fd5",
+      "colors_including_transparent": 18,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        128,
+        176
+      ],
+      "fps": 6,
+      "loop": true,
+      "pivot": [
+        64,
+        172
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          17,
+          17,
+          112,
+          173
+        ],
+        [
+          17,
+          17,
+          112,
+          173
+        ],
+        [
+          17,
+          17,
+          112,
+          173
+        ],
+        [
+          17,
+          17,
+          112,
+          173
+        ]
+      ],
+      "distinct_frames": 4,
+      "transparent_rows_below_object": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "fixed_silhouette": true,
+      "footprint_px": [
+        95,
+        57
+      ]
+    },
+    "public/env/creep-blue-walk.json": {
+      "bytes": 1756,
+      "sha256": "d430c462ccef8ed27bec5150f46ff04f970345fe99de804d68bcdc54810ebe59"
+    },
+    "public/env/creep-blue-walk.png": {
+      "size": [
+        128,
+        32
+      ],
+      "bytes": 1116,
+      "sha256": "a482d3df1934cbcccd1282becf463f4be39d31315c9c9e93b9328e2a8b28b8d1",
+      "colors_including_transparent": 16,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        32,
+        32
+      ],
+      "fps": 8,
+      "loop": true,
+      "pivot": [
+        16,
+        30
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          8,
+          8,
+          29,
+          30
+        ],
+        [
+          8,
+          7,
+          28,
+          30
+        ],
+        [
+          8,
+          8,
+          30,
+          30
+        ],
+        [
+          8,
+          7,
+          29,
+          30
+        ]
+      ],
+      "distinct_frames": 4,
+      "transparent_rows_below_object": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "fixed_silhouette": false
+    },
+    "public/env/creep-blue-attack.json": {
+      "bytes": 1774,
+      "sha256": "38f6ef05b9a4102e99369e6c5a8caeda9fe82dd8445bdc0a00e9cf6bc2dd91a5"
+    },
+    "public/env/creep-blue-attack.png": {
+      "size": [
+        128,
+        32
+      ],
+      "bytes": 1286,
+      "sha256": "2ddae1915b1599737192c79b1f6a8b174a7bcbabca182a010edeb42640c947c8",
+      "colors_including_transparent": 16,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        32,
+        32
+      ],
+      "fps": 10,
+      "loop": false,
+      "pivot": [
+        16,
+        30
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          8,
+          7,
+          28,
+          30
+        ],
+        [
+          8,
+          3,
+          28,
+          30
+        ],
+        [
+          8,
+          8,
+          31,
+          30
+        ],
+        [
+          8,
+          8,
+          31,
+          30
+        ]
+      ],
+      "distinct_frames": 4,
+      "transparent_rows_below_object": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "fixed_silhouette": false
+    },
+    "public/env/tower-red-idle.json": {
+      "bytes": 1765,
+      "sha256": "07ac82431b67a1f796b8ba3f353f0abbca448cc14f03c1c888989df2dbc57679"
+    },
+    "public/env/tower-red-idle.png": {
+      "size": [
+        192,
+        112
+      ],
+      "bytes": 2553,
+      "sha256": "216155549b8f20be21a63d9f9c2dea348a073979b2cd60babac1031527e146d6",
+      "colors_including_transparent": 19,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        48,
+        112
+      ],
+      "fps": 6,
+      "loop": true,
+      "pivot": [
+        24,
+        108
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          5,
+          6,
+          43,
+          109
+        ],
+        [
+          5,
+          6,
+          43,
+          109
+        ],
+        [
+          5,
+          6,
+          43,
+          109
+        ],
+        [
+          5,
+          6,
+          43,
+          109
+        ]
+      ],
+      "distinct_frames": 4,
+      "transparent_rows_below_object": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "fixed_silhouette": true,
+      "footprint_px": [
+        38,
+        23
+      ]
+    },
+    "public/env/base-red-idle.json": {
+      "bytes": 1773,
+      "sha256": "6c66f5400ae42d6459762da277f9fb4038c699cc21c94c8dafcd287ac39b0d00"
+    },
+    "public/env/base-red-idle.png": {
+      "size": [
+        512,
+        176
+      ],
+      "bytes": 6736,
+      "sha256": "a8cbf7b14c0024cc30f338164d550ce134528bad1b1d140e5cfe95e090fcfe93",
+      "colors_including_transparent": 18,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        128,
+        176
+      ],
+      "fps": 6,
+      "loop": true,
+      "pivot": [
+        64,
+        172
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          17,
+          17,
+          112,
+          173
+        ],
+        [
+          17,
+          17,
+          112,
+          173
+        ],
+        [
+          17,
+          17,
+          112,
+          173
+        ],
+        [
+          17,
+          17,
+          112,
+          173
+        ]
+      ],
+      "distinct_frames": 4,
+      "transparent_rows_below_object": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "fixed_silhouette": true,
+      "footprint_px": [
+        95,
+        57
+      ]
+    },
+    "public/env/creep-red-walk.json": {
+      "bytes": 1749,
+      "sha256": "ee5aa895ee4c82fc39a6e39a8d223a5e7b0fe7f04f945de02f9ff75cd1554428"
+    },
+    "public/env/creep-red-walk.png": {
+      "size": [
+        128,
+        32
+      ],
+      "bytes": 1109,
+      "sha256": "71af2e3318805b392ecea4c09bde2ee5dd737a59d576c599f5db6c170fbc5121",
+      "colors_including_transparent": 16,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        32,
+        32
+      ],
+      "fps": 8,
+      "loop": true,
+      "pivot": [
+        16,
+        30
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          8,
+          8,
+          29,
+          30
+        ],
+        [
+          8,
+          7,
+          28,
+          30
+        ],
+        [
+          8,
+          8,
+          30,
+          30
+        ],
+        [
+          8,
+          7,
+          29,
+          30
+        ]
+      ],
+      "distinct_frames": 4,
+      "transparent_rows_below_object": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "fixed_silhouette": false
+    },
+    "public/env/creep-red-attack.json": {
+      "bytes": 1767,
+      "sha256": "a908d8e32ba90f6d94c299a59d7cec1dae203f72c8214dc5ad1f94fcd659cc6b"
+    },
+    "public/env/creep-red-attack.png": {
+      "size": [
+        128,
+        32
+      ],
+      "bytes": 1293,
+      "sha256": "9fefa84b24427f1d4c0235d7c1dc631a2f9bfcd85c6adb894fb4ca1fecf96f51",
+      "colors_including_transparent": 16,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 4,
+      "frame_size": [
+        32,
+        32
+      ],
+      "fps": 10,
+      "loop": false,
+      "pivot": [
+        16,
+        30
+      ],
+      "columns": 4,
+      "frame_bounds": [
+        [
+          8,
+          7,
+          28,
+          30
+        ],
+        [
+          8,
+          3,
+          28,
+          30
+        ],
+        [
+          8,
+          8,
+          31,
+          30
+        ],
+        [
+          8,
+          8,
+          31,
+          30
+        ]
+      ],
+      "distinct_frames": 4,
+      "transparent_rows_below_object": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "fixed_silhouette": false
+    },
+    "public/env/pillar-s-idle.json": {
+      "bytes": 830,
+      "sha256": "5850576724907d65bd7da7a59b7cd9df4c1dc0e007b656b4e15dbe124176dfcb"
+    },
+    "public/env/pillar-s-idle.png": {
+      "size": [
+        48,
+        96
+      ],
+      "bytes": 1288,
+      "sha256": "7767b00e89c5990a44f2cff4aaadfa4fc0c3956cafa75d293c733bd721b3b991",
+      "colors_including_transparent": 11,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 1,
+      "frame_size": [
+        48,
+        96
+      ],
+      "fps": 1,
+      "loop": true,
+      "pivot": [
+        24,
+        92
+      ],
+      "columns": 1,
+      "frame_bounds": [
+        [
+          5,
+          9,
+          43,
+          93
+        ]
+      ],
+      "distinct_frames": 1,
+      "transparent_rows_below_object": [
+        3
+      ],
+      "fixed_silhouette": true,
+      "footprint_px": [
+        38,
+        23
+      ]
+    },
+    "public/env/pillar-l-idle.json": {
+      "bytes": 836,
+      "sha256": "975807b2d3b2576c4d54d91509d8e8d7c9114701d91fe798e4967b2ad3f9e6cc"
+    },
+    "public/env/pillar-l-idle.png": {
+      "size": [
+        64,
+        136
+      ],
+      "bytes": 2291,
+      "sha256": "1a0713794ab72bbfcc8aa2b84110ac0edd33c2acca8ad27304e0beb0090b3609",
+      "colors_including_transparent": 11,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "frames": 1,
+      "frame_size": [
+        64,
+        136
+      ],
+      "fps": 1,
+      "loop": true,
+      "pivot": [
+        32,
+        132
+      ],
+      "columns": 1,
+      "frame_bounds": [
+        [
+          4,
+          8,
+          61,
+          133
+        ]
+      ],
+      "distinct_frames": 1,
+      "transparent_rows_below_object": [
+        3
+      ],
+      "fixed_silhouette": true,
+      "footprint_px": [
+        57,
+        34
+      ]
+    },
+    "public/env/shadow-unit.png": {
+      "size": [
+        24,
+        8
+      ],
+      "bytes": 111,
+      "sha256": "dbaa5e0a3a3f4fb1f1466101c9c6ea44f0e56a18cc164c88c67a38a990490e11",
+      "colors_including_transparent": 2,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "opaque_rgb": "#000000"
+    },
+    "public/env/shadow-creep.png": {
+      "size": [
+        16,
+        6
+      ],
+      "bytes": 101,
+      "sha256": "61a2992508e3e53adfd568d4afb7692639921282db3d3d899eb2041e3814d3ef",
+      "colors_including_transparent": 2,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "binary_alpha": true,
+      "opaque_rgb": "#000000"
+    },
+    "tools/env/generate.py": {
+      "bytes": 48227,
+      "sha256": "068e3d55552161589470c3d497a5d2607e76bf182898a3fb3cf6cfef9e84cc2c"
+    },
+    "tools/env/preview.png": {
+      "bytes": 190412,
+      "sha256": "5d342a06abe6e823574b2bbdb27ba27458e57fb653679d85af4c9e189096338e",
+      "size": [
+        1200,
+        2922
+      ]
+    },
+    "tools/env/preview-scene.png": {
+      "bytes": 98304,
+      "sha256": "374aadb4a48fd8906f0b5205fb7d9bb8f5153a0c8ed9226e2e48c55504b40765",
+      "size": [
+        1770,
+        1074
+      ]
+    },
+    "public/env/NOTICE.md": {
+      "bytes": 5331,
+      "sha256": "49ef62b97f5db54b0f6919fc4dae1b67dd0983887cf8d63a4dc67ebda0eb2bbf"
+    }
+  },
+  "team_ground_difference": {
+    "different_pixels": 2328,
+    "outside_base_color_inlays": 0,
+    "same_layout_and_detail": true
+  },
+  "map_entity_point_symmetry": true,
+  "obsolete_files_absent": [
+    "ground.png",
+    "pillar-side.png",
+    "pillar-top.png",
+    "shadow.png"
+  ],
+  "creep_contact_boundary": "last opaque foot row is 29; pivot [16,30] is its geometric bottom boundary; 2 transparent rows",
+  "checks_passed": true
+}

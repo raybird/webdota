@@ -6,6 +6,7 @@ import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type { MapConfig, MapBlock, MapEntity, SpawnPoint, MaterialConfig } from './MapData';
 import { TextureGenerator } from '../../utils/TextureGenerator';
+import { PixelMapSkin } from './PixelMapSkin';
 
 export class MapManager {
     private app: pc.Application;
@@ -16,11 +17,17 @@ export class MapManager {
     private spawnPoints: SpawnPoint[] = [];
     private currentMapConfig: MapConfig | null = null;
     private textureGenerator: TextureGenerator;
+    /** 像素貼圖（第一次載入地圖時載入，之後沿用）；缺少的部分維持打光材質 */
+    private pixelSkin: PixelMapSkin;
+    private pixelSkinLoaded: Promise<void> | null = null;
+    /** 像素圖層（依視角建立，視角改變時重建） */
+    private pixelLayer: pc.Entity | null = null;
 
     constructor(app: pc.Application, physicsWorld: RAPIER.World) {
         this.app = app;
         this.physicsWorld = physicsWorld;
         this.textureGenerator = new TextureGenerator(app);
+        this.pixelSkin = new PixelMapSkin(app);
     }
 
     /**
@@ -31,6 +38,8 @@ export class MapManager {
 
         // 1. 清理當前地圖
         this.unloadCurrentMap();
+        this.pixelSkinLoaded ??= this.pixelSkin.load();
+        await this.pixelSkinLoaded;
 
         // 2. 儲存當前配置
         this.currentMapConfig = config;
@@ -57,7 +66,20 @@ export class MapManager {
         // 8. 解析邏輯實體
         this.parseEntities(config.entities);
 
+        // 9. 像素圖層（地面、牆、柱、投影）；遊戲開始確定本地隊伍後由 applyView() 依視角重建
+        this.applyView();
+
         console.log(`[MapManager] Map loaded: ${config.blocks.length} blocks, ${this.spawnPoints.length} spawn points`);
+    }
+
+    /**
+     * 依目前視角（view.ts）重建像素圖層：地面與貼圖方向、石柱朝向、投影方向都跟著視角
+     */
+    applyView(): void {
+        if (!this.currentMapEntity || !this.currentMapConfig) return;
+        this.pixelLayer?.destroy();
+        this.pixelLayer = this.pixelSkin.build(this.currentMapConfig);
+        this.currentMapEntity.addChild(this.pixelLayer);
     }
 
     /**
@@ -68,6 +90,7 @@ export class MapManager {
         if (this.currentMapEntity) {
             this.currentMapEntity.destroy();
             this.currentMapEntity = null;
+            this.pixelLayer = null;
         }
 
         // 移除物理碰撞體
@@ -150,6 +173,22 @@ export class MapManager {
      * 建立地板
      */
     private createGround(config: MapConfig, parent: pc.Entity): void {
+        // 有烘焙地面時由像素圖層繪製
+        if (!this.pixelSkin.hasGround) this.createLitGround(config, parent);
+
+        // 地板碰撞體
+        const groundColliderDesc = RAPIER.ColliderDesc.cuboid(
+            config.size.w / 2,
+            0.05,
+            config.size.h / 2
+        );
+        groundColliderDesc.setTranslation(0, -0.05, 0);
+        const groundCollider = this.physicsWorld.createCollider(groundColliderDesc);
+        this.mapColliders.push(groundCollider);
+    }
+
+    /** 沒有像素地面時的單色打光地板 */
+    private createLitGround(config: MapConfig, parent: pc.Entity): void {
         const groundEntity = new pc.Entity('Ground');
         groundEntity.addComponent('render', { type: 'box' });
         groundEntity.setLocalScale(config.size.w, 0.1, config.size.h);
@@ -168,22 +207,20 @@ export class MapManager {
         }
 
         parent.addChild(groundEntity);
-
-        // 地板碰撞體
-        const groundColliderDesc = RAPIER.ColliderDesc.cuboid(
-            config.size.w / 2,
-            0.05,
-            config.size.h / 2
-        );
-        groundColliderDesc.setTranslation(0, -0.05, 0);
-        const groundCollider = this.physicsWorld.createCollider(groundColliderDesc);
-        this.mapColliders.push(groundCollider);
     }
 
     /**
      * 建立單個積木
      */
     private createBlock(block: MapBlock, parent: pc.Entity): void {
+        // 物理碰撞體 (預設開啟)
+        if (block.isCollider !== false) {
+            this.createBlockCollider(block);
+        }
+
+        // 有像素素材的積木由像素圖層繪製
+        if (this.pixelSkin.handles(block)) return;
+
         const entity = new pc.Entity(block.id || `Block_${block.type}`);
 
         // 視覺組件
@@ -222,12 +259,6 @@ export class MapManager {
         }
 
         parent.addChild(entity);
-
-        // 物理碰撞體 (預設開啟)
-        const isCollider = block.isCollider !== false;
-        if (isCollider) {
-            this.createBlockCollider(block);
-        }
     }
 
     /**

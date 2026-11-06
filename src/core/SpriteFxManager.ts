@@ -94,7 +94,7 @@ export class SpriteFxManager {
         if (this.sheets.has(name) || this.loading.has(name)) return;
         this.loading.add(name);
         try {
-            this.sheets.set(name, await loadPixelSheet(this.app.graphicsDevice, FX_BASE_URL, name));
+            this.sheets.set(name, await loadPixelSheet(this.app.graphicsDevice, `${FX_BASE_URL}${name}`));
         } catch (error) {
             console.warn(`[SpriteFx] Failed to load ${name}`, error);
         } finally {

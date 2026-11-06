@@ -1,0 +1,127 @@
+{
+ "frames": [
+  {
+   "filename": "base-blue-idle 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 176
+   },
+   "duration": 167
+  },
+  {
+   "filename": "base-blue-idle 1",
+   "frame": {
+    "x": 128,
+    "y": 0,
+    "w": 128,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 176
+   },
+   "duration": 167
+  },
+  {
+   "filename": "base-blue-idle 2",
+   "frame": {
+    "x": 256,
+    "y": 0,
+    "w": 128,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 176
+   },
+   "duration": 167
+  },
+  {
+   "filename": "base-blue-idle 3",
+   "frame": {
+    "x": 384,
+    "y": 0,
+    "w": 128,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 176
+   },
+   "duration": 167
+  }
+ ],
+ "meta": {
+  "app": "webdota/tools/env/generate.py",
+  "version": "2",
+  "image": "base-blue-idle.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 512,
+   "h": 176
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "idle",
+    "from": 0,
+    "to": 3,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "env/base-blue-idle",
+   "name": "base blue idle",
+   "fps": 6,
+   "loop": true,
+   "frames": 4,
+   "frameSize": [
+    128,
+    176
+   ],
+   "pivot": [
+    64,
+    172
+   ],
+   "columns": 4
+  }
+ }
+}

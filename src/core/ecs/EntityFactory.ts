@@ -21,7 +21,7 @@ import { AnimationComponent } from './components/AnimationComponent';
 import { InventoryComponent } from './components/InventoryComponent';
 import { StatusComponent } from './components/StatusComponent';
 import { CollisionSystem } from './systems/CollisionSystem';
-import type { CharacterSpriteManager } from '../CharacterSpriteManager';
+import { actorSetOfCreep, actorSetOfStructure, type PixelActorManager } from '../PixelActorManager';
 import { MaterialCache } from './MaterialCache';
 import { ObjectPool } from '../../utils/ObjectPool';
 import { getSkill } from '../../data/skills';
@@ -89,8 +89,10 @@ export class EntityFactory {
     private physicsWorld: RAPIER.World;
     private world: World;
     private collisionSystem: CollisionSystem | null = null;
-    /** 有載入角色像素圖時，玩家改用像素圖而不是方塊模型 */
-    private characterSprites: CharacterSpriteManager | null = null;
+    /** 有載入像素圖的單位（玩家、防禦塔、主堡、小兵）改用像素圖而不是方塊模型 */
+    private pixelActors: PixelActorManager | null = null;
+    /** 銷毀視覺物件前釋放掛在上面的像素圖 */
+    private readonly detachActor = (pcEntity: pc.Entity) => this.pixelActors?.detach(pcEntity);
 
     /** 小兵視覺物件池：Map<Team, ObjectPool<pc.Entity>> */
     private creepVisualPools: Map<Team, ObjectPool<pc.Entity>> = new Map();
@@ -104,10 +106,15 @@ export class EntityFactory {
         (['red', 'blue'] as Team[]).forEach(team => {
             this.creepVisualPools.set(team, new ObjectPool<pc.Entity>(
                 () => {
+                    // 外層不縮放，讓掛在底下的像素圖維持原始比例；實體原點在地面上 1 單位
                     const entity = new pc.Entity(`Creep_${team}`);
-                    entity.addComponent('render', { type: 'box' });
-                    entity.setLocalScale(0.6, 0.8, 0.6);
-                    this.applyMaterial(entity, team === 'red' ? new pc.Color(1, 0.3, 0.3) : new pc.Color(0.3, 0.3, 1));
+                    if (!this.pixelActors?.attach(entity, actorSetOfCreep(team), -1)) {
+                        const body = new pc.Entity('Body');
+                        body.addComponent('render', { type: 'box' });
+                        body.setLocalScale(0.6, 0.8, 0.6);
+                        this.applyMaterial(body, team === 'red' ? new pc.Color(1, 0.3, 0.3) : new pc.Color(0.3, 0.3, 1));
+                        entity.addChild(body);
+                    }
                     return entity;
                 },
                 (entity) => {
@@ -196,7 +203,7 @@ export class EntityFactory {
 
         // Render (建立視覺模型)
         const pcEntity = this.createPlayerVisual(config.position, config.color, config.characterId);
-        this.world.addComponent(entityId, new RenderComponent(pcEntity));
+        this.world.addComponent(entityId, new RenderComponent(pcEntity, null, this.detachActor));
 
         console.log(`[EntityFactory] Created player ${config.playerId} (${entityId.substring(0, 8)}) team=${config.team}`);
 
@@ -310,7 +317,7 @@ export class EntityFactory {
 
         // Render
         const pcEntity = this.createTowerVisual(config.position, config.team);
-        this.world.addComponent(entityId, new RenderComponent(pcEntity));
+        this.world.addComponent(entityId, new RenderComponent(pcEntity, null, this.detachActor));
 
         console.log(`[EntityFactory] Created tower (${entityId.substring(0, 8)}) team=${config.team}`);
 
@@ -361,7 +368,7 @@ export class EntityFactory {
 
         // Render
         const pcEntity = this.createBaseVisual(config.position, config.team);
-        this.world.addComponent(entityId, new RenderComponent(pcEntity));
+        this.world.addComponent(entityId, new RenderComponent(pcEntity, null, this.detachActor));
 
         console.log(`[EntityFactory] Created base (${entityId.substring(0, 8)}) team=${config.team}`);
 
@@ -426,15 +433,15 @@ export class EntityFactory {
 
     // ==================== 私有方法：視覺建立 ====================
 
-    setCharacterSprites(characterSprites: CharacterSpriteManager): void {
-        this.characterSprites = characterSprites;
+    setPixelActors(pixelActors: PixelActorManager): void {
+        this.pixelActors = pixelActors;
     }
 
     private createPlayerVisual(position: { x: number; y: number; z: number }, color: pc.Color, characterId: string): pc.Entity {
         const entity = new pc.Entity('Player');
         entity.setPosition(position.x, position.y, position.z);
 
-        if (this.characterSprites?.has(characterId)) {
+        if (this.pixelActors?.has(characterId)) {
             // 腳下的隊伍色圓環（像素圖本身是角色配色，靠圓環分辨敵我）；實體原點在地面上 1 單位
             const ring = new pc.Entity('TeamRing');
             ring.addComponent('render', { type: 'cylinder', castShadows: false });
@@ -444,7 +451,7 @@ export class EntityFactory {
             this.applyMaterial(ring, color);
             entity.addChild(ring);
             this.app.root.addChild(entity);
-            this.characterSprites.attach(entity, characterId);
+            this.pixelActors.attach(entity, characterId, -1);
             return entity;
         }
 
@@ -494,9 +501,17 @@ export class EntityFactory {
         return entity;
     }
 
+    /** 防禦塔與主堡的原點在地面上 */
+    private attachStructureActor(entity: pc.Entity, kind: 'tower' | 'base', team: Team): boolean {
+        if (!this.pixelActors?.attach(entity, actorSetOfStructure(kind, team), 0)) return false;
+        this.app.root.addChild(entity);
+        return true;
+    }
+
     private createTowerVisual(position: { x: number; y: number; z: number }, team: Team): pc.Entity {
         const entity = new pc.Entity('Tower');
         entity.setPosition(position.x, position.y, position.z);
+        if (this.attachStructureActor(entity, 'tower', team)) return entity;
 
         // 底座
         const base = new pc.Entity('Base');
@@ -529,6 +544,7 @@ export class EntityFactory {
     private createBaseVisual(position: { x: number; y: number; z: number }, team: Team): pc.Entity {
         const entity = new pc.Entity('Base');
         entity.setPosition(position.x, position.y, position.z);
+        if (this.attachStructureActor(entity, 'base', team)) return entity;
 
         // 主堡底座
         const base = new pc.Entity('Base_Bottom');
