@@ -228,6 +228,7 @@ export class ECSPlayerManager {
                 // Client：Host 已讓玩家重生
                 this.respawnTimers.delete(playerId);
                 this.setAlive(entityId, true);
+                eventBus.emit({ type: 'PLAYER_RESPAWNED', entityId });
                 continue;
             }
 
@@ -256,6 +257,7 @@ export class ECSPlayerManager {
         rb?.setTranslation(position, true);
         rb?.setNextKinematicTranslation(position);
         this.setAlive(entityId, true);
+        eventBus.emit({ type: 'PLAYER_RESPAWNED', entityId });
     }
 
     private setAlive(entityId: EntityId, alive: boolean): void {

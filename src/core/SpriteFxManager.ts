@@ -1,0 +1,241 @@
+/**
+ * SpriteFxManager - 像素連續圖特效（來源：pixelfx 輸出的 sprite sheet，見 public/fx/NOTICE.md）
+ *
+ * 每個特效是一張連續圖 PNG 加 Aseprite 風格的 JSON。播放時用面向鏡頭的平面，
+ * 依 fps 切換貼圖的 UV 偏移逐格播放；平面與材質以特效名稱分池重複使用。
+ */
+
+import * as pc from 'playcanvas';
+
+/** pixelfx --sheet 輸出的 JSON（只列用到的欄位） */
+interface SheetJson {
+    frames: { frame: { x: number; y: number; w: number; h: number } }[];
+    meta: {
+        image: string;
+        size: { w: number; h: number };
+        pixelfx: { fps: number; loop: boolean; frameSize: [number, number]; pivot: [number, number] };
+    };
+}
+
+interface SheetData {
+    texture: pc.Texture;
+    json: SheetJson;
+}
+
+export type SpriteFxName = 'fireball-impact' | 'hit-spark' | 'respawn-beam' | 'death-poof';
+
+/**
+ * 每個世界單位對應的素材像素數
+ * pixelfx 的效果以 38px 高的角色為基準設計，這裡的角色約 2 單位高、在畫面上約 40px，
+ * 所以用 19 就維持原作的比例，也大約是 1 素材像素對 1 螢幕像素（更小會讓細線被濾掉）
+ */
+const PX_PER_UNIT = 19;
+
+const FX_NAMES: SpriteFxName[] = ['fireball-impact', 'hit-spark', 'respawn-beam', 'death-poof'];
+
+const FX_BASE_URL = '/fx/';
+
+/** 播放位置往鏡頭方向移的距離，避免被目標自己的模型或地面擋住 */
+const TOWARD_CAMERA = 1.2;
+
+interface ActiveFx {
+    name: SpriteFxName;
+    /** 對齊鏡頭的外層，位置在特效原點 */
+    root: pc.Entity;
+    /** 特效原點的世界座標 */
+    origin: pc.Vec3;
+    /** 平面，依 pivot 偏移 */
+    quad: pc.Entity;
+    material: pc.StandardMaterial;
+    time: number;
+    frameIndex: number;
+}
+
+export class SpriteFxManager {
+    private app: pc.Application;
+    private camera: pc.Entity | null = null;
+    private sheets: Map<SpriteFxName, SheetData> = new Map();
+    private loading: Set<SpriteFxName> = new Set();
+    private active: ActiveFx[] = [];
+    private pools: Map<SpriteFxName, ActiveFx[]> = new Map();
+
+    constructor(app: pc.Application) {
+        this.app = app;
+    }
+
+    setCamera(camera: pc.Entity): void {
+        this.camera = camera;
+    }
+
+    /**
+     * 預先載入所有特效；載入失敗的特效之後播放時直接略過
+     */
+    preload(): void {
+        for (const name of FX_NAMES) void this.load(name);
+    }
+
+    private async load(name: SpriteFxName): Promise<void> {
+        if (this.sheets.has(name) || this.loading.has(name)) return;
+        this.loading.add(name);
+        try {
+            const json = await fetch(`${FX_BASE_URL}${name}.json`).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json() as Promise<SheetJson>;
+            });
+            const image = new Image();
+            image.src = `${FX_BASE_URL}${json.meta.image}`;
+            await image.decode();
+
+            const texture = new pc.Texture(this.app.graphicsDevice, {
+                width: image.width,
+                height: image.height,
+                format: pc.PIXELFORMAT_RGBA8,
+                // 放大保持像素銳利；縮小（小螢幕）用 mipmap 平均，避免 1 像素細線消失
+                mipmaps: true,
+                minFilter: pc.FILTER_LINEAR_MIPMAP_LINEAR,
+                magFilter: pc.FILTER_NEAREST,
+                addressU: pc.ADDRESS_CLAMP_TO_EDGE,
+                addressV: pc.ADDRESS_CLAMP_TO_EDGE,
+                name: `fx-${name}`
+            });
+            texture.setSource(image);
+            this.sheets.set(name, { texture, json });
+        } catch (error) {
+            console.warn(`[SpriteFx] Failed to load ${name}`, error);
+        } finally {
+            this.loading.delete(name);
+        }
+    }
+
+    /**
+     * 在世界座標播放一次特效；尚未載入完成時略過
+     */
+    play(name: SpriteFxName, position: { x: number; y: number; z: number }, scale: number = 1): void {
+        const sheet = this.sheets.get(name);
+        if (!sheet) return;
+
+        const fx = this.pools.get(name)?.pop() ?? this.create(name, sheet);
+        const { frameSize, pivot } = sheet.json.meta.pixelfx;
+        const unit = scale / PX_PER_UNIT;
+
+        fx.origin.set(position.x, position.y, position.z);
+        this.placeFacingCamera(fx);
+        fx.quad.setLocalScale(frameSize[0] * unit, 1, frameSize[1] * unit);
+        // 平面中心相對特效原點的偏移（像素 y 向下，世界 y 向上）
+        fx.quad.setLocalPosition((frameSize[0] / 2 - pivot[0]) * unit, (pivot[1] - frameSize[1] / 2) * unit, 0);
+        fx.time = 0;
+        fx.frameIndex = -1;
+        fx.root.enabled = true;
+        this.setFrame(fx, sheet, 0);
+        this.active.push(fx);
+    }
+
+    private create(name: SpriteFxName, sheet: SheetData): ActiveFx {
+        const material = new pc.StandardMaterial();
+        material.useLighting = false;
+        material.useSkybox = false;
+        material.useFog = false;
+        material.diffuse = new pc.Color(0, 0, 0);
+        material.emissive = new pc.Color(1, 1, 1);
+        material.emissiveMap = sheet.texture;
+        material.opacityMap = sheet.texture;
+        material.opacityMapChannel = 'a';
+        material.blendType = pc.BLEND_NORMAL;
+        material.depthWrite = false;
+        material.cull = pc.CULLFACE_NONE;
+        material.update();
+
+        const root = new pc.Entity(`SpriteFx-${name}`);
+        const quad = new pc.Entity('Quad');
+        // plane 的法線是 +Y，轉到 +Z 面向鏡頭
+        quad.setLocalEulerAngles(90, 0, 0);
+        quad.addComponent('render', { type: 'plane', material, castShadows: false, receiveShadows: false });
+        root.addChild(quad);
+        this.app.root.addChild(root);
+
+        return { name, root, origin: new pc.Vec3(), quad, material, time: 0, frameIndex: -1 };
+    }
+
+    private setFrame(fx: ActiveFx, sheet: SheetData, index: number): void {
+        if (fx.frameIndex === index) return;
+        fx.frameIndex = index;
+
+        const rect = sheet.json.frames[index]?.frame;
+        if (!rect) return;
+        const { w: sheetW, h: sheetH } = sheet.json.meta.size;
+        const tiling = new pc.Vec2(rect.w / sheetW, rect.h / sheetH);
+        // UV 原點在左下，圖片的列從上往下數
+        const offset = new pc.Vec2(rect.x / sheetW, 1 - (rect.y + rect.h) / sheetH);
+
+        fx.material.emissiveMapTiling = tiling;
+        fx.material.emissiveMapOffset = offset;
+        fx.material.opacityMapTiling = tiling;
+        fx.material.opacityMapOffset = offset;
+        fx.material.update();
+    }
+
+    /**
+     * 每個畫面幀更新：對齊鏡頭、推進格數、回收播完的特效
+     */
+    update(dt: number): void {
+        if (this.active.length === 0) return;
+
+        for (let i = this.active.length - 1; i >= 0; i--) {
+            const fx = this.active[i]!;
+            const sheet = this.sheets.get(fx.name)!;
+            const { fps, loop } = sheet.json.meta.pixelfx;
+            const count = sheet.json.frames.length;
+
+            fx.time += dt;
+            let index = Math.floor(fx.time * fps);
+            if (index >= count) {
+                if (!loop) {
+                    this.release(i);
+                    continue;
+                }
+                index %= count;
+            }
+
+            this.placeFacingCamera(fx);
+            this.setFrame(fx, sheet, index);
+        }
+    }
+
+    /**
+     * 平面與鏡頭同向（spherical billboard），並往鏡頭方向移一點
+     */
+    private placeFacingCamera(fx: ActiveFx): void {
+        if (!this.camera) {
+            fx.root.setPosition(fx.origin);
+            return;
+        }
+        const back = this.camera.forward;
+        fx.root.setPosition(
+            fx.origin.x - back.x * TOWARD_CAMERA,
+            fx.origin.y - back.y * TOWARD_CAMERA,
+            fx.origin.z - back.z * TOWARD_CAMERA
+        );
+        fx.root.setRotation(this.camera.getRotation());
+    }
+
+    private release(activeIndex: number): void {
+        const fx = this.active[activeIndex]!;
+        this.active.splice(activeIndex, 1);
+        fx.root.enabled = false;
+
+        let pool = this.pools.get(fx.name);
+        if (!pool) this.pools.set(fx.name, (pool = []));
+        pool.push(fx);
+    }
+
+    destroy(): void {
+        for (const fx of [...this.active, ...[...this.pools.values()].flat()]) {
+            fx.root.destroy();
+            fx.material.destroy();
+        }
+        this.active = [];
+        this.pools.clear();
+        for (const { texture } of this.sheets.values()) texture.destroy();
+        this.sheets.clear();
+    }
+}

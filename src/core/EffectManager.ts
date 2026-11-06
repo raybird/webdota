@@ -1,5 +1,6 @@
 import * as pc from 'playcanvas';
 import { ObjectPool } from '../utils/ObjectPool';
+import type { SpriteFxManager } from './SpriteFxManager';
 
 /**
  * 特效管理器
@@ -14,8 +15,12 @@ export class EffectManager {
     // 特效物件池
     private pools: Map<string, ObjectPool<pc.Entity>> = new Map();
 
-    constructor(app: pc.Application) {
+    /** 像素連續圖特效；有的話火球命中改用連續圖 */
+    private spriteFx: SpriteFxManager | null;
+
+    constructor(app: pc.Application, spriteFx: SpriteFxManager | null = null) {
         this.app = app;
+        this.spriteFx = spriteFx;
         this.initMaterials();
         this.initPools();
     }
@@ -480,7 +485,12 @@ export class EffectManager {
         const update = (dt: number) => {
             timer += dt;
             if (timer >= duration) {
-                this.createExplosionEffect(entity.getPosition(), 2.0);
+                const end = entity.getPosition();
+                if (this.spriteFx) {
+                    this.spriteFx.play('fireball-impact', { x: end.x, y: 1, z: end.z });
+                } else {
+                    this.createExplosionEffect(end, 2.0);
+                }
                 entity.destroy();
                 this.app.off('update', update);
                 return;

@@ -1,0 +1,799 @@
+{
+ "frames": [
+  {
+   "filename": "respawn-beam 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 1",
+   "frame": {
+    "x": 128,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 2",
+   "frame": {
+    "x": 256,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 3",
+   "frame": {
+    "x": 384,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 4",
+   "frame": {
+    "x": 512,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 5",
+   "frame": {
+    "x": 640,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 6",
+   "frame": {
+    "x": 768,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 7",
+   "frame": {
+    "x": 0,
+    "y": 150,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 8",
+   "frame": {
+    "x": 128,
+    "y": 150,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 9",
+   "frame": {
+    "x": 256,
+    "y": 150,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 10",
+   "frame": {
+    "x": 384,
+    "y": 150,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 11",
+   "frame": {
+    "x": 512,
+    "y": 150,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 12",
+   "frame": {
+    "x": 640,
+    "y": 150,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 13",
+   "frame": {
+    "x": 768,
+    "y": 150,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 14",
+   "frame": {
+    "x": 0,
+    "y": 300,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 15",
+   "frame": {
+    "x": 128,
+    "y": 300,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 16",
+   "frame": {
+    "x": 256,
+    "y": 300,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 17",
+   "frame": {
+    "x": 384,
+    "y": 300,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 18",
+   "frame": {
+    "x": 512,
+    "y": 300,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 19",
+   "frame": {
+    "x": 640,
+    "y": 300,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 20",
+   "frame": {
+    "x": 768,
+    "y": 300,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 21",
+   "frame": {
+    "x": 0,
+    "y": 450,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 22",
+   "frame": {
+    "x": 128,
+    "y": 450,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 23",
+   "frame": {
+    "x": 256,
+    "y": 450,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 24",
+   "frame": {
+    "x": 384,
+    "y": 450,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 25",
+   "frame": {
+    "x": 512,
+    "y": 450,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 26",
+   "frame": {
+    "x": 640,
+    "y": 450,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 27",
+   "frame": {
+    "x": 768,
+    "y": 450,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 28",
+   "frame": {
+    "x": 0,
+    "y": 600,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 29",
+   "frame": {
+    "x": 128,
+    "y": 600,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  },
+  {
+   "filename": "respawn-beam 30",
+   "frame": {
+    "x": 256,
+    "y": 600,
+    "w": 128,
+    "h": 150
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 150
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 150
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "https://github.com/patch-gg/pixelfx",
+  "version": "1",
+  "image": "respawn-beam.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 896,
+   "h": 750
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "respawn-beam",
+    "from": 0,
+    "to": 30,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "spawn/respawn-beam",
+   "name": "Respawn beam",
+   "fps": 12,
+   "loop": false,
+   "frames": 31,
+   "frameSize": [
+    128,
+    150
+   ],
+   "pivot": [
+    64,
+    136
+   ],
+   "columns": 7,
+   "act": {
+    "windup": 0,
+    "recovery": 0,
+    "onBody": true,
+    "targets": [],
+    "hits": [],
+    "poses": [
+     {
+      "t": 0,
+      "how": "smooth",
+      "pose": {
+       "turn": 1,
+       "crouch": 4,
+       "fx": -9,
+       "fy": -14,
+       "bx": 10,
+       "by": -14,
+       "ffx": -3,
+       "fbx": 4
+      }
+     },
+     {
+      "t": 1.4,
+      "how": "smooth",
+      "pose": {
+       "turn": 1,
+       "crouch": 4,
+       "fx": -9,
+       "fy": -14,
+       "bx": 10,
+       "by": -14,
+       "ffx": -3,
+       "fbx": 4
+      }
+     },
+     {
+      "t": 1.72,
+      "how": "smooth",
+      "pose": {
+       "turn": 1.15,
+       "crouch": -1,
+       "fx": -13,
+       "fy": -36,
+       "bx": 14,
+       "by": -36,
+       "hy": -1,
+       "ffx": -3,
+       "fbx": 4
+      }
+     },
+     {
+      "t": 2.1,
+      "how": "smooth",
+      "pose": {
+       "crouch": 3,
+       "fx": 11,
+       "fy": -21,
+       "bx": 9,
+       "by": -21,
+       "ffx": 7,
+       "fbx": -7
+      }
+     },
+     {
+      "t": 2.5,
+      "how": "smooth",
+      "pose": {
+       "crouch": 3,
+       "fx": 11,
+       "fy": -21,
+       "bx": 9,
+       "by": -21,
+       "ffx": 7,
+       "fbx": -7
+      }
+     }
+    ]
+   }
+  }
+ }
+}

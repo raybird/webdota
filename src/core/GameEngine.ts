@@ -7,6 +7,7 @@ import { ECSPlayerManager } from './managers/ECSPlayerManager';
 import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
+import { SpriteFxManager, type SpriteFxName } from './SpriteFxManager';
 import { ECSStructureManager, type StructureKind } from './managers/ECSStructureManager';
 import { ECSCreepManager } from './managers/ECSCreepManager';
 import { EntitySyncManager } from './managers/EntitySyncManager';
@@ -33,6 +34,7 @@ import {
     ComponentType,
     TeamComponent,
     TransformComponent,
+    PhysicsComponent,
     colliderRegistry,
     type EntityId,
     type Team,
@@ -89,6 +91,7 @@ export class GameEngine {
     creepManager!: ECSCreepManager;
     entitySync!: EntitySyncManager;
     soundManager!: SoundManager;
+    spriteFx!: SpriteFxManager;
 
     // ECS
     ecsWorld!: World;
@@ -150,7 +153,10 @@ export class GameEngine {
         this.inputManager = new InputManager();
         this.renderManager = new RenderManager(this.app);
         this.renderManager.setCamera(camera);
-        this.effectManager = new EffectManager(this.app);
+        this.spriteFx = new SpriteFxManager(this.app);
+        this.spriteFx.setCamera(camera);
+        this.spriteFx.preload();
+        this.effectManager = new EffectManager(this.app, this.spriteFx);
         this.projectileManager = new ProjectileManager(this.app);
         this.soundManager = new SoundManager(this.app);
 
@@ -234,7 +240,10 @@ export class GameEngine {
             eventBus.on('SKILL_USED', (event) => this.useSkill(event.skillId)),
             eventBus.on('ENTITY_DIED', (event) => {
                 if (this.isHost) this.awardKillGold(event.entityId, event.killerId);
+                this.playSpriteFxAt('death-poof', event.entityId, 0);
             }),
+            eventBus.on('ENTITY_TOOK_DAMAGE', (event) => this.playSpriteFxAt('hit-spark', event.targetId, 1)),
+            eventBus.on('PLAYER_RESPAWNED', (event) => this.playSpriteFxAt('respawn-beam', event.entityId, 0)),
             eventBus.on('GAME_OVER', (event) => {
                 this.soundManager.playGameOverSound();
                 // 主堡死亡只在 Host 判定，再通知 Client
@@ -303,11 +312,11 @@ export class GameEngine {
                 const isLocal = pData.id === this.networkManager.peerId;
                 const pos = rb.translation();
                 const drift = Math.hypot(pos.x - pData.pos.x, pos.z - pData.pos.z);
-                if (!isLocal) {
+                if (!isLocal && !this.playerManager.isDead(pData.id)) {
                     rb.setNextKinematicTranslation(pData.pos);
                     rb.setNextKinematicRotation(pData.rot);
-                } else if (drift > RECONCILE_DISTANCE) {
-                    // 直接瞬移（擊退、重生），不經過插值
+                } else if (!isLocal || drift > RECONCILE_DISTANCE) {
+                    // 直接瞬移（擊退、陣亡中的玩家重生），不經過插值
                     rb.setTranslation(pData.pos, true);
                     rb.setNextKinematicTranslation(pData.pos);
                 }
@@ -323,6 +332,7 @@ export class GameEngine {
         this.lastFrameTime = performance.now();
         this.simulate();
         this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
+        this.spriteFx.update(dt);
     }
 
     /**
@@ -460,6 +470,17 @@ export class GameEngine {
 
         inventory.earnGold(reward);
         this.commitInventory(killerPlayerId);
+    }
+
+    /**
+     * 在實體位置播放像素特效；y 為離地高度（0 為地面）
+     */
+    private playSpriteFxAt(name: SpriteFxName, entityId: EntityId, y: number): void {
+        // 剛體位置比 Transform 新（重生瞬移後 Transform 要等下一次 ECS 更新才同步）
+        const pos = this.ecsWorld.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS)?.getPosition()
+            ?? this.ecsWorld.getComponent<TransformComponent>(entityId, ComponentType.TRANSFORM)?.position;
+        if (!pos) return;
+        this.spriteFx.play(name, { x: pos.x, y, z: pos.z });
     }
 
     /**
@@ -623,6 +644,7 @@ export class GameEngine {
         this.inputManager.destroy();
         this.renderManager.destroy();
         this.soundManager.destroy();
+        this.spriteFx.destroy();
         this.projectileManager.clearAll();
         this.ecsWorld.clear();
         colliderRegistry.clear();
