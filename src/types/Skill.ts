@@ -36,6 +36,7 @@ export interface Skill {
 
     // 延遲技能
     delay?: number;             // 傷害延遲（秒）
+    targetDistance?: number;    // 延遲判定中心在施法者前方的距離（預設 3）
 
     // 多段攻擊
     multiHit?: number;          // 多次打擊次數

@@ -6,6 +6,7 @@ import type { TransformComponent } from '../ecs/components/TransformComponent';
 import type { HealthComponent } from '../ecs/components/HealthComponent';
 import type { TeamComponent, Team } from '../ecs/components/TeamComponent';
 import type { Skill } from '../../types/Skill';
+import type { SpriteFxHandle, SpriteFxManager } from '../SpriteFxManager';
 
 /** 投射物碰撞半徑 + 實體半徑 */
 const HIT_DISTANCE = 0.8 + 0.5;
@@ -19,7 +20,8 @@ interface Projectile {
     speed: number;
     maxRange: number;
     traveledDistance: number;
-    entity: pc.Entity;
+    /** 飛行中的像素火球；素材還沒載入完成時為 null */
+    visual: SpriteFxHandle | null;
 }
 
 /**
@@ -27,14 +29,11 @@ interface Projectile {
  * 負責管理所有活躍投射物的移動、碰撞檢測和生命週期
  */
 export class ProjectileManager {
-    private app: pc.Application;
+    private fx: SpriteFxManager;
     private projectiles: Projectile[] = [];
 
-    /** 材質快取 (使用顏色作為 key) */
-    private materialCache: Map<string, pc.StandardMaterial> = new Map();
-
-    constructor(app: pc.Application) {
-        this.app = app;
+    constructor(fx: SpriteFxManager) {
+        this.fx = fx;
     }
 
     createProjectile(ownerId: string, team: Team, skill: Skill, startPosition: pc.Vec3, direction: pc.Vec3): void {
@@ -47,41 +46,8 @@ export class ProjectileManager {
             speed: skill.projectileSpeed || 15,
             maxRange: skill.range || 10,
             traveledDistance: 0,
-            entity: this.createVisualEntity(skill, startPosition)
+            visual: this.fx.play('fireball', startPosition, { direction })
         });
-    }
-
-    private createVisualEntity(skill: Skill, position: pc.Vec3): pc.Entity {
-        const entity = new pc.Entity(`Projectile_${skill.id}`);
-
-        const color = skill.id.includes('ice') || skill.id.includes('frost')
-            ? new pc.Color(0.5, 0.8, 1)  // 冰藍色
-            : new pc.Color(1, 0.4, 0);   // 火球橙色
-
-        entity.addComponent('render', {
-            type: 'sphere',
-            material: this.getGlowMaterial(color)
-        });
-        entity.setLocalScale(0.3, 0.3, 0.3);
-        entity.setPosition(position);
-
-        this.app.root.addChild(entity);
-        return entity;
-    }
-
-    private getGlowMaterial(color: pc.Color): pc.StandardMaterial {
-        const colorKey = `${color.r.toFixed(2)}_${color.g.toFixed(2)}_${color.b.toFixed(2)}`;
-        let material = this.materialCache.get(colorKey);
-        if (!material) {
-            material = new pc.StandardMaterial();
-            material.diffuse = color;
-            material.emissive = color;
-            material.emissiveIntensity = 2;
-            material.useLighting = false;
-            material.update();
-            this.materialCache.set(colorKey, material);
-        }
-        return material;
     }
 
     /**
@@ -98,20 +64,20 @@ export class ProjectileManager {
             proj.position.y += proj.direction.y * moveDistance;
             proj.position.z += proj.direction.z * moveDistance;
             proj.traveledDistance += moveDistance;
-            proj.entity.setPosition(proj.position);
+            proj.visual?.moveTo(proj.position);
 
             if (proj.traveledDistance >= proj.maxRange) {
                 // 到達最大距離：有 AOE 的技能在終點爆炸
                 if (proj.skill.aoe && proj.skill.aoe > 0) {
                     this.explode(proj, collisionSystem, proj.skill.aoe, 0.2);
                 }
-                proj.entity.destroy();
+                this.finish(proj);
                 return false;
             }
 
             if (this.hitsEnemy(proj, world, targets)) {
                 this.explode(proj, collisionSystem, proj.skill.aoe || 1.0, 0.1);
-                proj.entity.destroy();
+                this.finish(proj);
                 return false;
             }
 
@@ -148,8 +114,14 @@ export class ProjectileManager {
         );
     }
 
+    /** 收掉飛行特效，在投射物停下的位置播放命中爆炸 */
+    private finish(proj: Projectile): void {
+        proj.visual?.stop();
+        this.fx.play('fireball-impact', proj.position);
+    }
+
     clearAll(): void {
-        this.projectiles.forEach(proj => proj.entity.destroy());
+        this.projectiles.forEach(proj => proj.visual?.stop());
         this.projectiles = [];
     }
 }

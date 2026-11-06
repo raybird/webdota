@@ -57,11 +57,7 @@ export class ECSSkillExecutor {
         }
 
         // 1. 播放特效
-        effectManager.playSkillEffect(
-            skill.id,
-            new pc.Vec3(casterPos.x, casterPos.y, casterPos.z),
-            direction
-        );
+        effectManager.playSkillEffect(skill, casterPos, direction, () => physics.getPosition());
 
         // 2. 處理位移技能
         if (skill.dashDistance && skill.dashDistance > 0) {
@@ -118,8 +114,9 @@ export class ECSSkillExecutor {
         team: 'red' | 'blue' | 'neutral'
     ): void {
         const delay = skill.delay || 1.0;
-        const targetX = origin.x + direction.x * 3.0;
-        const targetZ = origin.z + direction.z * (skill.id === 'mage_r' ? 7.0 : 3.0);
+        const distance = skill.targetDistance ?? 3.0;
+        const targetX = origin.x + direction.x * distance;
+        const targetZ = origin.z + direction.z * distance;
 
         this.collisionSystem.scheduleHitbox(
             delay,

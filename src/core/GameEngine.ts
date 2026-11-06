@@ -158,8 +158,8 @@ export class GameEngine {
         this.spriteFx = new SpriteFxManager(this.app);
         this.spriteFx.setCamera(camera);
         this.spriteFx.preload();
-        this.effectManager = new EffectManager(this.app, this.spriteFx);
-        this.projectileManager = new ProjectileManager(this.app);
+        this.effectManager = new EffectManager(this.spriteFx);
+        this.projectileManager = new ProjectileManager(this.spriteFx);
         this.soundManager = new SoundManager(this.app);
 
         this.ecsWorld = new World();

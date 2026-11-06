@@ -1,0 +1,401 @@
+{
+ "frames": [
+  {
+   "filename": "dash-thrust 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 1",
+   "frame": {
+    "x": 142,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 2",
+   "frame": {
+    "x": 0,
+    "y": 74,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 3",
+   "frame": {
+    "x": 142,
+    "y": 74,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 4",
+   "frame": {
+    "x": 0,
+    "y": 148,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 5",
+   "frame": {
+    "x": 142,
+    "y": 148,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 6",
+   "frame": {
+    "x": 0,
+    "y": 222,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 7",
+   "frame": {
+    "x": 142,
+    "y": 222,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 8",
+   "frame": {
+    "x": 0,
+    "y": 296,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "dash-thrust 9",
+   "frame": {
+    "x": 142,
+    "y": 296,
+    "w": 142,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 142,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 142,
+    "h": 74
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "https://github.com/patch-gg/pixelfx",
+  "version": "1",
+  "image": "dash-thrust.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 284,
+   "h": 370
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "dash-thrust",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "melee/thrust",
+   "name": "Thrust",
+   "fps": 12,
+   "loop": false,
+   "frames": 10,
+   "frameSize": [
+    142,
+    74
+   ],
+   "pivot": [
+    5,
+    60
+   ],
+   "columns": 2,
+   "act": {
+    "windup": 0.46,
+    "recovery": 0,
+    "onBody": false,
+    "targets": [
+     80
+    ],
+    "hits": [
+     {
+      "t": 0.07,
+      "freeze": 0.12,
+      "shake": 0.14,
+      "amp": 2,
+      "push": 2.8
+     }
+    ],
+    "poses": [
+     {
+      "t": -0.46,
+      "how": "smooth",
+      "pose": {
+       "crouch": 3,
+       "fx": 12,
+       "fy": -21,
+       "bx": 9,
+       "by": -21,
+       "ffx": 7,
+       "fbx": -7,
+       "weapon": "sword",
+       "x": -14,
+       "sa": -0.3
+      }
+     },
+     {
+      "t": -0.24,
+      "how": "smooth",
+      "pose": {
+       "crouch": 5,
+       "fx": -3,
+       "fy": -19,
+       "bx": 8,
+       "by": -30,
+       "ffx": 10,
+       "fbx": -8,
+       "weapon": "sword",
+       "x": -14,
+       "sa": -0.05,
+       "lean": -3,
+       "armsFront": true
+      }
+     },
+     {
+      "t": -0.05,
+      "how": "smooth",
+      "pose": {
+       "crouch": 6,
+       "fx": -5,
+       "fy": -19,
+       "bx": 8,
+       "by": -30,
+       "ffx": 10,
+       "fbx": -8,
+       "weapon": "sword",
+       "x": -14,
+       "sa": -0.05,
+       "lean": -3,
+       "armsFront": true
+      }
+     },
+     {
+      "t": 0,
+      "how": "snap",
+      "pose": {
+       "crouch": 6,
+       "fx": 23,
+       "fy": -20,
+       "bx": -8,
+       "by": -24,
+       "ffx": 15,
+       "fbx": -11,
+       "weapon": "sword",
+       "x": -14,
+       "sa": 0,
+       "lean": 6,
+       "toeB": true,
+       "ghost": 1
+      }
+     },
+     {
+      "t": 0.07,
+      "how": "snap",
+      "pose": {
+       "crouch": 6,
+       "fx": 23,
+       "fy": -20,
+       "bx": -8,
+       "by": -24,
+       "ffx": 15,
+       "fbx": -11,
+       "weapon": "sword",
+       "x": -14,
+       "sa": 0,
+       "lean": 6,
+       "toeB": true
+      }
+     },
+     {
+      "t": 0.3,
+      "how": "smooth",
+      "pose": {
+       "crouch": 5,
+       "fx": 23,
+       "fy": -20,
+       "bx": -8,
+       "by": -24,
+       "ffx": 15,
+       "fbx": -11,
+       "weapon": "sword",
+       "x": -14,
+       "sa": 0,
+       "lean": 5,
+       "toeB": true
+      }
+     },
+     {
+      "t": 0.7,
+      "how": "smooth",
+      "pose": {
+       "crouch": 3,
+       "fx": 12,
+       "fy": -21,
+       "bx": 9,
+       "by": -21,
+       "ffx": 7,
+       "fbx": -7,
+       "weapon": "sword",
+       "x": -14,
+       "sa": -0.3
+      }
+     }
+    ]
+   }
+  }
+ }
+}

@@ -148,9 +148,100 @@ print(json.dumps(summary, indent=2))
 爆裂與煙團為立體擴散的視覺構圖，光柱主要為直立構圖；附屬小環光保留原效果設計。
 2026-11-06 只檢視素材圖片與 metadata，未修改或啟動 3D 場景整合；面向鏡頭平面的實際顯示由播放器處理。
 
+## 技能特效（2026-11-06）
+
+技能用的 13 組素材來自同一個 pixelfx commit，全部使用預設 palette、`--seed 7`、12 fps 與原始時長，沒有修改任何效果程式。
+
+```sh
+cd <pixelfx clone>
+for id in melee/sword-slash melee/thrust impacts/ground-slam holy/divine-shield melee/spin-slash impacts/crit-hit \
+          explosions/smoke-bomb melee/dagger-flurry fire/fireball ice/frost-nova fire/meteor; do
+  node tools/render.mjs $id --sheet --no-actor --bg none --fps 12 --seed 7 --out <render 目錄>
+done
+for id in arcane/blink-out arcane/blink-in; do
+  node tools/render.mjs $id --sheet --no-actor --bg none --fps 12 --seed 7 --out <render 目錄> \
+    --opts '{"actor":{"x":0,"y":-36,"w":1,"h":36,"k":2,"head":[0,-36],"chest":[0,-26],"mask":{"w":1,"h":36,"data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}}}'
+done
+```
+
+`arcane/blink-out` 與 `arcane/blink-in` 的效果程式會依角色遮罩畫出發光的身體剪影，`--no-actor` 只隱藏預覽用角色；
+因此另以 `actor` 選項傳入全透明的 1×36 遮罩，保留光點、光線與地面光環，移除身體剪影。
+衝刺原本考慮 `status/haste`，但它的殘影就是角色身體，拿掉身體後幾乎不剩東西，改用 `melee/thrust`。
+
+後處理與上方相同：取所有影格 alpha 非零像素的聯集，保留最多 2 像素透明邊並包含 pivot，只裁切、不縮放。
+
+| 素材 | 來源效果 id | 格數 | 播放 | 原始每格尺寸 | 裁切框 | 輸出每格尺寸 | pivot | PNG bytes |
+|---|---|---|---|---|---|---|---|---|
+| skill-slash | `melee/sword-slash` | 10 | one-shot | 136×104 | (0, 17, 127, 104) | 127×87 | [44, 75] | 23623 |
+| dash-thrust | `melee/thrust` | 10 | one-shot | 196×76 | (29, 2, 171, 76) | 142×74 | [5, 60] | 22035 |
+| ground-slam | `impacts/ground-slam` | 39 | one-shot | 288×208 | (20, 12, 268, 208) | 248×196 | [124, 152] | 413059 |
+| divine-shield | `holy/divine-shield` | 29 | loop | 88×84 | (6, 4, 84, 84) | 78×80 | [38, 64] | 148855 |
+| spin-slash | `melee/spin-slash` | 11 | one-shot | 208×104 | (24, 2, 208, 104) | 184×102 | [80, 82] | 51453 |
+| crit-hit | `impacts/crit-hit` | 12 | one-shot | 216×136 | (5, 2, 199, 136) | 194×134 | [79, 104] | 65098 |
+| smoke-bomb | `explosions/smoke-bomb` | 61 | one-shot | 260×176 | (7, 44, 204, 176) | 197×132 | [123, 112] | 335688 |
+| dagger-flurry | `melee/dagger-flurry` | 12 | one-shot | 148×104 | (15, 13, 133, 104) | 118×91 | [21, 73] | 47117 |
+| fireball | `fire/fireball` | 14 | loop | 136×56 | (12, 0, 136, 56) | 124×56 | [100, 28] | 75600 |
+| frost-nova | `ice/frost-nova` | 42 | one-shot | 288×192 | (17, 52, 270, 192) | 253×140 | [127, 98] | 336599 |
+| blink-out | `arcane/blink-out` | 20 | one-shot | 136×96 | (6, 7, 132, 96) | 126×89 | [62, 73] | 84578 |
+| blink-in | `arcane/blink-in` | 18 | one-shot | 136×96 | (15, 5, 123, 96) | 108×91 | [53, 75] | 52837 |
+| meteor | `fire/meteor` | 61 | one-shot | 272×232 | (0, 11, 261, 232) | 261×221 | [150, 197] | 680528 |
+
+`fire/meteor` 的隕石在效果開始後 0.62 秒落地（效果程式的 `HIT`），遊戲依此對齊延遲傷害。
+
+在 webdota repo 根目錄執行（參數為 render 目錄）：
+
+```python
+import json, math, sys
+from pathlib import Path
+from PIL import Image
+SOURCE = Path(sys.argv[1])
+DEST = Path('public/fx')  # 在 webdota repo 根目錄執行
+EFFECTS = {
+    'skill-slash': 'melee/sword-slash', 'dash-thrust': 'melee/thrust', 'ground-slam': 'impacts/ground-slam',
+    'divine-shield': 'holy/divine-shield', 'spin-slash': 'melee/spin-slash', 'crit-hit': 'impacts/crit-hit',
+    'smoke-bomb': 'explosions/smoke-bomb', 'dagger-flurry': 'melee/dagger-flurry', 'fireball': 'fire/fireball',
+    'frost-nova': 'ice/frost-nova', 'blink-out': 'arcane/blink-out', 'blink-in': 'arcane/blink-in', 'meteor': 'fire/meteor',
+}
+for name, effect_id in EFFECTS.items():
+    stem = effect_id.split('/')[1]
+    data = json.loads((SOURCE / effect_id / f'{stem}.json').read_text())
+    source = Image.open(SOURCE / effect_id / f'{stem}.png').convert('RGBA')
+    frames, bounds = [], []
+    for frame in data['frames']:
+        r = frame['frame']
+        image = source.crop((r['x'], r['y'], r['x'] + r['w'], r['y'] + r['h']))
+        frames.append(image)
+        if bbox := image.getchannel('A').getbbox():
+            bounds.append(bbox)
+    old_w, old_h = data['meta']['pixelfx']['frameSize']
+    px, py = data['meta']['pixelfx']['pivot']
+    left = max(0, min(min(b[0] for b in bounds) - 2, math.floor(px)))
+    top = max(0, min(min(b[1] for b in bounds) - 2, math.floor(py)))
+    right = min(old_w, max(max(b[2] for b in bounds) + 2, math.floor(px) + 1))
+    bottom = min(old_h, max(max(b[3] for b in bounds) + 2, math.floor(py) + 1))
+    w, h = right - left, bottom - top
+    columns = data['meta']['pixelfx']['columns']
+    sheet = Image.new('RGBA', (columns * w, math.ceil(len(frames) / columns) * h))
+    for i, (frame, image) in enumerate(zip(data['frames'], frames)):
+        x, y = (i % columns) * w, (i // columns) * h
+        sheet.paste(image.crop((left, top, right, bottom)), (x, y))
+        frame['filename'] = f'{name} {i}'
+        frame['frame'] = dict(x=x, y=y, w=w, h=h)
+        frame['spriteSourceSize'] = dict(x=0, y=0, w=w, h=h)
+        frame['sourceSize'] = dict(w=w, h=h)
+    data['meta']['image'] = f'{name}.png'
+    data['meta']['size'] = dict(w=sheet.width, h=sheet.height)
+    data['meta']['frameTags'][0]['name'] = name
+    data['meta']['pixelfx']['frameSize'] = [w, h]
+    data['meta']['pixelfx']['pivot'] = [px - left, py - top]
+    sheet.save(DEST / f'{name}.png', optimize=True)
+    (DEST / f'{name}.json').write_text(json.dumps(data, indent=1) + '\n')
+    print(f"| {name} | `{effect_id}` | {len(frames)} | {'loop' if data['meta']['pixelfx']['loop'] else 'one-shot'} | {old_w}×{old_h} | ({left}, {top}, {right}, {bottom}) | {w}×{h} | {[px - left, py - top]} | {(DEST / f'{name}.png').stat().st_size} |")
+```
+
 ## Hugo Duprez／Sprite Fusion 來源
 
-四個效果檔頭均標示改編或沿用 Hugo Duprez 的 MIT 素材技法與程式：
+下列效果的檔頭標示改編或沿用 Hugo Duprez 的 MIT 素材技法與程式（`holy/divine-shield`、`explosions/smoke-bomb`、`ice/frost-nova` 檔頭沒有另外標示，同樣適用下方的 pixelfx MIT 授權）：
 
 | pixelfx 效果 id | 檔頭標示的 Sprite Fusion 來源 | 聲明 |
 |---|---|---|
@@ -158,9 +249,14 @@ print(json.dumps(summary, indent=2))
 | impacts/hit-spark | [impact](https://www.spritefusion.com/pixel-art-vfx/impact)：雙色火花與閃光 | Copyright (c) 2026 Hugo Duprez，MIT License |
 | spawn/respawn-beam | [holy-light](https://www.spritefusion.com/pixel-art-vfx/holy-light)：光柱落點、光束、環光與火花 | Copyright (c) 2026 Hugo Duprez，MIT License |
 | spawn/poof | [explosion](https://www.spritefusion.com/pixel-art-vfx/explosion)：柔和、頂部受光的煙團 | Copyright (c) 2026 Hugo Duprez，MIT License |
+| melee/sword-slash、melee/spin-slash、melee/dagger-flurry | [slash](https://www.spritefusion.com/pixel-art-vfx/slash) | Copyright (c) 2026 Hugo Duprez，MIT License |
+| melee/thrust | [pixel-art-vfx](https://www.spritefusion.com/pixel-art-vfx) | Copyright (c) 2026 Hugo Duprez，MIT License |
+| impacts/ground-slam、fire/fireball、fire/meteor | [explosion](https://www.spritefusion.com/pixel-art-vfx/explosion) | Copyright (c) 2026 Hugo Duprez，MIT License |
+| impacts/crit-hit | [impact](https://www.spritefusion.com/pixel-art-vfx/impact) | Copyright (c) 2026 Hugo Duprez，MIT License |
+| arcane/blink-out、arcane/blink-in | [movement](https://www.spritefusion.com/pixel-art-vfx/movement) | Copyright (c) 2026 Hugo Duprez，MIT License |
 
 共用的 `src/core/sim.js` 也標示改編自 [Sprite Fusion pixel art VFX](https://www.spritefusion.com/pixel-art-vfx)，Copyright (c) 2026 Hugo Duprez，MIT License。
-以下完整保留 pixelfx 根目錄 LICENSE 的 Patch 與 Hugo Duprez 著作權及 MIT 授權聲明，涵蓋本目錄四組衍生素材。
+以下完整保留 pixelfx 根目錄 LICENSE 的 Patch 與 Hugo Duprez 著作權及 MIT 授權聲明，涵蓋本目錄全部衍生素材。
 
 ```text
 MIT License
