@@ -642,6 +642,11 @@ def validate(animations, avatars):
             "fps": FPS, "loop": True, "pivot": PIVOT, "frameSize": [SIZE, SIZE],
             "columns": COUNT, "bounds": bounds,
         }
+    battle_files = [OUT / f"{name}-{anim}.png" for name in PALETTES
+                    for anim in ("battle-idle", "run", "attack", "cast")]
+    if all(p.exists() for p in battle_files):
+        from generate_battle import validate_battle
+        report["battle"] = validate_battle()
     for png in [*OUT.glob("*.png"), *PREVIEW.glob("*.png")]:
         assert png.stat().st_size <= 100_000, (png, png.stat().st_size)
     report["files"] = [

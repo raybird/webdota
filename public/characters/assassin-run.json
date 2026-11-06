@@ -1,0 +1,171 @@
+{
+ "frames": [
+  {
+   "filename": "assassin-run 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 83
+  },
+  {
+   "filename": "assassin-run 1",
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 83
+  },
+  {
+   "filename": "assassin-run 2",
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 83
+  },
+  {
+   "filename": "assassin-run 3",
+   "frame": {
+    "x": 144,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 83
+  },
+  {
+   "filename": "assassin-run 4",
+   "frame": {
+    "x": 192,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 83
+  },
+  {
+   "filename": "assassin-run 5",
+   "frame": {
+    "x": 240,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "webdota/tools/portraits/generate_battle.py",
+  "version": "1",
+  "image": "assassin-run.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 288,
+   "h": 48
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "run",
+    "from": 0,
+    "to": 5,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "characters/assassin-run",
+   "name": "assassin run",
+   "fps": 12,
+   "loop": true,
+   "frames": 6,
+   "frameSize": [
+    48,
+    48
+   ],
+   "pivot": [
+    24,
+    45
+   ],
+   "columns": 6
+  }
+ }
+}
