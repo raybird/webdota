@@ -85,14 +85,14 @@ export class BinarySerializer {
     /**
      * 序列化 GameState
      * 格式: [Type(1), Frame(4), PlayerCount(1), ...Players]
-     * 每位玩家: [ID_Len(1), ID(N), Pos(12), Rot(16), HP(4), Energy(4)]
+     * 每位玩家: [ID_Len(1), ID(N), Pos(12), Rot(16), HP(4), Energy(4), Status(1)]
      */
     static serializeGameState(state: GameState): ArrayBuffer {
         let size = 6; // Type(1) + Frame(4) + Count(1)
         
         const encodedPlayers = state.players.map(p => {
             const idBytes = encoder.encode(p.id);
-            size += 1 + idBytes.length + 12 + 16 + 4 + 4; // Len(1) + ID + Pos(12) + Rot(16) + Stats(8)
+            size += 1 + idBytes.length + 12 + 16 + 4 + 4 + 1; // Len(1) + ID + Pos(12) + Rot(16) + Stats(8) + Status(1)
             return { p, idBytes };
         });
 
@@ -128,7 +128,8 @@ export class BinarySerializer {
             // Stats
             view.setFloat32(offset, p.stats.hp);
             view.setFloat32(offset + 4, p.stats.energy);
-            offset += 8;
+            view.setUint8(offset + 8, p.stats.status);
+            offset += 9;
         }
         
         return buffer;
@@ -170,9 +171,10 @@ export class BinarySerializer {
             
             const stats = {
                 hp: view.getFloat32(offset),
-                energy: view.getFloat32(offset + 4)
+                energy: view.getFloat32(offset + 4),
+                status: view.getUint8(offset + 8)
             };
-            offset += 8;
+            offset += 9;
             
             players.push({ id, pos, rot, stats });
         }

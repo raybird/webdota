@@ -3,6 +3,7 @@
  * 處理死亡判定與狀態更新
  */
 
+import { StatusSystem } from './StatusSystem';
 import { System } from '../System';
 import { World } from '../World';
 import { ComponentType } from '../Component';
@@ -66,6 +67,7 @@ export class HealthSystem extends System {
     ): number {
         const health = world.getComponent<HealthComponent>(targetId, ComponentType.HEALTH);
         if (!health || health.isDead()) return 0;
+        if (StatusSystem.has(world, targetId, 'invincible')) return 0;
 
         const actualDamage = health.takeDamage(damage, attackerId);
 

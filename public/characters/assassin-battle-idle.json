@@ -1,0 +1,127 @@
+{
+ "frames": [
+  {
+   "filename": "assassin-battle-idle 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 167
+  },
+  {
+   "filename": "assassin-battle-idle 1",
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 167
+  },
+  {
+   "filename": "assassin-battle-idle 2",
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 167
+  },
+  {
+   "filename": "assassin-battle-idle 3",
+   "frame": {
+    "x": 144,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 167
+  }
+ ],
+ "meta": {
+  "app": "webdota/tools/portraits/generate_battle.py",
+  "version": "1",
+  "image": "assassin-battle-idle.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 192,
+   "h": 48
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "battle-idle",
+    "from": 0,
+    "to": 3,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "characters/assassin-battle-idle",
+   "name": "assassin battle-idle",
+   "fps": 6,
+   "loop": true,
+   "frames": 4,
+   "frameSize": [
+    48,
+    48
+   ],
+   "pivot": [
+    24,
+    45
+   ],
+   "columns": 4
+  }
+ }
+}

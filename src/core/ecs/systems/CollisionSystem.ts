@@ -11,7 +11,8 @@ import { PhysicsComponent } from '../components/PhysicsComponent';
 import { HealthComponent } from '../components/HealthComponent';
 import { HealthSystem } from './HealthSystem';
 import type { Team } from '../components/TeamComponent';
-import { colliderRegistry, type ColliderMetadata } from '../ColliderMetadata';
+import { colliderRegistry, type ColliderMetadata, type HitStatus } from '../ColliderMetadata';
+import { StatusComponent } from '../components/StatusComponent';
 
 /**
  * 命中事件
@@ -21,6 +22,7 @@ export interface HitEvent {
     attackerId: string;
     damage: number;
     knockback?: { x: number; z: number };
+    status?: HitStatus;
 }
 
 /**
@@ -60,7 +62,8 @@ export class CollisionSystem extends System {
         knockback: { x: number; z: number },
         ownerId: string,
         ownerTeam: Team,
-        duration: number = 0.2
+        duration: number = 0.2,
+        onHitStatus?: HitStatus
     ): { rigidBody: RAPIER.RigidBody; collider: RAPIER.Collider } {
         // 建立 Kinematic RigidBody
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
@@ -86,7 +89,8 @@ export class CollisionSystem extends System {
             damage,
             knockback,
             hitTargets: new Set(),
-            duration
+            duration,
+            onHitStatus
         };
         colliderRegistry.register(collider.handle, metadata);
 
@@ -202,7 +206,8 @@ export class CollisionSystem extends System {
                     targetId: entityMeta.entityId,
                     attackerId: hitboxMeta.entityId,
                     damage: hitboxMeta.damage ?? 0,
-                    knockback: hitboxMeta.knockback
+                    knockback: hitboxMeta.knockback,
+                    status: hitboxMeta.onHitStatus
                 });
 
                 return true; // 繼續遍歷
@@ -237,6 +242,10 @@ export class CollisionSystem extends System {
             if (health && !health.isDead()) {
                 // 走 dealDamage 才會觸發傷害數字與受擊閃白
                 HealthSystem.dealDamage(world, hit.targetId, hit.damage, hit.attackerId);
+                if (hit.status) {
+                    world.getComponent<StatusComponent>(hit.targetId, ComponentType.STATUS)
+                        ?.apply(hit.status.kind, hit.status.duration, hit.status.value);
+                }
             }
 
             // 擊退效果（可選）

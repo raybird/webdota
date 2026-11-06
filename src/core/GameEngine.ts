@@ -8,6 +8,9 @@ import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
 import { SpriteFxManager, type SpriteFxName } from './SpriteFxManager';
+import { CharacterSpriteManager, type CharacterAction } from './CharacterSpriteManager';
+import { getAllCharacters } from '../data/characters';
+import type { Skill } from '../types/Skill';
 import { ECSStructureManager, type StructureKind } from './managers/ECSStructureManager';
 import { ECSCreepManager } from './managers/ECSCreepManager';
 import { EntitySyncManager } from './managers/EntitySyncManager';
@@ -29,6 +32,8 @@ import {
     CombatSystem,
     CollisionSystem,
     AISystem,
+    StatusSystem,
+    StatusVisualSystem,
     SpatialSystem,
     SkillSystem,
     ComponentType,
@@ -38,7 +43,16 @@ import {
     colliderRegistry,
     type EntityId,
     type Team,
+    RenderComponent,
 } from './ecs';
+
+/**
+ * 技能對應的角色動作：法師的技能與沒有傷害的增益技能是施法，其餘（含法師普攻）是近戰揮擊
+ */
+function characterActionOf(skill: Skill): CharacterAction {
+    if (skill.type === 'basic') return 'attack';
+    return skill.damage <= 0 || skill.id.startsWith('mage_') ? 'cast' : 'attack';
+}
 
 /** 每個畫面幀最多補跑的 fixedUpdate 次數，避免分頁切回來時一次追太多幀 */
 const MAX_STEPS_PER_FRAME = 5;
@@ -94,12 +108,16 @@ export class GameEngine {
     entitySync!: EntitySyncManager;
     soundManager!: SoundManager;
     spriteFx!: SpriteFxManager;
+    private characterSprites!: CharacterSpriteManager;
 
     // ECS
     ecsWorld!: World;
     entityFactory!: EntityFactory;
     collisionSystem!: CollisionSystem;
     aiSystem!: AISystem;
+    /** 狀態倒數只在 Host 進行 */
+    private statusSystem!: StatusSystem;
+    private statusVisualSystem = new StatusVisualSystem();
     ecsSkillExecutor!: ECSSkillExecutor;
 
     readonly FIXED_TIMESTEP = 1 / 60;
@@ -158,6 +176,9 @@ export class GameEngine {
         this.spriteFx = new SpriteFxManager(this.app);
         this.spriteFx.setCamera(camera);
         this.spriteFx.preload();
+        this.characterSprites = new CharacterSpriteManager(this.app);
+        this.characterSprites.setCamera(camera);
+        await this.characterSprites.preload(getAllCharacters().map(c => c.id));
         this.effectManager = new EffectManager(this.spriteFx);
         this.projectileManager = new ProjectileManager(this.spriteFx);
         this.soundManager = new SoundManager(this.app);
@@ -166,6 +187,7 @@ export class GameEngine {
         this.collisionSystem = new CollisionSystem(this.physicsWorld);
         this.entityFactory = new EntityFactory(this.app, this.physicsWorld, this.ecsWorld);
         this.entityFactory.setCollisionSystem(this.collisionSystem);
+        this.entityFactory.setCharacterSprites(this.characterSprites);
 
         const renderSystem = new RenderSystem();
         renderSystem.camera = camera;
@@ -175,9 +197,12 @@ export class GameEngine {
         this.ecsWorld.addSystem(new CombatSystem());
         this.ecsWorld.addSystem(this.collisionSystem);
         this.ecsWorld.addSystem(new SpatialSystem());
+        this.statusSystem = new StatusSystem();
+        this.ecsWorld.addSystem(this.statusSystem);
         this.aiSystem = new AISystem();
         this.ecsWorld.addSystem(this.aiSystem);
         this.ecsWorld.addSystem(new HealthSystem());
+        this.ecsWorld.addSystem(this.statusVisualSystem);
         this.ecsWorld.addSystem(renderSystem);
 
         this.ecsSkillExecutor = new ECSSkillExecutor(this.collisionSystem);
@@ -275,6 +300,7 @@ export class GameEngine {
 
         // Client 的 AI 與傷害判定交給 Host；建築與小兵由 Host 同步生成
         this.aiSystem.enabled = this.isHost;
+        this.statusSystem.enabled = this.isHost;
         this.collisionSystem.authoritative = this.isHost;
         if (this.isHost) this.spawnStructuresFromMap();
 
@@ -298,6 +324,7 @@ export class GameEngine {
         }
 
         const peerId = this.networkManager.peerId;
+        this.statusVisualSystem.localTeam = (this.roomStore.myPlayer?.team as Team | undefined) ?? null;
         if (this.playerManager.getPlayer(peerId)) {
             const skills = this.playerManager.getPlayerSkills(peerId);
             const normalSkills = skills.filter(s => s.type === 'normal');
@@ -337,6 +364,7 @@ export class GameEngine {
             }
             this.playerManager.setPlayerHp(pData.id, pData.stats.hp);
             this.playerManager.setPlayerEnergy(pData.id, pData.stats.energy);
+            this.playerManager.setPlayerStatusFlags(pData.id, pData.stats.status);
         }
 
         if (state.isGameStarted) this.isGameStarted = true;
@@ -347,6 +375,7 @@ export class GameEngine {
         this.simulate();
         this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
         this.spriteFx.update(dt);
+        this.characterSprites.update(dt);
     }
 
     /**
@@ -544,6 +573,9 @@ export class GameEngine {
             skill, casterEntityId, new pc.Vec3(input.skillDirection.x, 0, input.skillDirection.z),
             this.ecsWorld, this.effectManager, this.projectileManager, this.soundManager
         );
+
+        const visual = this.ecsWorld.getComponent<RenderComponent>(casterEntityId, ComponentType.RENDER)?.pcEntity;
+        if (visual) this.characterSprites.playAction(visual, characterActionOf(skill), input.skillDirection);
     }
 
     private broadcastState() {
@@ -557,7 +589,7 @@ export class GameEngine {
                 id: playerId,
                 pos: rb.translation(),
                 rot: rb.rotation(),
-                stats: { hp: hp.current, energy: energy.current }
+                stats: { hp: hp.current, energy: energy.current, status: this.playerManager.getPlayerStatusFlags(playerId) }
             });
         }
         this.networkManager.broadcastGameState({
@@ -593,7 +625,10 @@ export class GameEngine {
         for (const entityId of this.creepManager.getAllCreepIds()) push(entityId, entityId, 'creep');
         // 玩家用 Peer ID，讓小地圖能標出本地玩家
         for (const [playerId, entityId] of this.playerManager.getAllPlayers()) {
-            if (!this.playerManager.isDead(playerId)) push(entityId, playerId, 'player');
+            if (this.playerManager.isDead(playerId)) continue;
+            // 敵方隱身中的玩家不出現在小地圖
+            if (this.ecsWorld.getComponent<RenderComponent>(entityId, ComponentType.RENDER)?.hiddenByStealth) continue;
+            push(entityId, playerId, 'player');
         }
 
         return result;
@@ -659,6 +694,7 @@ export class GameEngine {
         this.renderManager.destroy();
         this.soundManager.destroy();
         this.spriteFx.destroy();
+        this.characterSprites.clear();
         this.projectileManager.clearAll();
         this.ecsWorld.clear();
         colliderRegistry.clear();

@@ -3,9 +3,17 @@
   "characters": {
     "warrior": {
       "files_bytes": {
+        "warrior-attack.json": 2075,
+        "warrior-attack.png": 2287,
         "warrior-avatar.png": 721,
+        "warrior-battle-idle.json": 1812,
+        "warrior-battle-idle.png": 1796,
+        "warrior-cast.json": 2057,
+        "warrior-cast.png": 1990,
         "warrior-idle.json": 2966,
-        "warrior-idle.png": 5810
+        "warrior-idle.png": 5810,
+        "warrior-run.json": 2349,
+        "warrior-run.png": 2203
       },
       "colors": 16,
       "frames": 8,
@@ -73,9 +81,17 @@
     },
     "assassin": {
       "files_bytes": {
+        "assassin-attack.json": 2083,
+        "assassin-attack.png": 2426,
         "assassin-avatar.png": 719,
+        "assassin-battle-idle.json": 1819,
+        "assassin-battle-idle.png": 1771,
+        "assassin-cast.json": 2065,
+        "assassin-cast.png": 2127,
         "assassin-idle.json": 2977,
-        "assassin-idle.png": 6094
+        "assassin-idle.png": 6094,
+        "assassin-run.json": 2358,
+        "assassin-run.png": 2213
       },
       "colors": 16,
       "frames": 8,
@@ -143,9 +159,17 @@
     },
     "mage": {
       "files_bytes": {
+        "mage-attack.json": 2051,
+        "mage-attack.png": 2896,
         "mage-avatar.png": 685,
+        "mage-battle-idle.json": 1791,
+        "mage-battle-idle.png": 2005,
+        "mage-cast.json": 2033,
+        "mage-cast.png": 2230,
         "mage-idle.json": 2933,
-        "mage-idle.png": 5765
+        "mage-idle.png": 5765,
+        "mage-run.json": 2322,
+        "mage-run.png": 2204
       },
       "colors": 16,
       "frames": 8,
@@ -212,16 +236,673 @@
       ]
     }
   },
+  "battle": {
+    "date": "2026-11-06",
+    "frameSize": [
+      48,
+      48
+    ],
+    "pivot": [
+      24,
+      45
+    ],
+    "foot_y": 45,
+    "transparent_bottom_rows": 2,
+    "checks": [
+      "sheet_dimensions",
+      "metadata",
+      "palette_union_at_most_16",
+      "binary_alpha",
+      "distinct_frames",
+      "fixed_grounded_foot",
+      "unclipped_bounds",
+      "png_at_most_50000_bytes"
+    ],
+    "characters": {
+      "warrior": {
+        "colors": 14,
+        "palette": [
+          "#1a1422",
+          "#302538",
+          "#555366",
+          "#63414b",
+          "#660f29",
+          "#8d562e",
+          "#8d94a1",
+          "#aa0000",
+          "#d92d3d",
+          "#d99e51",
+          "#d9e2df",
+          "#f7d886",
+          "#ff4444",
+          "#ff8a73"
+        ],
+        "animations": {
+          "battle-idle": {
+            "frames": 4,
+            "fps": 6,
+            "loop": true,
+            "columns": 4,
+            "duration_ms": 167,
+            "sheetSize": [
+              192,
+              48
+            ],
+            "bytes": 1796,
+            "distinct_frames": 4,
+            "bounds": [
+              [
+                10,
+                9,
+                40,
+                46
+              ],
+              [
+                10,
+                8,
+                41,
+                46
+              ],
+              [
+                10,
+                9,
+                39,
+                46
+              ],
+              [
+                10,
+                10,
+                40,
+                46
+              ]
+            ]
+          },
+          "run": {
+            "frames": 6,
+            "fps": 12,
+            "loop": true,
+            "columns": 6,
+            "duration_ms": 83,
+            "sheetSize": [
+              288,
+              48
+            ],
+            "bytes": 2203,
+            "distinct_frames": 6,
+            "bounds": [
+              [
+                10,
+                9,
+                40,
+                46
+              ],
+              [
+                10,
+                8,
+                39,
+                46
+              ],
+              [
+                10,
+                8,
+                40,
+                46
+              ],
+              [
+                10,
+                9,
+                41,
+                46
+              ],
+              [
+                10,
+                8,
+                41,
+                46
+              ],
+              [
+                10,
+                8,
+                40,
+                46
+              ]
+            ]
+          },
+          "attack": {
+            "frames": 5,
+            "fps": 15,
+            "loop": false,
+            "columns": 5,
+            "duration_ms": 67,
+            "sheetSize": [
+              240,
+              48
+            ],
+            "bytes": 2287,
+            "distinct_frames": 5,
+            "bounds": [
+              [
+                9,
+                9,
+                34,
+                46
+              ],
+              [
+                9,
+                8,
+                33,
+                46
+              ],
+              [
+                12,
+                9,
+                45,
+                46
+              ],
+              [
+                11,
+                10,
+                43,
+                46
+              ],
+              [
+                10,
+                9,
+                40,
+                46
+              ]
+            ]
+          },
+          "cast": {
+            "frames": 5,
+            "fps": 12,
+            "loop": false,
+            "columns": 5,
+            "duration_ms": 83,
+            "sheetSize": [
+              240,
+              48
+            ],
+            "bytes": 1990,
+            "distinct_frames": 4,
+            "bounds": [
+              [
+                10,
+                9,
+                40,
+                46
+              ],
+              [
+                10,
+                8,
+                36,
+                46
+              ],
+              [
+                10,
+                6,
+                35,
+                46
+              ],
+              [
+                10,
+                8,
+                36,
+                46
+              ],
+              [
+                10,
+                9,
+                40,
+                46
+              ]
+            ]
+          }
+        }
+      },
+      "assassin": {
+        "colors": 13,
+        "palette": [
+          "#1a1422",
+          "#2c203e",
+          "#352b46",
+          "#432553",
+          "#5f3e55",
+          "#6c3483",
+          "#9b59b6",
+          "#a56c67",
+          "#a6c5cc",
+          "#c18bd4",
+          "#d3a164",
+          "#d8a183",
+          "#e6f6e8"
+        ],
+        "animations": {
+          "battle-idle": {
+            "frames": 4,
+            "fps": 6,
+            "loop": true,
+            "columns": 4,
+            "duration_ms": 167,
+            "sheetSize": [
+              192,
+              48
+            ],
+            "bytes": 1771,
+            "distinct_frames": 4,
+            "bounds": [
+              [
+                9,
+                9,
+                40,
+                46
+              ],
+              [
+                8,
+                8,
+                41,
+                46
+              ],
+              [
+                8,
+                9,
+                39,
+                46
+              ],
+              [
+                9,
+                10,
+                40,
+                46
+              ]
+            ]
+          },
+          "run": {
+            "frames": 6,
+            "fps": 12,
+            "loop": true,
+            "columns": 6,
+            "duration_ms": 83,
+            "sheetSize": [
+              288,
+              48
+            ],
+            "bytes": 2213,
+            "distinct_frames": 6,
+            "bounds": [
+              [
+                9,
+                9,
+                40,
+                46
+              ],
+              [
+                7,
+                8,
+                42,
+                46
+              ],
+              [
+                7,
+                8,
+                42,
+                46
+              ],
+              [
+                9,
+                9,
+                40,
+                46
+              ],
+              [
+                8,
+                8,
+                38,
+                46
+              ],
+              [
+                8,
+                8,
+                38,
+                46
+              ]
+            ]
+          },
+          "attack": {
+            "frames": 5,
+            "fps": 15,
+            "loop": false,
+            "columns": 5,
+            "duration_ms": 67,
+            "sheetSize": [
+              240,
+              48
+            ],
+            "bytes": 2426,
+            "distinct_frames": 5,
+            "bounds": [
+              [
+                7,
+                9,
+                37,
+                46
+              ],
+              [
+                8,
+                8,
+                35,
+                46
+              ],
+              [
+                9,
+                9,
+                46,
+                46
+              ],
+              [
+                10,
+                10,
+                45,
+                46
+              ],
+              [
+                10,
+                9,
+                40,
+                46
+              ]
+            ]
+          },
+          "cast": {
+            "frames": 5,
+            "fps": 12,
+            "loop": false,
+            "columns": 5,
+            "duration_ms": 83,
+            "sheetSize": [
+              240,
+              48
+            ],
+            "bytes": 2127,
+            "distinct_frames": 4,
+            "bounds": [
+              [
+                9,
+                9,
+                40,
+                46
+              ],
+              [
+                8,
+                8,
+                40,
+                46
+              ],
+              [
+                7,
+                8,
+                39,
+                46
+              ],
+              [
+                8,
+                9,
+                42,
+                46
+              ],
+              [
+                9,
+                9,
+                40,
+                46
+              ]
+            ]
+          }
+        }
+      },
+      "mage": {
+        "colors": 14,
+        "palette": [
+          "#00a9b9",
+          "#00ffff",
+          "#1a1422",
+          "#205377",
+          "#2874a6",
+          "#3498db",
+          "#70404a",
+          "#74c7e8",
+          "#816043",
+          "#a96f56",
+          "#aa776f",
+          "#cdeeeb",
+          "#d1a15e",
+          "#deab84"
+        ],
+        "animations": {
+          "battle-idle": {
+            "frames": 4,
+            "fps": 6,
+            "loop": true,
+            "columns": 4,
+            "duration_ms": 167,
+            "sheetSize": [
+              192,
+              48
+            ],
+            "bytes": 2005,
+            "distinct_frames": 4,
+            "bounds": [
+              [
+                11,
+                7,
+                41,
+                46
+              ],
+              [
+                11,
+                6,
+                41,
+                46
+              ],
+              [
+                11,
+                7,
+                41,
+                46
+              ],
+              [
+                11,
+                8,
+                41,
+                46
+              ]
+            ]
+          },
+          "run": {
+            "frames": 6,
+            "fps": 12,
+            "loop": true,
+            "columns": 6,
+            "duration_ms": 83,
+            "sheetSize": [
+              288,
+              48
+            ],
+            "bytes": 2204,
+            "distinct_frames": 6,
+            "bounds": [
+              [
+                11,
+                7,
+                41,
+                46
+              ],
+              [
+                11,
+                6,
+                42,
+                46
+              ],
+              [
+                11,
+                6,
+                42,
+                46
+              ],
+              [
+                11,
+                7,
+                41,
+                46
+              ],
+              [
+                11,
+                6,
+                41,
+                46
+              ],
+              [
+                11,
+                6,
+                41,
+                46
+              ]
+            ]
+          },
+          "attack": {
+            "frames": 5,
+            "fps": 15,
+            "loop": false,
+            "columns": 5,
+            "duration_ms": 67,
+            "sheetSize": [
+              240,
+              48
+            ],
+            "bytes": 2896,
+            "distinct_frames": 5,
+            "bounds": [
+              [
+                10,
+                7,
+                37,
+                46
+              ],
+              [
+                10,
+                6,
+                38,
+                46
+              ],
+              [
+                12,
+                7,
+                46,
+                46
+              ],
+              [
+                12,
+                8,
+                47,
+                46
+              ],
+              [
+                10,
+                7,
+                41,
+                46
+              ]
+            ]
+          },
+          "cast": {
+            "frames": 5,
+            "fps": 12,
+            "loop": false,
+            "columns": 5,
+            "duration_ms": 83,
+            "sheetSize": [
+              240,
+              48
+            ],
+            "bytes": 2230,
+            "distinct_frames": 4,
+            "bounds": [
+              [
+                11,
+                7,
+                41,
+                46
+              ],
+              [
+                11,
+                6,
+                41,
+                46
+              ],
+              [
+                10,
+                6,
+                41,
+                46
+              ],
+              [
+                11,
+                7,
+                41,
+                46
+              ],
+              [
+                11,
+                7,
+                41,
+                46
+              ]
+            ]
+          }
+        }
+      }
+    }
+  },
   "files": [
     {
       "path": "public/characters/NOTICE.md",
-      "bytes": 3827,
-      "sha256": "030f55f9acfd7681410de602f6d7f189dac92658c225d380e54ec86ff381d1d8"
+      "bytes": 6924,
+      "sha256": "95c8a3fcf1e11ae29b87a399442b73746dec3bc1b3f30c2c87646763e7aef3d9"
+    },
+    {
+      "path": "public/characters/assassin-attack.json",
+      "bytes": 2083,
+      "sha256": "1d2419852eca05adda444fd825a55b875663f6026811d28b6e97634f913df7db"
+    },
+    {
+      "path": "public/characters/assassin-attack.png",
+      "bytes": 2426,
+      "sha256": "d225ba5e658a93d8e19b263b93a35a77087278afc9658c840c7f9787776829e0"
     },
     {
       "path": "public/characters/assassin-avatar.png",
       "bytes": 719,
       "sha256": "99631a2ec64ff512a74638bc733d7d53c3d94b1e734cf93e3b354695c18fae64"
+    },
+    {
+      "path": "public/characters/assassin-battle-idle.json",
+      "bytes": 1819,
+      "sha256": "2e426cf7767b0be05b73ec0d9a353b335ef79dc5fb9803712036410ea5c2af8f"
+    },
+    {
+      "path": "public/characters/assassin-battle-idle.png",
+      "bytes": 1771,
+      "sha256": "f403949c144b9d389d73591587942abc4aa901bf2985d703129a86824fd28de3"
+    },
+    {
+      "path": "public/characters/assassin-cast.json",
+      "bytes": 2065,
+      "sha256": "e7efe206c69caf72fdff0bbcac73ceec3f4cd893c334f0cccf6b18aa474f66ff"
+    },
+    {
+      "path": "public/characters/assassin-cast.png",
+      "bytes": 2127,
+      "sha256": "39e770887ab6814711f9d63565bb387fbed9890c2ff127570b0faa174a0aac1d"
     },
     {
       "path": "public/characters/assassin-idle.json",
@@ -234,9 +915,49 @@
       "sha256": "9cc66558a73af8d68653c782b25089696db176dcc47913b887789170dbc00fc5"
     },
     {
+      "path": "public/characters/assassin-run.json",
+      "bytes": 2358,
+      "sha256": "84eea61c360e059079bd65030203558feff3f7331b2c50ffa4968327d3195a74"
+    },
+    {
+      "path": "public/characters/assassin-run.png",
+      "bytes": 2213,
+      "sha256": "a997966ca4d8195af05f5c82333768aded2e1c76bd4848e104b3020c31190a15"
+    },
+    {
+      "path": "public/characters/mage-attack.json",
+      "bytes": 2051,
+      "sha256": "2246eec3b49287d13f942757cd743c9cce5d62f4dcfc4bb6c1334b10e3aad2a0"
+    },
+    {
+      "path": "public/characters/mage-attack.png",
+      "bytes": 2896,
+      "sha256": "0121699b3450402d81c11e75515b2d96b488163e0de2c84d43af62c7ee9ddbbb"
+    },
+    {
       "path": "public/characters/mage-avatar.png",
       "bytes": 685,
       "sha256": "5e7480226789d0a393cd278bbbd4739cea6e7054f52ccc68c7ad6599737cc656"
+    },
+    {
+      "path": "public/characters/mage-battle-idle.json",
+      "bytes": 1791,
+      "sha256": "70dff0a7063168252dcda5fb4952ece8c79870dc158388e48d6b58445881bc9a"
+    },
+    {
+      "path": "public/characters/mage-battle-idle.png",
+      "bytes": 2005,
+      "sha256": "bddd15d41c4ce05aa0c74275381131965afc0d5048dd7bec53956d4c97114db5"
+    },
+    {
+      "path": "public/characters/mage-cast.json",
+      "bytes": 2033,
+      "sha256": "ad7ec5561213582738cd23f7700c6dd96e4813fa79d94be4b2086fa965203c1d"
+    },
+    {
+      "path": "public/characters/mage-cast.png",
+      "bytes": 2230,
+      "sha256": "4ab528b08cef812669ce8473639fd47eb7f9d9014460dc411d8ae6075dd8118f"
     },
     {
       "path": "public/characters/mage-idle.json",
@@ -249,9 +970,49 @@
       "sha256": "7dc87639ec5bf7a67a65c4dad8cbe733e8269126352040b3c07f705e0b496c72"
     },
     {
+      "path": "public/characters/mage-run.json",
+      "bytes": 2322,
+      "sha256": "7be7bbe2aff48838a56bad2d7629fefdb4dc5b4d9ebb3f3ac6b8846881ff826a"
+    },
+    {
+      "path": "public/characters/mage-run.png",
+      "bytes": 2204,
+      "sha256": "5a3ad76e2b5028bdb7970302ac58b2c142fb5a1a41e4469e713f1f4f49ae05ce"
+    },
+    {
+      "path": "public/characters/warrior-attack.json",
+      "bytes": 2075,
+      "sha256": "b962ae30afd6c2fb00f7c427394e0ebd4a6b7f441e025b271337763e2c86dd93"
+    },
+    {
+      "path": "public/characters/warrior-attack.png",
+      "bytes": 2287,
+      "sha256": "21a4074199c0f1a1e55cc23071b945e2e10a78a76213b219608b22d6bf21b308"
+    },
+    {
       "path": "public/characters/warrior-avatar.png",
       "bytes": 721,
       "sha256": "743536c6080dc6037e44709ef1e110e48b0743d8efeaac67d1cb503312bc2c39"
+    },
+    {
+      "path": "public/characters/warrior-battle-idle.json",
+      "bytes": 1812,
+      "sha256": "e2a1671012850e65940eb338b2f73adc74feb01df2dfa0121198503ee9935ef1"
+    },
+    {
+      "path": "public/characters/warrior-battle-idle.png",
+      "bytes": 1796,
+      "sha256": "fb33d9a7a2a39e523b146ac85adb4d991d8723e2e42eb06f6cc50ef514dad7c9"
+    },
+    {
+      "path": "public/characters/warrior-cast.json",
+      "bytes": 2057,
+      "sha256": "629c6bfbc5164d3738a043c644ae44dce1a54bd54028c45bba570b69fc01b9fe"
+    },
+    {
+      "path": "public/characters/warrior-cast.png",
+      "bytes": 1990,
+      "sha256": "292ea78b819f4acdab3912abbd75e341994f931b9e1942a08fef2436b2f2eb18"
     },
     {
       "path": "public/characters/warrior-idle.json",
@@ -264,6 +1025,16 @@
       "sha256": "0596e2ecf73819bea0ac800c11c4f8e606cc86fbd21d6f7a3d94c1ed9bd9cb2a"
     },
     {
+      "path": "public/characters/warrior-run.json",
+      "bytes": 2349,
+      "sha256": "41609640963eaf5e9a8c086a50e554eb3129c944e01ccc6de9f71432219e5e41"
+    },
+    {
+      "path": "public/characters/warrior-run.png",
+      "bytes": 2203,
+      "sha256": "5e35fcbd146dd222eb7bbf2144137e96ec9eec6b66f3d8d228ba659197c476cb"
+    },
+    {
       "path": "tools/portraits/preview-all-frames.png",
       "bytes": 59495,
       "sha256": "c65f066359c96cf376fe4112a5acf394510077e0b31186a169294233ff4bc9b2"
@@ -272,6 +1043,11 @@
       "path": "tools/portraits/preview-assassin.png",
       "bytes": 12585,
       "sha256": "8adb62ff31a828051bcf6fbe1143731149bf10d8cc129d137202c0c80a26d17a"
+    },
+    {
+      "path": "tools/portraits/preview-battle.png",
+      "bytes": 38783,
+      "sha256": "cadfcdb278b9d139bb66fba6afbec39d4f8f4225bf7c3c33f7ded6c0228dc844"
     },
     {
       "path": "tools/portraits/preview-mage.png",

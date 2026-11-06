@@ -6,8 +6,17 @@
 import * as pc from 'playcanvas';
 import { type Component, ComponentType } from '../Component';
 
-/** 受擊閃白時覆寫的 emissive 值 */
-const FLASH_EMISSIVE = new Float32Array([1, 1, 1]);
+/** 受擊閃白時覆寫的 emissive 值（像素圖的 emissive 乘上貼圖，所以要大於 1 才會變白） */
+const FLASH_EMISSIVE = new Float32Array([3, 3, 3]);
+
+/** 隱身時隊友看到的不透明度 */
+const STEALTH_ALLY_OPACITY = 0.4;
+
+/** 帶這個 tag 的子實體不受閃白、色調與半透明影響（例如腳下的隊伍色圓環） */
+export const NO_STATUS_FX_TAG = 'no-status-fx';
+
+/** 隱身時的顯示方式：隊友看得到半透明，敵人完全看不到 */
+export type StealthView = 'none' | 'ally' | 'enemy';
 
 export class RenderComponent implements Component {
     readonly type = ComponentType.RENDER;
@@ -29,6 +38,10 @@ export class RenderComponent implements Component {
     private release: ((pcEntity: pc.Entity) => void) | null;
 
     private flashTimeout: number | null = null;
+    private alive = true;
+    private stealth: StealthView = 'none';
+    /** 狀態效果的色調（覆寫 emissive）；null 為原色 */
+    private tint: Float32Array | null = null;
 
     constructor(pcEntity: pc.Entity, release: ((pcEntity: pc.Entity) => void) | null = null) {
         this.pcEntity = pcEntity;
@@ -47,22 +60,57 @@ export class RenderComponent implements Component {
         for (const mi of meshInstances) mi.setParameter('material_emissive', FLASH_EMISSIVE);
 
         this.flashTimeout = window.setTimeout(() => {
-            for (const mi of meshInstances) mi.deleteParameter('material_emissive');
             this.flashTimeout = null;
+            this.applyEmissive();
         }, durationMs);
+    }
+
+    /** 狀態效果色調；受擊閃白結束後會回到這個色調 */
+    setTint(tint: Float32Array | null): void {
+        if (this.tint === tint) return;
+        this.tint = tint;
+        if (this.flashTimeout === null) this.applyEmissive();
+    }
+
+    private applyEmissive(): void {
+        for (const mi of this.getMeshInstances()) {
+            if (this.tint) mi.setParameter('material_emissive', this.tint);
+            else mi.deleteParameter('material_emissive');
+        }
+    }
+
+    setStealth(view: StealthView): void {
+        if (this.stealth === view) return;
+        this.stealth = view;
+        for (const mi of this.getMeshInstances()) {
+            if (view === 'ally') mi.setParameter('material_opacity', STEALTH_ALLY_OPACITY);
+            else mi.deleteParameter('material_opacity');
+        }
+        this.applyVisibility();
+    }
+
+    /** 敵方隱身中（看不到）時為 true */
+    get hiddenByStealth(): boolean {
+        return this.stealth === 'enemy';
     }
 
     private getMeshInstances(): pc.MeshInstance[] {
         const renders = this.pcEntity.findComponents('render') as pc.RenderComponent[];
-        return renders.flatMap(r => r.meshInstances);
+        return renders.filter(r => !r.entity.tags.has(NO_STATUS_FX_TAG)).flatMap(r => r.meshInstances);
     }
 
     /**
      * 顯示或隱藏模型與頭頂血條（玩家陣亡時隱藏）
      */
     setVisible(visible: boolean): void {
-        this.pcEntity.enabled = visible;
-        if (this.hpBarEntity) this.hpBarEntity.enabled = visible;
+        this.alive = visible;
+        this.applyVisibility();
+    }
+
+    private applyVisibility(): void {
+        const shown = this.alive && this.stealth !== 'enemy';
+        this.pcEntity.enabled = shown;
+        if (this.hpBarEntity) this.hpBarEntity.enabled = shown;
     }
 
     setHpBar(
@@ -84,9 +132,11 @@ export class RenderComponent implements Component {
     }
 
     dispose(): void {
-        if (this.flashTimeout !== null) {
-            window.clearTimeout(this.flashTimeout);
-            for (const mi of this.getMeshInstances()) mi.deleteParameter('material_emissive');
+        if (this.flashTimeout !== null) window.clearTimeout(this.flashTimeout);
+        // 物件池會重複使用視覺物件，交還前清掉這個實體的覆寫參數
+        for (const mi of this.getMeshInstances()) {
+            mi.deleteParameter('material_emissive');
+            mi.deleteParameter('material_opacity');
         }
         this.hpBarEntity?.destroy();
         if (this.release) {

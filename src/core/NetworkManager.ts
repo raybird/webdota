@@ -60,7 +60,8 @@ export interface PlayerState {
     id: string;
     pos: { x: number; y: number; z: number };
     rot: { x: number; y: number; z: number; w: number };
-    stats: { hp: number; energy: number };
+    /** status：狀態效果位元旗標（STATUS_FLAG） */
+    stats: { hp: number; energy: number; status: number };
 }
 
 export interface GameState {

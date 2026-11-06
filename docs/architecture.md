@@ -146,6 +146,23 @@ Entity ID 不重複使用。
 - `GameEngine`：受擊、陣亡與重生事件。
 比例固定為每單位 19 素材像素：pixelfx 以 38px 高的角色為基準設計，這裡的角色約 2 單位高、在畫面上約 40px，
 維持這個比例才接近 1 素材像素對 1 螢幕像素；縮小顯示會讓 1 像素細線被濾掉。素材請用原始解析度輸出，不要預先縮小。
+載入、材質與逐格 UV 由 `src/core/pixelSheet.ts` 提供，特效與角色共用。
+
+### 遊戲內角色像素圖（CharacterSpriteManager，2026-11-06）
+`public/characters/<id>-{battle-idle,run,attack,cast}` 是原創的 48×48 連續圖（產生方式見 `public/characters/NOTICE.md`），
+與特效同為每單位 19 素材像素；大廳的 96px 立繪只用於 UI，不縮小拿來當戰場角色。
+
+- 玩家的視覺實體底下是面向鏡頭的像素圖，加上腳下的隊伍色圓環（紅隊紅、藍隊藍）；素材載入失敗的角色退回方塊模型。
+- 移動中播 `run`、靜止播 `battle-idle`；放技能時播一次 `attack` 或 `cast`（法師技能與無傷害增益為施法），依移動或技能方向左右翻轉。
+- 每位玩家各一份材質；受擊閃白、狀態色調與半透明由 `RenderComponent` 以 mesh instance 參數覆寫，圓環帶 `no-status-fx` tag 不受影響。
+
+### 狀態效果（StatusComponent，2026-11-06）
+技能的 `effect` 欄位：`invincible`（戰士 E）、`invisible`（刺客 E）施放時加在自己身上，`slow`（法師 W）由 Hitbox 命中時加在目標身上。
+
+- **Host 權威**：只有 Host 施加與倒數（`StatusSystem` 只在 Host 啟用），結果以位元旗標放在 `GAME_STATE` 每位玩家的 `stats.status`（1 byte）同步，Client 用 `setFlags()` 套用。
+- 無敵：`HealthSystem.dealDamage` 不扣血。緩速：玩家與小兵的移動速度乘上倍率（Client 預測自己移動時同樣套用）。
+- 隱身：小兵與防禦塔不鎖定（範圍技能仍打得到）；放出有傷害的技能就解除。各端依本地玩家隊伍決定外觀：隊友半透明，敵人看不到模型、血條與小地圖標記。
+- 外觀由 `StatusVisualSystem` 處理：無敵金色、緩速藍色。小兵的狀態沒有同步，Client 看不到小兵被緩速的色調（移動速度照 Host 同步）。
 
 ---
 

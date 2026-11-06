@@ -15,13 +15,14 @@ export { TransformComponent } from './components/TransformComponent';
 export { HealthComponent } from './components/HealthComponent';
 export { TeamComponent, type Team } from './components/TeamComponent';
 export { CombatComponent } from './components/CombatComponent';
-export { RenderComponent } from './components/RenderComponent';
+export { RenderComponent, type StealthView } from './components/RenderComponent';
 export { PhysicsComponent } from './components/PhysicsComponent';
 export { AIComponent, type AIType } from './components/AIComponent';
 export { PlayerInputComponent } from './components/PlayerInputComponent';
 export { SkillComponent, MAX_COOLDOWN_REDUCTION, type SkillState } from './components/SkillComponent';
 export { AnimationComponent, type AnimationType, type AnimationState } from './components/AnimationComponent';
 export { InventoryComponent, MAX_INVENTORY_SLOTS } from './components/InventoryComponent';
+export { StatusComponent, STATUS_FLAG, type StatusKind } from './components/StatusComponent';
 
 // Systems
 export { MovementSystem } from './systems/MovementSystem';
@@ -31,6 +32,8 @@ export { CombatSystem } from './systems/CombatSystem';
 export { CollisionSystem, type HitEvent } from './systems/CollisionSystem';
 export { AISystem } from './systems/AISystem';
 export { SkillSystem } from './systems/SkillSystem';
+export { StatusSystem } from './systems/StatusSystem';
+export { StatusVisualSystem } from './systems/StatusVisualSystem';
 
 // Factory
 export { EntityFactory, type PlayerConfig, type CreepConfig, type TowerConfig } from './EntityFactory';
