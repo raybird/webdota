@@ -5,6 +5,7 @@ export const SKILLS: Record<string, Skill> = {
     'basic_attack': {
         id: 'basic_attack',
         name: '普通攻擊',
+        description: '對前方敵人揮出一擊',
         icon: '👊',
         type: 'basic',
         cooldown: 0.5,
@@ -18,6 +19,7 @@ export const SKILLS: Record<string, Skill> = {
     'warrior_q': {
         id: 'warrior_q',
         name: '衝鋒斬',
+        description: '向前衝鋒 4 單位並斬擊前方敵人',
         icon: '⚔️',
         type: 'normal',
         cooldown: 5.0,
@@ -31,6 +33,7 @@ export const SKILLS: Record<string, Skill> = {
     'warrior_w': {
         id: 'warrior_w',
         name: '震地猛擊',
+        description: '重擊地面，震傷周圍 3 單位內的敵人',
         icon: '💥',
         type: 'normal',
         cooldown: 8.0,
@@ -44,6 +47,7 @@ export const SKILLS: Record<string, Skill> = {
     'warrior_e': {
         id: 'warrior_e',
         name: '鋼鐵意志',
+        description: '2 秒內不受任何傷害',
         icon: '🛡️',
         type: 'normal',
         cooldown: 12.0,
@@ -57,6 +61,7 @@ export const SKILLS: Record<string, Skill> = {
     'warrior_r': {
         id: 'warrior_r',
         name: '旋風斬',
+        description: '揮劍旋轉，重創周圍 4 單位內的所有敵人',
         icon: '🌪️',
         type: 'ultimate',
         cooldown: 60.0,
@@ -72,6 +77,7 @@ export const SKILLS: Record<string, Skill> = {
     'assassin_q': {
         id: 'assassin_q',
         name: '瞬步',
+        description: '瞬間向前移動 6 單位，劃傷前方敵人',
         icon: '💨',
         type: 'normal',
         cooldown: 4.0,
@@ -84,6 +90,7 @@ export const SKILLS: Record<string, Skill> = {
     'assassin_w': {
         id: 'assassin_w',
         name: '致命一擊',
+        description: '對近身目標造成高額傷害',
         icon: '🗡️',
         type: 'normal',
         cooldown: 6.0,
@@ -96,6 +103,7 @@ export const SKILLS: Record<string, Skill> = {
     'assassin_e': {
         id: 'assassin_e',
         name: '煙霧彈',
+        description: '放出煙霧並隱身 3 秒',
         icon: '🌫️',
         type: 'normal',
         cooldown: 10.0,
@@ -109,6 +117,7 @@ export const SKILLS: Record<string, Skill> = {
     'assassin_r': {
         id: 'assassin_r',
         name: '幻影殺陣',
+        description: '化為幻影，在周圍 6 單位內連續斬擊',
         icon: '👻',
         type: 'ultimate',
         cooldown: 50.0,
@@ -124,6 +133,7 @@ export const SKILLS: Record<string, Skill> = {
     'mage_q': {
         id: 'mage_q',
         name: '火球術',
+        description: '射出火球，命中時爆炸',
         icon: '🔥',
         type: 'normal',
         cooldown: 3.0,
@@ -138,6 +148,7 @@ export const SKILLS: Record<string, Skill> = {
     'mage_w': {
         id: 'mage_w',
         name: '冰霜新星',
+        description: '釋放冰霜，傷害並緩速周圍敵人 3 秒',
         icon: '❄️',
         type: 'normal',
         cooldown: 10.0,
@@ -153,6 +164,7 @@ export const SKILLS: Record<string, Skill> = {
     'mage_e': {
         id: 'mage_e',
         name: '閃現',
+        description: '瞬移到前方 6 單位處',
         icon: '✨',
         type: 'normal',
         cooldown: 15.0,
@@ -165,6 +177,7 @@ export const SKILLS: Record<string, Skill> = {
     'mage_r': {
         id: 'mage_r',
         name: '隕石術',
+        description: '1 秒後隕石落在前方，造成大範圍傷害',
         icon: '☄️',
         type: 'ultimate',
         cooldown: 70.0,

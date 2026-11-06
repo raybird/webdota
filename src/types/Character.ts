@@ -38,12 +38,12 @@ export interface Character {
     // 模型配置 (Low Poly 幾何體組合)
     modelConfig?: ModelConfig;
 
-    // 基礎屬性（目前所有角色相同，預留擴充）
-    baseStats: {
-        maxHp: number;
-        moveSpeed: number;
-        attackPower: number;
-    };
+    /** 選角畫面顯示的定位，例如「坦克・近戰」 */
+    role: string;
+    /** 一句話口號 */
+    tagline: string;
+    /** 上手難度 1～3 */
+    difficulty: 1 | 2 | 3;
 
     // 技能組 (Q, W, E, R)
     skills: string[];

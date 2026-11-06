@@ -35,11 +35,9 @@ export const CHARACTERS: Record<string, Character> = {
                 { type: 'box', scale: { x: 0.1, y: 1.2, z: 0.15 }, position: { x: 0.7, y: 0.8, z: 0 }, color: '#888888' }
             ]
         },
-        baseStats: {
-            maxHp: 100,
-            moveSpeed: 5,
-            attackPower: 10
-        },
+        role: '坦克・近戰',
+        tagline: '正面扛下所有攻擊，再一劍劈開戰線',
+        difficulty: 1,
         skills: ['warrior_q', 'warrior_w', 'warrior_e', 'warrior_r']
     },
 
@@ -74,11 +72,9 @@ export const CHARACTERS: Record<string, Character> = {
                 { type: 'box', scale: { x: 0.05, y: 0.5, z: 0.08 }, position: { x: 0.5, y: 0.3, z: 0.3 }, rotation: { x: 45, y: 0, z: 0 }, color: '#C0C0C0' }
             ]
         },
-        baseStats: {
-            maxHp: 100,
-            moveSpeed: 5,
-            attackPower: 10
-        },
+        role: '刺殺・近戰',
+        tagline: '從陰影出手，一擊脫離',
+        difficulty: 3,
         skills: ['assassin_q', 'assassin_w', 'assassin_e', 'assassin_r']
     },
 
@@ -113,11 +109,9 @@ export const CHARACTERS: Record<string, Character> = {
                 { type: 'sphere', scale: { x: 0.1, y: 0.1, z: 0.1 }, position: { x: 0.3, y: 1.3, z: -0.5 }, color: '#87CEEB' }
             ]
         },
-        baseStats: {
-            maxHp: 100,
-            moveSpeed: 5,
-            attackPower: 10
-        },
+        role: '法術・遠程',
+        tagline: '在遠處掌控戰場的範圍輸出',
+        difficulty: 2,
         skills: ['mage_q', 'mage_w', 'mage_e', 'mage_r']
     }
 };

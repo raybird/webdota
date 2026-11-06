@@ -163,8 +163,15 @@ Entity ID 不重複使用。
 
 **訊息類型：**
 - 二進位（`BinarySerializer`）：`INPUT`、`GAME_STATE`、`ENTITY_STATE`
-- JSON：`peer_list`、`room_state`、`room_code`、`player_ready`、`character_selected`、
+- JSON：`peer_list`、`room_state`、`room_code`、`player_ready`、`character_selected`、`player_profile`、`team_request`、
   `game_start_countdown`、`game_started`、`game_over`、`shop`、`inventory`、`host_migration`、`ping`、`pong`
+
+**等待室協定（2026-11-06）：**
+- `player_profile`：`{ name, characterId, isReady }`，每位玩家在新連線建立時直接送給對方、資料變動時廣播；接收端只把它當作**送出者本人**的資料，不能改別人的。
+- `room_state`：Host 廣播的權威名單（id、隊伍、角色、準備、暱稱），只接受來自 Host 的版本；名單沒有的玩家會被移除，自己的那筆只套用隊伍。
+- `team_request`：Client 請 Host 換隊，Host 在未倒數時改隊伍後廣播 `room_state`；新玩家由 Host 分到人數較少的隊伍。
+- `joinRoom()` 等連線 `open` 才回傳；房間不存在（PeerJS `peer-unavailable`）或 12 秒逾時會丟出 `JoinRoomError`（`reason: 'not-found' | 'timeout'`）給大廳顯示。
+- 暱稱存在 `localStorage` 的 `webdota.nickname`，最多 12 字，空白時隨機產生；遊戲內名牌使用暱稱。
 
 Peer ID 在程式內以大寫正規化作為查詢 key，但 PeerJS 的 ID 區分大小寫，建立連線時使用原始的 `conn.peer`。
 
@@ -193,10 +200,13 @@ Peer ID 在程式內以大寫正規化作為查詢 key，但 PeerJS 的 ID 區�
 
 ### 5. App.vue (UI Shell)
 **職責：**
-- 大廳 UI（建立/加入房間）
-- 等待室（玩家列表、準備狀態）
+- 大廳 UI（`LobbyView`：暱稱、建立/加入房間、`?room=CODE` 邀請連結）
+- 等待室（`WaitingRoom` = `TeamPanel` ×2 + `CharacterStage` + `CharacterPicker`）
 - 遊戲中 HUD（血條、MP、小地圖）
-- Debug 面板
+- Debug 面板：預設隱藏，網址加 `?debug` 或按 `` ` `` 切換（2026-11-06）
+
+角色立繪與頭像在 `public/characters/`（原創像素圖，由 `tools/portraits/generate.py` 產生），
+像素圖只以整數倍放大（`useIntegerFit`），沒有素材時退回 emoji 頭像（`CharacterAvatar`）。
 
 ---
 
