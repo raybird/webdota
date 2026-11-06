@@ -154,7 +154,7 @@ Entity ID 不重複使用。
 - **鏡頭**（`RenderManager`、`src/core/view.ts`）：正交投影，俯角 36.87°（3:4:5）。在這個角度，像素密度剛好是整數比：水平每單位 19px、地面與頂面縱深每單位 11.4px、垂直面每單位 15.2px。`public/env` 的素材照這個比例畫，與螢幕像素 1:1 對齊。放大倍數 = floor(畫面高度 ÷ 360)，最少 1 倍；注視點對齊螢幕像素，跟隨時畫面不會在像素之間閃爍。
 - **視角依隊伍**：跟手機 MOBA 一樣，每位玩家都看到自家主堡在左下、敵方主堡在右上。藍方鏡頭繞 y 軸 -90°、紅方 +90°，在 `startGame` 依本地隊伍設定（`setViewTeam`），接著 `MapManager.applyView()` 依視角重建像素圖層；小地圖以相同角度旋轉。
 - **輸入**：鍵盤與搖桿是畫面方向，`fixedUpdate` 送出前用 `screenToWorld` 轉成世界方向，Host 與 Client 套用移動時不需要知道對方的鏡頭。技能方向取剛體朝向，本來就是世界方向。
-- **重生位置**：出生點沿 z 往中央移 7 單位。z 是兩隊畫面的左右方向，玩家出現在主堡右側，不會在主堡像素圖後方被擋住。
+- **重生位置**：出生點沿 z 往中央移 7 單位。z 是兩隊畫面的左右方向，玩家出現在主堡右側，不會在主堡像素圖後方被擋住。小兵從主堡中心往地圖中央移 5 單位出生（主堡底面半寬 2.5），一出生就看得到，也已朝向兵線。
 - **地圖像素圖層**（`src/core/map/PixelMapSkin.ts`）：碰撞體與缺素材時的打光積木在 `loadMap` 建立；有像素素材的部分（`handles()`）由 `build()` 依視角建立。
   - 地面：`ground-blue.png`／`ground-red.png`（1140×684），各是一隊視角的整張烘焙圖，兩張只差主堡廣場的隊伍色。主堡廣場、塔台與小徑已畫在地面上，所以 `highlight_*` 主堡標記方塊不再繪製。
   - 牆與掩體：自建網格，UV 以畫面座標（右、下）計算，貼圖每 5 單位一格（頂面 95×57、正面 95×76），兩隊都以正向顯示；明暗用頂點色，頂面最亮，正對鏡頭的面次之。
@@ -165,7 +165,7 @@ Entity ID 不重複使用。
   - 防禦塔、主堡與石柱素材的 pivot 是底面最靠近鏡頭的點，平面移到底面靠近鏡頭的邊緣（`groundRadius`），下緣才不會沒入地面。
   - 角色與小兵腳下有斜角橢圓陰影（`shadow-unit`／`shadow-creep`），帶 `no-status-fx` tag，不受受擊閃白、狀態色調與隱身影響。
   - 每個單位一份材質，`RenderComponent` 銷毀時由 `onDispose` 釋放；小兵視覺池建立時就掛上像素圖，重複使用。
-- **素材**：`public/env/` 由 `tools/env/generate.py` 離線產生（原創，規格與座標對應見 `public/env/NOTICE.md`，合成預覽 `tools/env/preview-scene.png`）；`public/characters/` 是 48×48 角色圖，大廳 96px 立繪只用於 UI。
+- **素材**：`public/env/` 由 `tools/env/generate.py` 離線產生（原創，規格與座標對應見 `public/env/NOTICE.md`，合成預覽 `tools/env/preview-scene.png`）；`public/characters/` 的戰場連續圖是 48×48、與場景同鏡頭的斜俯視（2026-11-06 v2，產生器 `tools/portraits/generate_battle.py`，合成預覽 `tools/portraits/preview-battle-scene.png`），大廳 96px 立繪只用於 UI。
 - 玩家腳下的隊伍色圓環同樣帶 `no-status-fx` tag；受擊閃白、狀態色調與半透明由 `RenderComponent` 以 mesh instance 參數覆寫。
 
 ### 狀態效果（StatusComponent，2026-11-06）

@@ -4,16 +4,16 @@
     "warrior": {
       "files_bytes": {
         "warrior-attack.json": 2075,
-        "warrior-attack.png": 2287,
+        "warrior-attack.png": 2228,
         "warrior-avatar.png": 721,
         "warrior-battle-idle.json": 1812,
-        "warrior-battle-idle.png": 1796,
+        "warrior-battle-idle.png": 1745,
         "warrior-cast.json": 2057,
-        "warrior-cast.png": 1990,
+        "warrior-cast.png": 1959,
         "warrior-idle.json": 2966,
         "warrior-idle.png": 5810,
         "warrior-run.json": 2349,
-        "warrior-run.png": 2203
+        "warrior-run.png": 2133
       },
       "colors": 16,
       "frames": 8,
@@ -82,16 +82,16 @@
     "assassin": {
       "files_bytes": {
         "assassin-attack.json": 2083,
-        "assassin-attack.png": 2426,
+        "assassin-attack.png": 2320,
         "assassin-avatar.png": 719,
         "assassin-battle-idle.json": 1819,
-        "assassin-battle-idle.png": 1771,
+        "assassin-battle-idle.png": 1746,
         "assassin-cast.json": 2065,
-        "assassin-cast.png": 2127,
+        "assassin-cast.png": 2228,
         "assassin-idle.json": 2977,
         "assassin-idle.png": 6094,
         "assassin-run.json": 2358,
-        "assassin-run.png": 2213
+        "assassin-run.png": 1916
       },
       "colors": 16,
       "frames": 8,
@@ -160,16 +160,16 @@
     "mage": {
       "files_bytes": {
         "mage-attack.json": 2051,
-        "mage-attack.png": 2896,
+        "mage-attack.png": 2758,
         "mage-avatar.png": 685,
         "mage-battle-idle.json": 1791,
-        "mage-battle-idle.png": 2005,
+        "mage-battle-idle.png": 1860,
         "mage-cast.json": 2033,
-        "mage-cast.png": 2230,
+        "mage-cast.png": 2299,
         "mage-idle.json": 2933,
         "mage-idle.png": 5765,
         "mage-run.json": 2322,
-        "mage-run.png": 2204
+        "mage-run.png": 2160
       },
       "colors": 16,
       "frames": 8,
@@ -238,6 +238,18 @@
   },
   "battle": {
     "date": "2026-11-06",
+    "version": 2,
+    "camera": {
+      "elevation_degrees": 36.87,
+      "sin": 0.6,
+      "cos": 0.8,
+      "horizontal_px_per_unit": 19,
+      "height_px_per_unit": 15.2,
+      "ground_depth_px_per_unit": 11.4
+    },
+    "facing": "right",
+    "light": "upper-left",
+    "ground_shadow": false,
     "frameSize": [
       48,
       48
@@ -256,8 +268,59 @@
       "distinct_frames",
       "fixed_grounded_foot",
       "unclipped_bounds",
-      "png_at_most_50000_bytes"
+      "height_32_to_36_px",
+      "png_at_most_50000_bytes",
+      "camera_projection_basis",
+      "scene_native_scale"
     ],
+    "scene": {
+      "preview": "tools/portraits/preview-battle-scene.png",
+      "nearest_scale": 3,
+      "ground": "public/env/ground-blue.png",
+      "crop": [
+        300,
+        270,
+        780,
+        510
+      ],
+      "character_poses": [
+        {
+          "animation": "battle-idle",
+          "frame": 0
+        },
+        {
+          "animation": "run",
+          "frame": 2
+        },
+        {
+          "animation": "attack",
+          "frame": 2
+        },
+        {
+          "animation": "cast",
+          "frame": 2
+        }
+      ],
+      "environment_references": [
+        "creep-blue-walk",
+        "creep-red-walk",
+        "tower-blue-idle",
+        "pillar-s-idle"
+      ],
+      "nearest_verified_native_rect": [
+        90,
+        0,
+        480,
+        240
+      ],
+      "source_sha256": {
+        "ground-blue.png": "805d525223e72e7b3ccf13483840368b7623412500f720e8054334b97e002d3d",
+        "creep-blue-walk.png": "a482d3df1934cbcccd1282becf463f4be39d31315c9c9e93b9328e2a8b28b8d1",
+        "creep-red-walk.png": "71af2e3318805b392ecea4c09bde2ee5dd737a59d576c599f5db6c170fbc5121",
+        "tower-blue-idle.png": "cc059530e73f7df3357fda09e882c24b154083e58759f1498577fea90e480907",
+        "pillar-s-idle.png": "7767b00e89c5990a44f2cff4aaadfa4fc0c3956cafa75d293c733bd721b3b991"
+      }
+    },
     "characters": {
       "warrior": {
         "colors": 14,
@@ -288,33 +351,37 @@
               192,
               48
             ],
-            "bytes": 1796,
+            "bytes": 1745,
             "distinct_frames": 4,
             "bounds": [
               [
                 10,
-                9,
+                11,
                 40,
                 46
               ],
               [
                 10,
-                8,
+                10,
                 41,
                 46
               ],
               [
                 10,
-                9,
+                11,
                 39,
                 46
               ],
               [
                 10,
-                10,
+                12,
                 40,
                 46
               ]
+            ],
+            "height_range": [
+              34,
+              36
             ]
           },
           "run": {
@@ -327,45 +394,49 @@
               288,
               48
             ],
-            "bytes": 2203,
+            "bytes": 2133,
             "distinct_frames": 6,
             "bounds": [
               [
                 10,
-                9,
+                11,
                 40,
                 46
               ],
               [
                 10,
-                8,
+                10,
                 39,
                 46
               ],
               [
                 10,
-                8,
+                10,
                 40,
                 46
               ],
               [
                 10,
-                9,
+                11,
                 41,
                 46
               ],
               [
                 10,
-                8,
+                10,
                 41,
                 46
               ],
               [
                 10,
-                8,
+                10,
                 40,
                 46
               ]
+            ],
+            "height_range": [
+              35,
+              36
             ]
           },
           "attack": {
@@ -378,39 +449,43 @@
               240,
               48
             ],
-            "bytes": 2287,
+            "bytes": 2228,
             "distinct_frames": 5,
             "bounds": [
               [
                 9,
-                9,
+                11,
                 34,
                 46
               ],
               [
-                9,
                 8,
+                10,
                 33,
                 46
               ],
               [
                 12,
-                9,
+                11,
                 45,
                 46
               ],
               [
                 11,
-                10,
+                12,
                 43,
                 46
               ],
               [
                 10,
-                9,
+                11,
                 40,
                 46
               ]
+            ],
+            "height_range": [
+              34,
+              36
             ]
           },
           "cast": {
@@ -423,39 +498,43 @@
               240,
               48
             ],
-            "bytes": 1990,
+            "bytes": 1959,
             "distinct_frames": 4,
             "bounds": [
               [
                 10,
-                9,
+                11,
                 40,
                 46
               ],
               [
                 10,
-                8,
-                36,
+                10,
+                39,
                 46
               ],
               [
                 10,
-                6,
-                35,
+                10,
+                40,
                 46
               ],
               [
                 10,
-                8,
-                36,
+                11,
+                43,
                 46
               ],
               [
                 10,
-                9,
+                11,
                 40,
                 46
               ]
+            ],
+            "height_range": [
+              35,
+              36
             ]
           }
         }
@@ -488,33 +567,37 @@
               192,
               48
             ],
-            "bytes": 1771,
+            "bytes": 1746,
             "distinct_frames": 4,
             "bounds": [
               [
                 9,
-                9,
+                13,
                 40,
                 46
               ],
               [
                 8,
-                8,
+                12,
                 41,
                 46
               ],
               [
                 8,
-                9,
+                13,
                 39,
                 46
               ],
               [
                 9,
-                10,
+                14,
                 40,
                 46
               ]
+            ],
+            "height_range": [
+              32,
+              34
             ]
           },
           "run": {
@@ -527,45 +610,49 @@
               288,
               48
             ],
-            "bytes": 2213,
+            "bytes": 1916,
             "distinct_frames": 6,
             "bounds": [
               [
                 9,
-                9,
+                13,
                 40,
                 46
               ],
               [
                 7,
-                8,
+                12,
                 42,
                 46
               ],
               [
                 7,
-                8,
+                12,
                 42,
                 46
               ],
               [
                 9,
-                9,
+                13,
                 40,
                 46
               ],
               [
                 8,
-                8,
+                12,
                 38,
                 46
               ],
               [
                 8,
-                8,
+                12,
                 38,
                 46
               ]
+            ],
+            "height_range": [
+              33,
+              34
             ]
           },
           "attack": {
@@ -578,39 +665,43 @@
               240,
               48
             ],
-            "bytes": 2426,
+            "bytes": 2320,
             "distinct_frames": 5,
             "bounds": [
               [
                 7,
-                9,
+                13,
                 37,
                 46
               ],
               [
                 8,
-                8,
-                35,
+                12,
+                33,
                 46
               ],
               [
                 9,
-                9,
+                13,
                 46,
                 46
               ],
               [
                 10,
-                10,
+                14,
                 45,
                 46
               ],
               [
                 10,
-                9,
+                13,
                 40,
                 46
               ]
+            ],
+            "height_range": [
+              32,
+              34
             ]
           },
           "cast": {
@@ -623,45 +714,49 @@
               240,
               48
             ],
-            "bytes": 2127,
+            "bytes": 2228,
             "distinct_frames": 4,
             "bounds": [
               [
                 9,
-                9,
+                13,
                 40,
                 46
               ],
               [
                 8,
-                8,
-                40,
-                46
-              ],
-              [
-                7,
-                8,
-                39,
-                46
-              ],
-              [
-                8,
-                9,
+                12,
                 42,
                 46
               ],
               [
+                7,
+                12,
+                44,
+                46
+              ],
+              [
+                7,
+                13,
+                46,
+                46
+              ],
+              [
                 9,
-                9,
+                13,
                 40,
                 46
               ]
+            ],
+            "height_range": [
+              33,
+              34
             ]
           }
         }
       },
       "mage": {
-        "colors": 14,
+        "colors": 13,
         "palette": [
           "#00a9b9",
           "#00ffff",
@@ -673,7 +768,6 @@
           "#74c7e8",
           "#816043",
           "#a96f56",
-          "#aa776f",
           "#cdeeeb",
           "#d1a15e",
           "#deab84"
@@ -689,33 +783,37 @@
               192,
               48
             ],
-            "bytes": 2005,
+            "bytes": 1860,
             "distinct_frames": 4,
             "bounds": [
               [
                 11,
-                7,
+                11,
                 41,
                 46
               ],
               [
                 11,
-                6,
+                10,
                 41,
                 46
               ],
               [
                 11,
-                7,
+                11,
                 41,
                 46
               ],
               [
                 11,
-                8,
+                12,
                 41,
                 46
               ]
+            ],
+            "height_range": [
+              34,
+              36
             ]
           },
           "run": {
@@ -728,45 +826,49 @@
               288,
               48
             ],
-            "bytes": 2204,
+            "bytes": 2160,
             "distinct_frames": 6,
             "bounds": [
               [
                 11,
-                7,
+                11,
                 41,
                 46
               ],
               [
                 11,
-                6,
+                10,
                 42,
                 46
               ],
               [
                 11,
-                6,
+                10,
                 42,
                 46
               ],
               [
                 11,
-                7,
+                11,
                 41,
                 46
               ],
               [
                 11,
-                6,
+                10,
                 41,
                 46
               ],
               [
                 11,
-                6,
+                10,
                 41,
                 46
               ]
+            ],
+            "height_range": [
+              35,
+              36
             ]
           },
           "attack": {
@@ -779,39 +881,43 @@
               240,
               48
             ],
-            "bytes": 2896,
+            "bytes": 2758,
             "distinct_frames": 5,
             "bounds": [
               [
                 10,
-                7,
+                11,
+                40,
+                46
+              ],
+              [
+                9,
+                10,
                 37,
                 46
               ],
               [
-                10,
-                6,
-                38,
-                46
-              ],
-              [
                 12,
-                7,
+                11,
                 46,
                 46
               ],
               [
                 12,
-                8,
-                47,
+                12,
+                46,
                 46
               ],
               [
                 10,
-                7,
+                11,
                 41,
                 46
               ]
+            ],
+            "height_range": [
+              34,
+              36
             ]
           },
           "cast": {
@@ -824,39 +930,43 @@
               240,
               48
             ],
-            "bytes": 2230,
+            "bytes": 2299,
             "distinct_frames": 4,
             "bounds": [
               [
                 11,
-                7,
-                41,
-                46
-              ],
-              [
                 11,
-                6,
                 41,
                 46
               ],
               [
                 10,
-                6,
+                10,
                 41,
                 46
               ],
               [
-                11,
                 7,
-                41,
+                10,
+                43,
+                46
+              ],
+              [
+                9,
+                11,
+                43,
                 46
               ],
               [
                 11,
-                7,
+                11,
                 41,
                 46
               ]
+            ],
+            "height_range": [
+              35,
+              36
             ]
           }
         }
@@ -866,8 +976,8 @@
   "files": [
     {
       "path": "public/characters/NOTICE.md",
-      "bytes": 6924,
-      "sha256": "95c8a3fcf1e11ae29b87a399442b73746dec3bc1b3f30c2c87646763e7aef3d9"
+      "bytes": 7893,
+      "sha256": "52b0339d046d588e2619b9308a163b32299e9c0e6d3cfdbcf2bf39cbf8c3af12"
     },
     {
       "path": "public/characters/assassin-attack.json",
@@ -876,8 +986,8 @@
     },
     {
       "path": "public/characters/assassin-attack.png",
-      "bytes": 2426,
-      "sha256": "d225ba5e658a93d8e19b263b93a35a77087278afc9658c840c7f9787776829e0"
+      "bytes": 2320,
+      "sha256": "ed275eae38f46b2367497e952d867b6643db4fa28f613a60b190e25c25c9bd80"
     },
     {
       "path": "public/characters/assassin-avatar.png",
@@ -891,8 +1001,8 @@
     },
     {
       "path": "public/characters/assassin-battle-idle.png",
-      "bytes": 1771,
-      "sha256": "f403949c144b9d389d73591587942abc4aa901bf2985d703129a86824fd28de3"
+      "bytes": 1746,
+      "sha256": "7bbc3dc620b2c09fabba0ac6cf79eab238eec3b050053ce1ffdd4bf255686031"
     },
     {
       "path": "public/characters/assassin-cast.json",
@@ -901,8 +1011,8 @@
     },
     {
       "path": "public/characters/assassin-cast.png",
-      "bytes": 2127,
-      "sha256": "39e770887ab6814711f9d63565bb387fbed9890c2ff127570b0faa174a0aac1d"
+      "bytes": 2228,
+      "sha256": "0ed9be35b74d4370ef4ca93001cd1299d05bcfbd2ce0b580d4dcd18e87f42a4e"
     },
     {
       "path": "public/characters/assassin-idle.json",
@@ -921,8 +1031,8 @@
     },
     {
       "path": "public/characters/assassin-run.png",
-      "bytes": 2213,
-      "sha256": "a997966ca4d8195af05f5c82333768aded2e1c76bd4848e104b3020c31190a15"
+      "bytes": 1916,
+      "sha256": "498ab6d62f9bcd579fc83196f061c448851e565f27b33c4792cf053d4446ad4d"
     },
     {
       "path": "public/characters/mage-attack.json",
@@ -931,8 +1041,8 @@
     },
     {
       "path": "public/characters/mage-attack.png",
-      "bytes": 2896,
-      "sha256": "0121699b3450402d81c11e75515b2d96b488163e0de2c84d43af62c7ee9ddbbb"
+      "bytes": 2758,
+      "sha256": "dd66588f27d7be582d56d9d3f2060092c647442c6beeaa97a78d2eb0c43bfe47"
     },
     {
       "path": "public/characters/mage-avatar.png",
@@ -946,8 +1056,8 @@
     },
     {
       "path": "public/characters/mage-battle-idle.png",
-      "bytes": 2005,
-      "sha256": "bddd15d41c4ce05aa0c74275381131965afc0d5048dd7bec53956d4c97114db5"
+      "bytes": 1860,
+      "sha256": "ef1b19df717c90a0b4d8802e2be8c466204906d2c3e674c946f1c1d0ca3b577a"
     },
     {
       "path": "public/characters/mage-cast.json",
@@ -956,8 +1066,8 @@
     },
     {
       "path": "public/characters/mage-cast.png",
-      "bytes": 2230,
-      "sha256": "4ab528b08cef812669ce8473639fd47eb7f9d9014460dc411d8ae6075dd8118f"
+      "bytes": 2299,
+      "sha256": "385e94dc38ebe598a88c13927baef65e287218fb38fde0bd82b1fec50a038337"
     },
     {
       "path": "public/characters/mage-idle.json",
@@ -976,8 +1086,8 @@
     },
     {
       "path": "public/characters/mage-run.png",
-      "bytes": 2204,
-      "sha256": "5a3ad76e2b5028bdb7970302ac58b2c142fb5a1a41e4469e713f1f4f49ae05ce"
+      "bytes": 2160,
+      "sha256": "34a94eba60f86b4e3213ae3339a211b9178bc7982385006a6dcbaa4c519e501c"
     },
     {
       "path": "public/characters/warrior-attack.json",
@@ -986,8 +1096,8 @@
     },
     {
       "path": "public/characters/warrior-attack.png",
-      "bytes": 2287,
-      "sha256": "21a4074199c0f1a1e55cc23071b945e2e10a78a76213b219608b22d6bf21b308"
+      "bytes": 2228,
+      "sha256": "ceae57317ebf5a4be1ca463f83cab6ac39faff022503778d28413c7cef824816"
     },
     {
       "path": "public/characters/warrior-avatar.png",
@@ -1001,8 +1111,8 @@
     },
     {
       "path": "public/characters/warrior-battle-idle.png",
-      "bytes": 1796,
-      "sha256": "fb33d9a7a2a39e523b146ac85adb4d991d8723e2e42eb06f6cc50ef514dad7c9"
+      "bytes": 1745,
+      "sha256": "0f28fc8f4e691929cff6c9fa8c696bfe92fb18126e3125a3456915794af595d7"
     },
     {
       "path": "public/characters/warrior-cast.json",
@@ -1011,8 +1121,8 @@
     },
     {
       "path": "public/characters/warrior-cast.png",
-      "bytes": 1990,
-      "sha256": "292ea78b819f4acdab3912abbd75e341994f931b9e1942a08fef2436b2f2eb18"
+      "bytes": 1959,
+      "sha256": "fe6d1ab8674ad4ce4b58adcccce6a34b0539b19d04016cf27e5fbd2cac597a0b"
     },
     {
       "path": "public/characters/warrior-idle.json",
@@ -1031,8 +1141,8 @@
     },
     {
       "path": "public/characters/warrior-run.png",
-      "bytes": 2203,
-      "sha256": "5e35fcbd146dd222eb7bbf2144137e96ec9eec6b66f3d8d228ba659197c476cb"
+      "bytes": 2133,
+      "sha256": "09d68030ef47aec978ce24b5107a30052515742f15f5d98f12ce975f64a3e9dd"
     },
     {
       "path": "tools/portraits/preview-all-frames.png",
@@ -1045,9 +1155,14 @@
       "sha256": "8adb62ff31a828051bcf6fbe1143731149bf10d8cc129d137202c0c80a26d17a"
     },
     {
+      "path": "tools/portraits/preview-battle-scene.png",
+      "bytes": 35287,
+      "sha256": "ddec25f34f504ee7d56043409ac6063273decd67f2268f377fce37744c203f75"
+    },
+    {
       "path": "tools/portraits/preview-battle.png",
-      "bytes": 38783,
-      "sha256": "cadfcdb278b9d139bb66fba6afbec39d4f8f4225bf7c3c33f7ded6c0228dc844"
+      "bytes": 38262,
+      "sha256": "e5d7c5b875bfac4fe39ad157246321dbf5c1eb4c873791cc4356eb3fa33defac"
     },
     {
       "path": "tools/portraits/preview-mage.png",
