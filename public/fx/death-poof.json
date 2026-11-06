@@ -1,0 +1,479 @@
+{
+ "frames": [
+  {
+   "filename": "death-poof 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 1",
+   "frame": {
+    "x": 95,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 2",
+   "frame": {
+    "x": 190,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 3",
+   "frame": {
+    "x": 285,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 4",
+   "frame": {
+    "x": 380,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 5",
+   "frame": {
+    "x": 0,
+    "y": 79,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 6",
+   "frame": {
+    "x": 95,
+    "y": 79,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 7",
+   "frame": {
+    "x": 190,
+    "y": 79,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 8",
+   "frame": {
+    "x": 285,
+    "y": 79,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 9",
+   "frame": {
+    "x": 380,
+    "y": 79,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 10",
+   "frame": {
+    "x": 0,
+    "y": 158,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 11",
+   "frame": {
+    "x": 95,
+    "y": 158,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 12",
+   "frame": {
+    "x": 190,
+    "y": 158,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 13",
+   "frame": {
+    "x": 285,
+    "y": 158,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 14",
+   "frame": {
+    "x": 380,
+    "y": 158,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 15",
+   "frame": {
+    "x": 0,
+    "y": 237,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 16",
+   "frame": {
+    "x": 95,
+    "y": 237,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 17",
+   "frame": {
+    "x": 190,
+    "y": 237,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 18",
+   "frame": {
+    "x": 285,
+    "y": 237,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  },
+  {
+   "filename": "death-poof 19",
+   "frame": {
+    "x": 380,
+    "y": 237,
+    "w": 95,
+    "h": 79
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 95,
+    "h": 79
+   },
+   "sourceSize": {
+    "w": 95,
+    "h": 79
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "https://github.com/patch-gg/pixelfx",
+  "version": "1",
+  "image": "death-poof.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 475,
+   "h": 316
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "death-poof",
+    "from": 0,
+    "to": 19,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "spawn/poof",
+   "name": "Poof",
+   "fps": 12,
+   "loop": false,
+   "frames": 20,
+   "frameSize": [
+    95,
+    79
+   ],
+   "pivot": [
+    45,
+    67
+   ],
+   "columns": 5
+  }
+ }
+}

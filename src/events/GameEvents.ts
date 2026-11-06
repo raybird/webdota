@@ -102,6 +102,11 @@ export type EntityDiedEvent = {
     killerId: string | null
 }
 
+export type PlayerRespawnedEvent = {
+    type: 'PLAYER_RESPAWNED'
+    entityId: string
+}
+
 // 聯合類型
 export type GameEvent =
     | PlayerJoinedEvent
@@ -121,6 +126,7 @@ export type GameEvent =
     | PlayerHealedEvent
     | EntityTookDamageEvent
     | EntityDiedEvent
+    | PlayerRespawnedEvent
     | GameOverEvent
     | PingUpdatedEvent
 

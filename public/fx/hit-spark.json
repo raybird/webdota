@@ -1,0 +1,193 @@
+{
+ "frames": [
+  {
+   "filename": "hit-spark 0",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 125,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hit-spark 1",
+   "frame": {
+    "x": 125,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 125,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hit-spark 2",
+   "frame": {
+    "x": 250,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 125,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hit-spark 3",
+   "frame": {
+    "x": 0,
+    "y": 74,
+    "w": 125,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 125,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hit-spark 4",
+   "frame": {
+    "x": 125,
+    "y": 74,
+    "w": 125,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 125,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hit-spark 5",
+   "frame": {
+    "x": 250,
+    "y": 74,
+    "w": 125,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 125,
+    "h": 74
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hit-spark 6",
+   "frame": {
+    "x": 0,
+    "y": 148,
+    "w": 125,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 125,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 125,
+    "h": 74
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "https://github.com/patch-gg/pixelfx",
+  "version": "1",
+  "image": "hit-spark.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 375,
+   "h": 222
+  },
+  "scale": "1",
+  "frameTags": [
+   {
+    "name": "hit-spark",
+    "from": 0,
+    "to": 6,
+    "direction": "forward"
+   }
+  ],
+  "pixelfx": {
+   "id": "impacts/hit-spark",
+   "name": "Hit spark",
+   "fps": 12,
+   "loop": false,
+   "frames": 7,
+   "frameSize": [
+    125,
+    74
+   ],
+   "pivot": [
+    36,
+    58
+   ],
+   "columns": 3
+  }
+ }
+}
