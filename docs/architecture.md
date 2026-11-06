@@ -177,6 +177,17 @@ Entity ID 不重複使用。
 - **射程圈**：本地玩家距敵方建築在「射程 + 4」以內時，地面出現米色虛線橢圓；進入射程後變紅色。射程讀建築的 AIComponent；Client 的建築鏡像由 `MapManager.structureConfigAt` 依位置補上地圖設定（Host 只同步血量）。貼圖照畫面比例畫、平面依視角轉向，所以像素與螢幕 1:1；建築被摧毀時一併移除。
 - **鎖定指示（2026-11-06）**：敵方建築最近一發光彈的目標腳下出現準星，地面有一條從建築底面流向目標的虛線；鎖定的是自己時為紅色，其他目標為米色。目標離開射程、死亡，或建築超過「冷卻 + 0.6 秒」沒再開火時消失。
 
+### 連線診斷（2026-11-06）
+遊戲中點 HUD 的 PING 或按 N 打開 `ConnectionPanel`，每 500ms 讀一次 `GameService.getConnectionDiagnostics()`。數值由 `NetworkManager.diagnostics`（`src/core/net/ConnectionDiagnostics.ts`）收集：
+
+- **延遲與抖動**：每秒對每條連線送一次帶序號的 ping（`timestamp` 欄位同時放序號，相容只會原樣帶回 timestamp 的舊版 pong），以 `performance.now()` 算往返時間；保留最近 20 筆算平均與最大值，抖動是相鄰 RTT 差值的平滑平均（RFC 3550，增益 1/16）。
+- **卡住**：資料通道是 reliable（有序、會重送），封包遺失表現成延遲尖峰而不是遺失，所以用「超過 3 秒沒回來的 ping」判斷連線卡住。
+- **連線方式**：每 2 秒讀 `RTCPeerConnection.getStats()` 的選定 candidate pair，兩端都是 host 為區域網路直連、有 relay 為經中繼（TURN），其餘為 NAT 穿透直連；也列出協定與 WebRTC 層的 RTT。
+- **同步頻率**：Host 統計每秒送出、Client 統計每秒收到的 GAME_STATE 與 ENTITY_STATE，Client 另顯示距上次同步多久。
+- **評等**：平均延遲 60 ms 以下良好、120 ms 以下普通、250 ms 以下偏差，以上很差；抖動超過 30 ms 降一級，卡住直接為很差。
+
+HUD 的點擊層次：搖桿的觸控區（`VirtualJoystick`）佔滿全畫面、z-index 50；狀態面板與診斷面板放在 55 才點得到；傷害數字與通知層（60）雖然在最上面，但設成 `pointer-events: none`，不能被 `.hud-layer > *` 的 `pointer-events: auto` 蓋掉，否則會擋住搖桿與所有 HUD 按鈕。
+
 ### Host 遷移（2026-11-06）
 原 Host 在遊戲中斷線時，NetworkManager 依 Peer ID 字典序選出新 Host 並呼叫 `onHostChanged`：
 

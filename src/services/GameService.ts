@@ -69,6 +69,21 @@ export class GameService {
         }
     }
 
+    /** 連線診斷的目前數值（面板開著時定時讀取） */
+    getConnectionDiagnostics() {
+        const nm = this.networkManager
+        const now = performance.now()
+        const d = nm.diagnostics
+        return {
+            isHost: nm.isHost,
+            hostId: nm.hostId,
+            peers: d.snapshot(now),
+            gameRate: d.stateRate('game', now),
+            entityRate: d.stateRate('entity', now),
+            stateAge: d.stateAge(now)
+        }
+    }
+
     private getLocalInventory() {
         return this.gameEngine?.playerManager.getInventory(this.networkManager.peerId)
     }
