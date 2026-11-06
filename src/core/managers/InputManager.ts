@@ -29,13 +29,17 @@ export class InputManager {
     // 技能 ID 映射表 (由 GameEngine 設定)
     private skillSlotIds: string[] = []; // [Q/1, W/2, E/3, R/4, Basic/0]
 
+    private onKeyDown = (e: KeyboardEvent) => this.handleKey(e.key, true, e);
+    private onKeyUp = (e: KeyboardEvent) => this.handleKey(e.key, false, e);
+
     constructor() {
-        this.setupListeners();
+        window.addEventListener('keydown', this.onKeyDown);
+        window.addEventListener('keyup', this.onKeyUp);
     }
 
-    private setupListeners() {
-        window.addEventListener('keydown', (e) => this.handleKey(e.key, true, e));
-        window.addEventListener('keyup', (e) => this.handleKey(e.key, false, e));
+    destroy() {
+        window.removeEventListener('keydown', this.onKeyDown);
+        window.removeEventListener('keyup', this.onKeyUp);
     }
 
     private handleKey(key: string, isPressed: boolean, event?: KeyboardEvent) {
@@ -100,7 +104,6 @@ export class InputManager {
         if (skillIndex >= 0 && skillIndex < this.skillSlotIds.length) {
             const skillId = this.skillSlotIds[skillIndex];
             if (skillId) {
-                console.log(`[InputManager] Skill key pressed: ${key} -> ${skillId}`);
                 eventBus.emit({
                     type: 'SKILL_USED',
                     playerId: this.localInput.playerId,

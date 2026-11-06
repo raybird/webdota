@@ -16,9 +16,6 @@ export class HealthSystem extends System {
 
     priority = 50; // 中等優先級
 
-    /** 死亡回調 */
-    onEntityDeath?: (entityId: string, killerId: string | null) => void;
-
     update(world: World, _dt: number): void {
         const entities = world.query(ComponentType.HEALTH);
 
@@ -27,13 +24,8 @@ export class HealthSystem extends System {
 
             if (!health) continue;
 
-            // 檢查死亡
-            if (health.isDead()) {
-                // 觸發死亡回調
-                if (this.onEntityDeath) {
-                    this.onEntityDeath(entityId, health.lastAttackerId);
-                }
-
+            // 玩家陣亡不移除，由 ECSPlayerManager 處理隱藏與重生
+            if (health.isDead() && !world.hasComponent(entityId, ComponentType.PLAYER_INPUT)) {
                 // 發送全域死亡事件
                 eventBus.emit({
                     type: 'ENTITY_DIED',
@@ -41,19 +33,26 @@ export class HealthSystem extends System {
                     killerId: health.lastAttackerId
                 });
 
-                // 處理渲染組件：如果是可池化的，由 Factory 處理，否則直接銷毀
-                const render = world.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
-                if (render) {
-                    // 如果沒有 POOLABLE 組件，則直接銷毀視覺物件
-                    if (!world.hasComponent(entityId, ComponentType.POOLABLE)) {
-                        render.destroy();
-                    }
-                }
-
-                // 標記 Entity 待刪除
+                // 標記 Entity 待刪除（dispose 會一併釋放物理與渲染資源）
                 world.removeEntity(entityId);
             }
         }
+    }
+
+    /**
+     * 套用權威端（Host）的血量
+     * 血量下降時與 dealDamage 一樣觸發傷害數字與受擊閃白，讓 Client 也看得到所有傷害
+     */
+    static syncHp(world: World, targetId: string, hp: number): void {
+        const health = world.getComponent<HealthComponent>(targetId, ComponentType.HEALTH);
+        if (!health || health.currentHp === hp) return;
+
+        const damage = health.currentHp - hp;
+        health.currentHp = hp;
+        if (damage <= 0) return;
+
+        eventBus.emit({ type: 'ENTITY_TOOK_DAMAGE', targetId, damage, isCrit: false });
+        world.getComponent<RenderComponent>(targetId, ComponentType.RENDER)?.flashHit();
     }
 
     /**
@@ -66,7 +65,7 @@ export class HealthSystem extends System {
         attackerId?: string
     ): number {
         const health = world.getComponent<HealthComponent>(targetId, ComponentType.HEALTH);
-        if (!health) return 0;
+        if (!health || health.isDead()) return 0;
 
         const actualDamage = health.takeDamage(damage, attackerId);
 
@@ -82,9 +81,7 @@ export class HealthSystem extends System {
 
             // 觸發受擊閃爍 (Hit Flash)
             const render = world.getComponent<RenderComponent>(targetId, ComponentType.RENDER);
-            if (render && render.flashHit) {
-                render.flashHit();
-            }
+            render?.flashHit();
         }
 
         return actualDamage;

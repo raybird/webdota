@@ -12,8 +12,6 @@ import {
     World,
     EntityFactory,
     ComponentType,
-    HealthComponent,
-    TeamComponent,
     RenderComponent,
     type EntityId,
     type Team,
@@ -79,9 +77,6 @@ export class ECSCreepManager {
         return new pc.Vec3(sumX / spawnPoints.length, 1, sumZ / spawnPoints.length);
     }
 
-    setWaveConfig(config: Partial<WaveConfig>): void {
-        this.waveConfig = { ...this.waveConfig, ...config };
-    }
 
     spawnWave(): void {
         this.waveCount++;
@@ -98,97 +93,72 @@ export class ECSCreepManager {
         const spawnPoint = spawnPoints[0];
         if (!spawnPoint) return;
 
-        const targetPosition = team === 'red' ? this.blueBasePosition : this.redBasePosition;
-
-        // 判斷敵我 (灰色敵人)
-        const roomStore = useRoomStore();
-        const myTeam = roomStore.myPlayer?.team;
-        const isEnemy = myTeam && myTeam !== team && myTeam !== 'neutral';
-
         for (let i = 0; i < this.waveConfig.creepsPerWave; i++) {
-            const offsetX = (Math.random() - 0.5) * 2;
-            const offsetZ = (Math.random() - 0.5) * 2;
-            const position = {
-                x: spawnPoint.position.x + offsetX,
+            this.spawnCreep(team, {
+                x: spawnPoint.position.x + (Math.random() - 0.5) * 2,
                 y: spawnPoint.position.y,
-                z: spawnPoint.position.z + offsetZ
-            };
-
-            // 使用 EntityFactory 建立 ECS 小兵
-            const creepId = this.entityFactory.createCreep({
-                team,
-                position,
-                targetPosition: { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z },
-                maxHp: 200,
-                attackPower: 5,
-                moveSpeed: 2.5,
-                isEnemy
+                z: spawnPoint.position.z + (Math.random() - 0.5) * 2
             });
-
-            this.creeps.add(creepId);
-
-            // 建立 UI
-            const teamStr = team as 'red' | 'blue' | 'neutral';
-            const ui = this.uiManager.createEntityUI(creepId, teamStr);
-
-            // 設定 UI 參考到 RenderComponent (簡化：直接存到 World)
-            const render = this.world.getComponent<RenderComponent>(creepId, ComponentType.RENDER);
-            if (render && ui.hpBarEntity) {
-                // 將 UI bar 作為子實體附加
-                render.pcEntity.addChild(ui.hpBarEntity);
-            }
         }
     }
 
-    removeCreep(id: EntityId): void {
-        if (!this.creeps.has(id)) return;
+    /**
+     * 生成單一小兵（Host 生成波次，Client 依 Host 同步的狀態生成鏡像）
+     */
+    spawnCreep(team: Team, position: { x: number; y: number; z: number }, maxHp: number = 200): EntityId {
+        const targetPosition = team === 'red' ? this.blueBasePosition : this.redBasePosition;
 
-        // 銷毀 ECS Entity
-        this.world.destroyEntity(id);
-        this.uiManager.removePlayerUI(id);
-        this.creeps.delete(id);
+        // 判斷敵我 (灰色敵人)
+        const myTeam = useRoomStore().myPlayer?.team;
+        const isEnemy = myTeam && myTeam !== team && myTeam !== 'neutral';
+
+        const creepId = this.entityFactory.createCreep({
+            team,
+            position,
+            targetPosition: { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z },
+            maxHp,
+            attackPower: 5,
+            moveSpeed: 2.5,
+            isEnemy
+        });
+        this.creeps.add(creepId);
+
+        const render = this.world.getComponent<RenderComponent>(creepId, ComponentType.RENDER);
+        render?.setHpBar(this.uiManager.createEntityUI(creepId, team), 1.5);
+
+        return creepId;
     }
 
     /**
-     * 每幀更新（主要用於波次計時）
-     * AI 邏輯已由 AISystem 處理
+     * 每幀更新（Host）：波次計時，並移除已被 HealthSystem 銷毀的小兵
+     * AI 邏輯由 AISystem 處理
      */
     update(dt: number): void {
-        // 波次計時器
         this.waveTimer += dt;
         if (this.waveTimer >= this.waveConfig.waveIntervalSeconds) {
             this.waveTimer = 0;
             this.spawnWave();
         }
 
-        // 檢查死亡的小兵並移除
-        const creepsToRemove: EntityId[] = [];
+        this.prune();
+    }
 
+    /**
+     * 移除已被銷毀（HealthSystem 或同步移除）的小兵
+     */
+    prune(): void {
         for (const creepId of this.creeps) {
-            const health = this.world.getComponent<HealthComponent>(creepId, ComponentType.HEALTH);
-            if (health && health.isDead()) {
-                creepsToRemove.push(creepId);
-            }
+            if (!this.world.hasEntity(creepId)) this.creeps.delete(creepId);
         }
-
-        creepsToRemove.forEach(id => this.removeCreep(id));
     }
 
-    getAllCreepIds(): EntityId[] {
-        return Array.from(this.creeps);
-    }
-
-    getCreepsByTeam(team: Team): EntityId[] {
-        return Array.from(this.creeps).filter(id => {
-            const teamComp = this.world.getComponent<TeamComponent>(id, ComponentType.TEAM);
-            return teamComp?.team === team;
-        });
+    getAllCreepIds(): ReadonlySet<EntityId> {
+        return this.creeps;
     }
 
     clearAll(): void {
         for (const id of this.creeps) {
             this.world.destroyEntity(id);
-            this.uiManager.removePlayerUI(id);
         }
         this.creeps.clear();
     }

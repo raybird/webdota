@@ -92,28 +92,13 @@ function closeShop() {
 }
 
 function buyItem(item: Item) {
-  if (gold.value < item.cost) {
-    console.log('[Shop] Not enough gold')
-    return
-  }
-
-  // 呼叫 GameService 購買物品
-  if (gameService) {
-    const success = gameService.buyItem(item.id)
-    if (success) {
-      console.log(`[Shop] Bought ${item.name}`)
-    }
-  }
+  if (gold.value < item.cost) return
+  gameService?.buyItem(item.id)
 }
 
 function sellItem(index: number) {
-  const item = inventory.value[index]
-  if (!item) return
-
-  if (gameService) {
-    gameService.sellItem(index)
-    console.log(`[Shop] Sold ${item.name}`)
-  }
+  if (!inventory.value[index]) return
+  gameService?.sellItem(index)
 }
 </script>
 

@@ -19,20 +19,20 @@
 ## Phase 6: 環境主權與 UI 規訓 [COMPLETED]
 
 ### 6.1 畫面視口修復 - FULLY HARDENED
-### 6.2 邊緣主權預演 - DONE
-### 6.3 戰局自癒與持久化 - DONE
-### 6.4 共識主權與裁判規訓 - FULLY HARDENED
-- **實作**: 
-    - 建立 `RefereeManager.ts` 執行狀態指紋 (Hashing) 與分層校驗。
-    - **延遲因果校準**：引入 `COLLAPSE_THRESHOLD` 容忍瞬時網路抖動。
-    - **狀態坍縮**：當分歧持續時自動觸發 `WEBDOTA_STATE_COLLAPSE` 事件回溯狀態。
+### 6.2～6.4、Phase 7 - REMOVED (2026-11-06)
+- 環境預檢、檢查點回溯、狀態指紋裁判（RefereeManager）與事件存證（ProvenanceManager）實際上沒有接通：
+  裁判比對的是同一份遠端雜湊、坍縮事件沒有監聽者、物理快照經 JSON 序列化後無法還原。
+  連同動態降頻一併移除；Client 的狀態一致性由 Host 每 3 幀的權威廣播維持。
 
-## Phase 7: 主權存封與邊緣演化 [IN PROGRESS]
-- **目標**: 將戰局中的「重大決策」與「因果分歧處理」標註 C2PA 指紋。
-- **對焦**: 整合 Curiosity Engine 關於 JUMBF 段落雜湊的研究成果。
-- **實作**:
-    - **[NEW] ProvenanceManager.ts**：模擬 C2PA JUMBF 結構，為戰局事件產生數位指紋。
-    - **[NEW] 因果存證集成**：在 `RefereeManager` 觸發坍縮時自動呼叫 `ProvenanceManager` 進行持久化存證。
+## Phase 8: 核心修正與精簡 [COMPLETED] (2026-11-06)
+- 輸入封包加入技能 ID 與方向，Client 技能會在 Host 執行
+- 技能執行器改用 ECS Entity ID 查詢施放者（ECS 遷移後所有技能都找不到施放者而不生效）
+- `World.destroyEntity` 冪等並呼叫 Component `dispose()`，修正死亡實體殘留剛體、ID 被重複回收
+- 血條統一由 `RenderSystem` 更新；移除 `EntityStatus.vue` 與 UIManager 的重複更新路徑
+- 防禦塔與主堡合併為 `ECSStructureManager`；移除 HostManager、PlayerInputSystem、PoolableComponent、
+  EntityPool、SkillManager、CombatStats、InventoryManager 等未使用的模組
+- 投射物帶隊伍資訊，不再命中隊友；延遲傷害改用遊戲時間倒數
+- HUD 更新改為 10Hz；傷害數字改用 CSS 動畫；GameEngine 離開遊戲時釋放所有資源
 
 ---
 
@@ -40,8 +40,9 @@
 
 | 操作 | 路徑 | 說明 |
 |------|------|------|
-| [NEW] | `src/core/managers/ProvenanceManager.ts` | C2PA 數位指紋存證 |
-| [MODIFY] | `src/core/managers/RefereeManager.ts` | 整合存證邏輯 |
-| [MODIFY] | `docs/ecs-refactoring-plan.md` | 同步演化進度 |
+| [NEW] | `src/core/managers/ECSStructureManager.ts` | 防禦塔與主堡 |
+| [MODIFY] | `src/core/GameEngine.ts` | 移除裁判、檢查點與降頻；Host 權威迴圈 |
+| [MODIFY] | `src/utils/BinarySerializer.ts` | 輸入封包含技能 |
+| [MODIFY] | `src/core/ecs/World.ts` | 冪等銷毀與 dispose |
 
-**版本號對齊**: v26.0325.0400 (CST)
+**最後更新**: 2026-11-06

@@ -7,7 +7,7 @@ import { eventBus } from '../../events/EventBus';
  * 負責視覺同步與相機控制
  */
 export class RenderManager {
-    private camera: pc.Entity | null = null;
+    camera: pc.Entity | null = null;
 
     // Camera Shake
     private shakeTime: number = 0;

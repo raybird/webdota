@@ -4,12 +4,15 @@
  */
 
 import { type Component, ComponentType } from '../Component';
-import type { Skill } from '../../combat/SkillManager';
+import type { Skill } from '../../../types/Skill';
 
 export interface SkillState {
     skill: Skill;
     cooldownRemaining: number;
 }
+
+/** 冷卻縮減上限 */
+export const MAX_COOLDOWN_REDUCTION = 0.4;
 
 export class SkillComponent implements Component {
     readonly type = ComponentType.SKILL;
@@ -79,6 +82,9 @@ export class SkillComponent implements Component {
     /**
      * 使用技能
      */
+    /** 冷卻縮減比例（0～MAX_COOLDOWN_REDUCTION） */
+    cooldownReduction: number = 0;
+
     useSkill(skillId: string): Skill | null {
         const state = this.skills.get(skillId);
         if (!state || !this.canUseSkill(skillId)) return null;
@@ -86,8 +92,8 @@ export class SkillComponent implements Component {
         // 消耗能量
         this.currentEnergy -= state.skill.energyCost ?? 0;
 
-        // 設定冷卻
-        state.cooldownRemaining = state.skill.cooldown ?? 0;
+        // 設定冷卻（套用裝備冷卻縮減）
+        state.cooldownRemaining = (state.skill.cooldown ?? 0) * (1 - this.cooldownReduction);
 
         return state.skill;
     }

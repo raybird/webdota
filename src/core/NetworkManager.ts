@@ -1,13 +1,24 @@
 import Peer, { type DataConnection } from 'peerjs';
 import { eventBus } from '../events/EventBus';
-import { BinarySerializer, PacketType } from '../utils/BinarySerializer';
+import { BinarySerializer, PacketType, type NetEntityState } from '../utils/BinarySerializer';
+
+/** Client 向 Host 提出的商店操作 */
+export type ShopRequest =
+    | { action: 'buy'; itemId: string }
+    | { action: 'sell'; slot: number };
+
+/** Host 廣播的玩家金幣與物品欄（物品以 ID 表示，空格為 null） */
+export interface InventoryUpdate {
+    playerId: string;
+    gold: number;
+    items: (string | null)[];
+}
 
 export interface PlayerInput {
     frame: number;
     playerId: string;
     moveX: number;
     moveY: number;
-    action?: 'test_damage'; // 'attack' | 'skill1' | 'skill2' etc.
 
     // 技能系統
     skillUsed?: string;        // 使用的技能 ID
@@ -27,7 +38,6 @@ export interface PlayerState {
 export interface GameState {
     frame: number;
     timestamp: number;
-    checksum?: string;
     players: PlayerState[];
     isGameStarted: boolean;
 }
@@ -39,22 +49,21 @@ export class NetworkManager {
     isHost: boolean = false;
     hostId: string = '';
 
-    // Frame sync
-    currentFrame: number = 0;
-    inputBuffer: Map<number, Map<string, PlayerInput>> = new Map(); // frame -> playerId -> input
-
     // Callbacks
     onConnected?: () => void;
     onPeerJoined?: (peerId: string) => void;
     onPeerLeft?: (peerId: string) => void;
     onInputReceived?: (input: PlayerInput) => void;
     onHostChanged?: (newHostId: string) => void;
-    onFrameSync?: (frame: number) => void;
     onPlayerReady?: (peerId: string, isReady: boolean) => void;
     onCharacterSelected?: (peerId: string, characterId: string) => void;
     onGameStartCountdown?: (seconds: number) => void;
     onGameStarted?: () => void;
     onGameState?: (state: GameState) => void;
+    onEntityState?: (frame: number, entities: NetEntityState[]) => void;
+    onShopRequest?: (fromPeerId: string, request: ShopRequest) => void;
+    onInventory?: (update: InventoryUpdate) => void;
+    onGameOver?: (winnerTeam: 'red' | 'blue', reason: 'base_destroyed' | 'surrender' | 'timeout') => void;
     onRoomCode?: (code: string, hostId: string) => void;
     onGetRoomState?: () => { players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }> };
     onRoomState?: (players: Array<{ id: string; isReady: boolean; characterId?: string; team?: 'red' | 'blue' | 'neutral' }>) => void;
@@ -152,7 +161,7 @@ export class NetworkManager {
         });
 
         conn.on('data', (data: any) => {
-            this.handleMessage(conn.peer, data);
+            this.handleMessage(conn.peer.toUpperCase(), data);
         });
 
         conn.on('close', () => {
@@ -177,7 +186,10 @@ export class NetworkManager {
      * 同時發送完整的玩家資訊 (characterId, isReady)
      */
     private sendPeerList(conn: DataConnection) {
-        const peerList = Array.from(this.connections.keys()).filter(id => id !== conn.peer);
+        // PeerJS ID 區分大小寫：connections 的 key 是大寫正規化後的 ID，連線要用原始的 conn.peer
+        const peerList = Array.from(this.connections.values())
+            .map(c => c.peer)
+            .filter(id => id !== conn.peer);
         conn.send({
             type: 'peer_list',
             peers: peerList,
@@ -197,51 +209,37 @@ export class NetworkManager {
     /**
      * 處理收到的訊息
      */
-    private handleMessage(_fromPeerId: string, data: any) {
+    private handleMessage(fromPeerId: string, data: any) {
         // 處理二進位數據 (ArrayBuffer)
         if (data instanceof ArrayBuffer) {
             const view = new DataView(data);
             const type = view.getUint8(0);
 
             if (type === PacketType.INPUT) {
-                const input = BinarySerializer.deserializeInput(data, _fromPeerId);
-                this.storeInput(input);
+                const input = BinarySerializer.deserializeInput(data, fromPeerId);
                 if (this.onInputReceived) this.onInputReceived(input);
-                return;
-            } else if (type === PacketType.SYNC_FRAME) {
-                const frame = BinarySerializer.deserializeSyncFrame(data);
-                if (this.onFrameSync) this.onFrameSync(frame);
-                return;
             } else if (type === PacketType.GAME_STATE) {
                 const state = BinarySerializer.deserializeGameState(data);
                 if (this.onGameState) this.onGameState(state);
-                return;
+            } else if (type === PacketType.ENTITY_STATE) {
+                const { frame, entities } = BinarySerializer.deserializeEntityState(data);
+                if (this.onEntityState) this.onEntityState(frame, entities);
             }
+            return;
         }
 
         switch (data.type) {
             case 'peer_list':
                 // 收到 Host 發來的 Peer 列表，連線到所有其他玩家
                 data.peers.forEach((peerId: string) => {
-                    if (peerId !== this.peerId && !this.connections.has(peerId)) {
+                    const normalized = peerId.toUpperCase();
+                    if (normalized !== this.peerId && !this.connections.has(normalized)) {
                         this.connectToPeer(peerId);
                     }
                 });
                 this.hostId = data.hostId;
                 break;
 
-            case 'input':
-                // 收到其他玩家的輸入
-                const input: PlayerInput = data.input;
-
-                // Debug: 每 60 frame 輸出一次
-                if (input.frame % 60 === 0 && (input.moveX !== 0 || input.moveY !== 0)) {
-                    console.log(`[Network] Received input from ${input.playerId.substring(0, 8)}: Frame ${input.frame}, Move (${input.moveX}, ${input.moveY})`);
-                }
-
-                this.storeInput(input);
-                if (this.onInputReceived) this.onInputReceived(input);
-                break;
 
             case 'host_migration':
                 // Host 遷移通知
@@ -251,22 +249,12 @@ export class NetworkManager {
                 if (this.onHostChanged) this.onHostChanged(this.hostId);
                 break;
 
-            case 'sync_frame':
-                if (this.onFrameSync) this.onFrameSync(data.frame);
-                break;
-
             case 'player_ready':
                 if (this.onPlayerReady) this.onPlayerReady(data.peerId, data.isReady);
                 break;
 
             case 'character_selected':
-                console.log('[NetworkManager] Received character selection:', data);
-                if (this.onCharacterSelected) {
-                    console.log('[NetworkManager] Calling onCharacterSelected callback');
-                    this.onCharacterSelected(data.peerId, data.characterId);
-                } else {
-                    console.warn('[NetworkManager] onCharacterSelected callback not set!');
-                }
+                if (this.onCharacterSelected) this.onCharacterSelected(data.peerId, data.characterId);
                 break;
 
             case 'game_start_countdown':
@@ -277,8 +265,16 @@ export class NetworkManager {
                 if (this.onGameStarted) this.onGameStarted();
                 break;
 
-            case 'game_state':
-                if (this.onGameState) this.onGameState(data.state);
+            case 'shop':
+                if (this.isHost && this.onShopRequest) this.onShopRequest(fromPeerId, data.request);
+                break;
+
+            case 'inventory':
+                if (fromPeerId === this.hostId && this.onInventory) this.onInventory(data.update);
+                break;
+
+            case 'game_over':
+                if (this.onGameOver) this.onGameOver(data.winnerTeam, data.reason);
                 break;
 
             case 'room_code':
@@ -286,12 +282,11 @@ export class NetworkManager {
                 break;
 
             case 'room_state':
-                console.log('[NetworkManager] Received room_state:', data.players);
                 if (this.onRoomState) this.onRoomState(data.players);
                 break;
 
             case 'ping':
-                const connPing = this.connections.get(_fromPeerId);
+                const connPing = this.connections.get(fromPeerId);
                 if (connPing) {
                     connPing.send({ type: 'pong', timestamp: data.timestamp });
                 }
@@ -299,10 +294,10 @@ export class NetworkManager {
 
             case 'pong':
                 const rtt = Date.now() - data.timestamp;
-                this.pings.set(_fromPeerId, rtt);
+                this.pings.set(fromPeerId, rtt);
                 // 只廣播重要的 Ping (Host到Client, Client到Host)
-                if (this.isHost || _fromPeerId === this.hostId) {
-                    eventBus.emit({ type: 'PING_UPDATED', peerId: _fromPeerId, ping: rtt });
+                if (this.isHost || fromPeerId === this.hostId) {
+                    eventBus.emit({ type: 'PING_UPDATED', peerId: fromPeerId, ping: rtt });
                 }
                 break;
 
@@ -311,16 +306,6 @@ export class NetworkManager {
         }
     }
 
-    /**
-     * 發送遊戲狀態給指定玩家 (用於初始同步)
-     */
-    sendGameState(state: GameState, targetPeerId: string) {
-        const conn = this.connections.get(targetPeerId);
-        if (conn) {
-            const binaryData = BinarySerializer.serializeGameState(state);
-            conn.send(binaryData);
-        }
-    }
 
     /**
      * 發送準備狀態
@@ -348,8 +333,6 @@ export class NetworkManager {
             peerId: this.peerId,
             characterId
         };
-
-        console.log('[NetworkManager] Sending character selection:', message, 'to', this.connections.size, 'peers');
 
         // 廣播給所有人
         this.connections.forEach(conn => conn.send(message));
@@ -397,10 +380,15 @@ export class NetworkManager {
 
     /**
      * 發送輸入
+     * 移動輸入每幀都送，只需要給 Host；帶技能的輸入廣播給所有人，讓其他 Client 也能播放技能表現
      */
     sendInput(input: PlayerInput) {
         const binaryData = BinarySerializer.serializeInput(input);
-        this.connections.forEach(conn => conn.send(binaryData));
+        if (input.skillUsed) {
+            this.connections.forEach(conn => conn.send(binaryData));
+        } else {
+            this.connections.get(this.hostId)?.send(binaryData);
+        }
     }
 
     /**
@@ -409,6 +397,35 @@ export class NetworkManager {
     broadcastGameState(state: GameState) {
         const binaryData = BinarySerializer.serializeGameState(state);
         this.connections.forEach(conn => conn.send(binaryData));
+    }
+
+    /**
+     * 廣播建築與小兵狀態 (Host Only)
+     */
+    broadcastEntityState(frame: number, entities: NetEntityState[]) {
+        const binaryData = BinarySerializer.serializeEntityState(frame, entities);
+        this.connections.forEach(conn => conn.send(binaryData));
+    }
+
+    /**
+     * 送出商店操作給 Host
+     */
+    sendShopRequest(request: ShopRequest) {
+        this.connections.get(this.hostId)?.send({ type: 'shop', request });
+    }
+
+    /**
+     * 廣播玩家物品欄 (Host Only)
+     */
+    broadcastInventory(update: InventoryUpdate) {
+        this.connections.forEach(conn => conn.send({ type: 'inventory', update }));
+    }
+
+    /**
+     * 廣播遊戲結束 (Host Only)
+     */
+    broadcastGameOver(winnerTeam: 'red' | 'blue', reason: 'base_destroyed' | 'surrender' | 'timeout') {
+        this.connections.forEach(conn => conn.send({ type: 'game_over', winnerTeam, reason }));
     }
 
     /**
@@ -446,67 +463,6 @@ export class NetworkManager {
         this.peerId = '';
         this.isHost = false;
         this.hostId = '';
-        this.inputBuffer.clear();
-    }
-
-    /**
-     * 發送 Frame 同步訊息給指定玩家
-     */
-    sendFrameSync(frame: number, targetPeerId: string) {
-        const conn = this.connections.get(targetPeerId);
-        if (conn) {
-            const binaryData = BinarySerializer.serializeSyncFrame(frame);
-            conn.send(binaryData);
-        }
-    }
-
-    /**
-     * 廣播 Frame 同步訊息給所有玩家
-     */
-    broadcastFrameSync(frame: number) {
-        const binaryData = BinarySerializer.serializeSyncFrame(frame);
-        this.connections.forEach(conn => conn.send(binaryData));
-    }
-
-    /**
-     * 廣播玩家輸入給所有其他玩家
-     */
-    broadcastInput(input: PlayerInput) {
-        const binaryData = BinarySerializer.serializeInput(input);
-
-        this.connections.forEach((conn) => {
-            conn.send(binaryData);
-        });
-
-        // 也存到自己的 buffer
-        this.storeInput(input);
-    }
-
-    /**
-     * 儲存輸入到 buffer
-     */
-    private storeInput(input: PlayerInput) {
-        if (!this.inputBuffer.has(input.frame)) {
-            this.inputBuffer.set(input.frame, new Map());
-        }
-        this.inputBuffer.get(input.frame)!.set(input.playerId, input);
-    }
-
-    /**
-     * 檢查某個 Frame 是否收到所有玩家的輸入
-     */
-    hasAllInputsForFrame(frame: number): boolean {
-        const expectedPlayerCount = this.connections.size + 1; // +1 for self
-        const inputs = this.inputBuffer.get(frame);
-        return inputs ? inputs.size >= expectedPlayerCount : false;
-    }
-
-    /**
-     * 取得某個 Frame 的所有輸入
-     */
-    getInputsForFrame(frame: number): PlayerInput[] {
-        const inputs = this.inputBuffer.get(frame);
-        return inputs ? Array.from(inputs.values()) : [];
     }
 
     /**

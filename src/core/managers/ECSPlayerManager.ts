@@ -5,26 +5,34 @@
 
 import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
+import type { Skill } from '../../types/Skill';
 import type { UIManager } from '../UIManager';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useRoomStore } from '../../stores/roomStore';
 import { getCharacter } from '../../data/characters';
+import { eventBus } from '../../events/EventBus';
 
 import {
     World,
     EntityFactory,
     ComponentType,
     HealthComponent,
-    TeamComponent,
     RenderComponent,
-    PlayerInputComponent,
     SkillComponent,
     CombatComponent,
     InventoryComponent,
     PhysicsComponent,
+    TeamComponent,
+    MAX_COOLDOWN_REDUCTION,
     type EntityId,
     type Team,
+    HealthSystem,
 } from '../ecs';
+
+/** 玩家陣亡後幾秒重生 */
+export const RESPAWN_SECONDS = 5;
+
+type Vec3Like = { x: number; y: number; z: number };
 
 export class ECSPlayerManager {
     private world: World;
@@ -34,6 +42,12 @@ export class ECSPlayerManager {
 
     /** 所有玩家 EntityId，以 playerId 為 key */
     private players: Map<string, EntityId> = new Map();
+
+    /** 生成時的基礎屬性，裝備加成以此為基準重算 */
+    private baseStats: Map<string, { maxHp: number; defense: number; moveSpeed: number }> = new Map();
+
+    /** 陣亡中的玩家與剩餘重生秒數 */
+    private respawnTimers: Map<string, number> = new Map();
 
     constructor(
         world: World,
@@ -126,15 +140,18 @@ export class ECSPlayerManager {
         });
 
         this.players.set(normalizedId, entityId);
+        const baseHealth = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
+        const baseCombat = this.world.getComponent<CombatComponent>(entityId, ComponentType.COMBAT);
+        this.baseStats.set(normalizedId, {
+            maxHp: baseHealth?.maxHp ?? 1000,
+            defense: baseHealth?.defense ?? 0,
+            moveSpeed: baseCombat?.moveSpeed ?? 5
+        });
 
         // 建立 UI
         const displayName = normalizedId.substring(0, 8);
-        const ui = this.uiManager.createPlayerUI(normalizedId, displayName);
-
         const render = this.world.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
-        if (render && ui.hpBarEntity) {
-            render.pcEntity.addChild(ui.hpBarEntity);
-        }
+        render?.setHpBar(this.uiManager.createPlayerUI(normalizedId, displayName), 2);
 
         console.log(`[ECSPlayerManager] Spawned player ${normalizedId} (${entityId.substring(0, 8)}) team=${playerTeam} at (${x.toFixed(2)}, ${z.toFixed(2)})`);
 
@@ -151,8 +168,9 @@ export class ECSPlayerManager {
         if (!entityId) return;
 
         this.world.destroyEntity(entityId);
-        this.uiManager.removePlayerUI(normalizedId);
         this.players.delete(normalizedId);
+        this.respawnTimers.delete(normalizedId);
+        this.baseStats.delete(normalizedId);
 
         console.log(`[ECSPlayerManager] Removed player ${normalizedId}`);
     }
@@ -172,51 +190,138 @@ export class ECSPlayerManager {
     }
 
     /**
-     * 取得所有玩家 EntityId
-     */
-    getAllPlayerIds(): EntityId[] {
-        return Array.from(this.players.values());
-    }
-
-    /**
-     * 取得指定隊伍的玩家
-     */
-    getPlayersByTeam(team: Team): EntityId[] {
-        return Array.from(this.players.values()).filter(id => {
-            const teamComp = this.world.getComponent<TeamComponent>(id, ComponentType.TEAM);
-            return teamComp?.team === team;
-        });
-    }
-
-    /**
      * 清除所有玩家
      */
     clearAll(): void {
-        for (const [playerId, entityId] of this.players) {
+        for (const entityId of this.players.values()) {
             this.world.destroyEntity(entityId);
-            this.uiManager.removePlayerUI(playerId);
         }
         this.players.clear();
+        this.respawnTimers.clear();
+        this.baseStats.clear();
         console.log('[ECSPlayerManager] Cleared all players');
     }
 
     /**
-     * 處理玩家移動輸入
+     * 每幀更新：偵測陣亡並隱藏玩家、停用碰撞；權威端倒數結束後在 respawnAt 回傳的位置重生
+     * Client 不自行重生，等 Host 的血量恢復後才顯示
      */
-    handlePlayerInput(playerId: string, moveX: number, moveZ: number): void {
-        const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return;
+    update(dt: number, authoritative: boolean, respawnAt: (team: Team) => Vec3Like): void {
+        for (const [playerId, entityId] of this.players) {
+            const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
+            if (!health) continue;
 
-        const playerInput = this.world.getComponent<PlayerInputComponent>(entityId, ComponentType.PLAYER_INPUT);
-        if (playerInput) {
-            playerInput.setMoveInput(moveX, moveZ);
+            const remaining = this.respawnTimers.get(playerId);
+            if (remaining === undefined) {
+                if (!health.isDead()) {
+                    // 生命回復只在權威端計算，Client 的血量由 Host 同步
+                    if (authoritative && health.hpRegen > 0) health.heal(health.hpRegen * dt);
+                    continue;
+                }
+                this.respawnTimers.set(playerId, RESPAWN_SECONDS);
+                this.setAlive(entityId, false);
+                eventBus.emit({ type: 'ENTITY_DIED', entityId, killerId: health.lastAttackerId });
+                continue;
+            }
+
+            if (!health.isDead()) {
+                // Client：Host 已讓玩家重生
+                this.respawnTimers.delete(playerId);
+                this.setAlive(entityId, true);
+                continue;
+            }
+
+            const left = Math.max(0, remaining - dt);
+            if (left > 0 || !authoritative) {
+                this.respawnTimers.set(playerId, left);
+                continue;
+            }
+
+            const team = this.world.getComponent<TeamComponent>(entityId, ComponentType.TEAM)?.team ?? 'neutral';
+            this.respawn(entityId, respawnAt(team));
+            this.respawnTimers.delete(playerId);
         }
+    }
+
+    private respawn(entityId: EntityId, position: Vec3Like): void {
+        const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
+        if (health) {
+            health.currentHp = health.maxHp;
+            health.lastAttackerId = null;
+        }
+        const skill = this.world.getComponent<SkillComponent>(entityId, ComponentType.SKILL);
+        if (skill) skill.currentEnergy = skill.maxEnergy;
+
+        const rb = this.world.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS)?.rigidBody;
+        rb?.setTranslation(position, true);
+        rb?.setNextKinematicTranslation(position);
+        this.setAlive(entityId, true);
+    }
+
+    private setAlive(entityId: EntityId, alive: boolean): void {
+        this.world.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS)?.rigidBody.setEnabled(alive);
+        this.world.getComponent<RenderComponent>(entityId, ComponentType.RENDER)?.setVisible(alive);
+    }
+
+    /**
+     * 依物品欄重算裝備加成；最大生命值變動時，目前生命值同步增減
+     */
+    applyItemStats(playerId: string): void {
+        const normalizedId = playerId.toUpperCase();
+        const entityId = this.players.get(normalizedId);
+        const base = this.baseStats.get(normalizedId);
+        if (!entityId || !base) return;
+
+        const inventory = this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
+        if (!inventory) return;
+        const bonus = inventory.getTotalStats();
+
+        const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
+        if (health) {
+            const newMax = base.maxHp + bonus.maxHp;
+            if (!health.isDead()) {
+                health.currentHp = Math.min(newMax, Math.max(1, health.currentHp + newMax - health.maxHp));
+            }
+            health.maxHp = newMax;
+            health.defense = base.defense + bonus.defense;
+            health.hpRegen = bonus.hpRegen;
+        }
+
+        const combat = this.world.getComponent<CombatComponent>(entityId, ComponentType.COMBAT);
+        if (combat) {
+            combat.moveSpeed = base.moveSpeed + bonus.moveSpeed;
+            combat.bonusDamage = bonus.attackPower;
+        }
+
+        const skill = this.world.getComponent<SkillComponent>(entityId, ComponentType.SKILL);
+        if (skill) skill.cooldownReduction = Math.min(MAX_COOLDOWN_REDUCTION, bonus.cooldownReduction);
+    }
+
+    /**
+     * 找出 ECS Entity 對應的玩家 ID（擊殺獎勵用）
+     */
+    findPlayerIdByEntity(entityId: EntityId): string | undefined {
+        for (const [playerId, id] of this.players) {
+            if (id === entityId) return playerId;
+        }
+        return undefined;
+    }
+
+    isDead(playerId: string): boolean {
+        return this.respawnTimers.has(playerId.toUpperCase());
+    }
+
+    /**
+     * 陣亡玩家的剩餘重生秒數；存活時為 null
+     */
+    getRespawnRemaining(playerId: string): number | null {
+        return this.respawnTimers.get(playerId.toUpperCase()) ?? null;
     }
 
     /**
      * 使用技能 (委託給 SkillComponent)
      */
-    useSkill(playerId: string, skillId: string): import('../combat/SkillManager').Skill | null {
+    useSkill(playerId: string, skillId: string): Skill | null {
         const entityId = this.players.get(playerId.toUpperCase());
         if (!entityId) return null;
 
@@ -241,22 +346,17 @@ export class ECSPlayerManager {
         return null;
     }
 
-    /**
-     * 更新邏輯 (由 GameEngine 呼叫)
-     * 注意：大部分邏輯由 ECS Systems 處理
-     */
-    update(dt: number): void {
-        void dt; // ECS systems handle player logic
-
-        // 檢查死亡的玩家 (選擇性 - 玩家死亡可能有其他處理邏輯)
-        // 這裡先不自動移除，讓 GameEngine 決定如何處理
-    }
-
     // ========== GameEngine 兼容性方法 ==========
 
     /**
      * 取得玩家的 RigidBody
      */
+    getInventory(playerId: string): InventoryComponent | undefined {
+        const entityId = this.players.get(playerId.toUpperCase());
+        if (!entityId) return undefined;
+        return this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
+    }
+
     getPlayerRigidBody(playerId: string): RAPIER.RigidBody | null {
         const entityId = this.players.get(playerId.toUpperCase());
         if (!entityId) return null;
@@ -296,10 +396,7 @@ export class ECSPlayerManager {
         const entityId = this.players.get(playerId.toUpperCase());
         if (!entityId) return;
 
-        const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
-        if (health) {
-            health.currentHp = current;
-        }
+        HealthSystem.syncHp(this.world, entityId, current);
     }
 
     /**
@@ -329,46 +426,9 @@ export class ECSPlayerManager {
     }
 
     /**
-     * 讓玩家受傷
-     */
-    damagePlayer(playerId: string, damage: number, attackerId?: string): void {
-        const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return;
-
-        const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
-        if (health) {
-            health.takeDamage(damage, attackerId);
-        }
-    }
-
-    /**
-     * 取得玩家的金幣
-     */
-    getPlayerGold(playerId: string): number {
-        const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return 0;
-
-        const inv = this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
-        return inv?.gold ?? 0;
-    }
-
-    /**
-     * 給予玩家金幣
-     */
-    givePlayerGold(playerId: string, amount: number): void {
-        const entityId = this.players.get(playerId.toUpperCase());
-        if (!entityId) return;
-
-        const inv = this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
-        if (inv) {
-            inv.earnGold(amount);
-        }
-    }
-
-    /**
      * 取得玩家的技能列表
      */
-    getPlayerSkills(playerId: string): import('../combat/SkillManager').Skill[] {
+    getPlayerSkills(playerId: string): Skill[] {
         const entityId = this.players.get(playerId.toUpperCase());
         if (!entityId) return [];
 
@@ -378,7 +438,7 @@ export class ECSPlayerManager {
         // 使用公開的 getSkillIds() 和 getSkill()
         return skillComp.getSkillIds()
             .map(id => skillComp.getSkill(id))
-            .filter((s): s is import('../combat/SkillManager').Skill => s !== undefined);
+            .filter((s): s is Skill => s !== undefined);
     }
 
     /**

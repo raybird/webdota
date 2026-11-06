@@ -262,13 +262,8 @@ export class RoomService {
 
                 this.roomStore.setCountdown(0)
 
-                // 廣播遊戲開始
+                // 廣播遊戲開始（broadcastGameStarted 也會觸發本地的 onGameStarted 開始遊戲）
                 this.networkManager.broadcastGameStarted()
-
-                // 開始遊戲
-                if (this.gameService) {
-                    this.gameService.startGame()
-                }
             }
         }, 1000)
     }

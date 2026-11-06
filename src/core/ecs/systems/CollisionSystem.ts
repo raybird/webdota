@@ -9,6 +9,7 @@ import { World } from '../World';
 import { ComponentType } from '../Component';
 import { PhysicsComponent } from '../components/PhysicsComponent';
 import { HealthComponent } from '../components/HealthComponent';
+import { HealthSystem } from './HealthSystem';
 import type { Team } from '../components/TeamComponent';
 import { colliderRegistry, type ColliderMetadata } from '../ColliderMetadata';
 
@@ -39,6 +40,10 @@ export class CollisionSystem extends System {
 
     /** 待移除的 Hitbox (handle) */
     private hitboxesToRemove: number[] = [];
+    /** 只有權威端（Host）的命中會扣血與擊退；Client 的 Hitbox 只做表現，血量以 Host 同步為準 */
+    authoritative: boolean = true;
+    /** 延遲生成的 Hitbox（以遊戲時間倒數，分頁暫停時不會提前觸發） */
+    private delayedHitboxes: Array<{ delay: number; spawn: () => void }> = [];
 
     constructor(physicsWorld: RAPIER.World) {
         super();
@@ -85,14 +90,19 @@ export class CollisionSystem extends System {
         };
         colliderRegistry.register(collider.handle, metadata);
 
-        console.log(`[CollisionSystem] Created hitbox: owner=${ownerId.substring(0, 6)}, team=${ownerTeam}, radius=${radius}`);
-
         return { rigidBody, collider };
     }
 
     /**
      * 為 Entity 註冊 Collider
      */
+    /**
+     * 延遲 delay 秒後建立 Hitbox
+     */
+    scheduleHitbox(delay: number, ...args: Parameters<CollisionSystem['createHitbox']>): void {
+        this.delayedHitboxes.push({ delay, spawn: () => this.createHitbox(...args) });
+    }
+
     registerEntityCollider(collider: RAPIER.Collider, entityId: string, team: Team): void {
         colliderRegistry.register(collider.handle, {
             type: 'entity',
@@ -102,6 +112,16 @@ export class CollisionSystem extends System {
     }
 
     update(world: World, dt: number): void {
+        // 0. 生成到期的延遲 Hitbox
+        if (this.delayedHitboxes.length > 0) {
+            this.delayedHitboxes = this.delayedHitboxes.filter(item => {
+                item.delay -= dt;
+                if (item.delay > 0) return true;
+                item.spawn();
+                return false;
+            });
+        }
+
         // 1. 更新 Hitbox 持續時間
         this.updateHitboxDurations(dt);
 
@@ -112,7 +132,11 @@ export class CollisionSystem extends System {
         this.removeExpiredHitboxes();
 
         // 4. 應用命中效果
-        this.applyPendingHits(world);
+        if (this.authoritative) {
+            this.applyPendingHits(world);
+        } else {
+            this.pendingHits = [];
+        }
     }
 
     /**
@@ -181,8 +205,6 @@ export class CollisionSystem extends System {
                     knockback: hitboxMeta.knockback
                 });
 
-                console.log(`[CollisionSystem] Hit! ${hitboxMeta.entityId.substring(0, 6)} -> ${entityMeta.entityId.substring(0, 6)} (${hitboxMeta.damage})`);
-
                 return true; // 繼續遍歷
             });
         }
@@ -213,7 +235,8 @@ export class CollisionSystem extends System {
         for (const hit of this.pendingHits) {
             const health = world.getComponent<HealthComponent>(hit.targetId, ComponentType.HEALTH);
             if (health && !health.isDead()) {
-                health.takeDamage(hit.damage, hit.attackerId);
+                // 走 dealDamage 才會觸發傷害數字與受擊閃白
+                HealthSystem.dealDamage(world, hit.targetId, hit.damage, hit.attackerId);
             }
 
             // 擊退效果（可選）

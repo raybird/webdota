@@ -5,6 +5,7 @@
 
 import RAPIER from '@dimforge/rapier3d-compat';
 import { type Component, ComponentType } from '../Component';
+import { colliderRegistry } from '../ColliderMetadata';
 
 export class PhysicsComponent implements Component {
     readonly type = ComponentType.PHYSICS;
@@ -71,9 +72,10 @@ export class PhysicsComponent implements Component {
     /**
      * 銷毀物理實體
      */
-    destroy(): void {
-        if (this.rigidBody) {
-            this.physicsWorld.removeRigidBody(this.rigidBody);
-        }
+    dispose(): void {
+        if (this.collider) colliderRegistry.remove(this.collider.handle);
+        if (this.sensorCollider) colliderRegistry.remove(this.sensorCollider.handle);
+        // removeRigidBody 會一併移除掛在上面的 Collider
+        this.physicsWorld.removeRigidBody(this.rigidBody);
     }
 }

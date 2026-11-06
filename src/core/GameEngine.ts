@@ -1,55 +1,83 @@
 import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
-import { NetworkManager, type PlayerInput, type GameState } from './NetworkManager';
-import { HostManager } from './HostManager';
+import { NetworkManager, type PlayerInput, type GameState, type PlayerState, type ShopRequest, type InventoryUpdate } from './NetworkManager';
+import { getItem } from '../data/items';
 import { UIManager } from './UIManager';
 import { ECSPlayerManager } from './managers/ECSPlayerManager';
 import { InputManager } from './managers/InputManager';
 import { RenderManager } from './managers/RenderManager';
 import { EffectManager } from './EffectManager';
-import { ECSTowerManager } from './managers/ECSTowerManager';
-import { ECSBaseManager } from './managers/ECSBaseManager';
+import { ECSStructureManager, type StructureKind } from './managers/ECSStructureManager';
 import { ECSCreepManager } from './managers/ECSCreepManager';
+import { EntitySyncManager } from './managers/EntitySyncManager';
 import { SoundManager } from './SoundManager';
+import { BackgroundTicker } from './BackgroundTicker';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
 import { eventBus } from '../events/EventBus';
 import { ProjectileManager } from './combat/ProjectileManager';
+import { ECSSkillExecutor } from './combat/ECSSkillExecutor';
 import { MapManager, type MapConfig } from './map';
-import { RefereeManager } from './managers/RefereeManager';
 import demoArenaMap from '../data/maps/demo_arena.json';
-
-// ECS Imports
 import {
     World,
     EntityFactory,
     MovementSystem,
-    RenderSystem as ECSRenderSystem,
+    RenderSystem,
     HealthSystem,
-    CombatSystem as ECSCombatSystem,
+    CombatSystem,
     CollisionSystem,
     AISystem,
     SpatialSystem,
-    PlayerInputSystem,
     SkillSystem,
     ComponentType,
-    PoolableComponent,
-    RenderComponent,
     TeamComponent,
+    TransformComponent,
+    colliderRegistry,
+    type EntityId,
+    type Team,
 } from './ecs';
-import { ECSSkillExecutor } from './combat/ECSSkillExecutor';
+
+/** 每個畫面幀最多補跑的 fixedUpdate 次數，避免分頁切回來時一次追太多幀 */
+const MAX_STEPS_PER_FRAME = 5;
+/** Worker 檢查模擬是否停滯的間隔（毫秒） */
+const BACKGROUND_TICK_MS = 33;
+/** 畫面更新超過這個時間沒來，就由 Worker 補跑模擬（分頁在背景或被節流） */
+const FRAME_STALL_MS = 50;
+/** Host 每幾個 fixedUpdate 廣播一次玩家狀態 */
+const STATE_BROADCAST_INTERVAL = 3;
+/** Host 每幾個 fixedUpdate 廣播一次建築與小兵狀態 */
+const ENTITY_BROADCAST_INTERVAL = 6;
+/** 擊殺獎勵金幣（最後一擊的玩家獲得） */
+const KILL_GOLD: Record<'player' | 'creep' | 'tower' | 'base', number> = {
+    player: 200,
+    creep: 40,
+    tower: 150,
+    base: 0
+};
+/** 本地玩家預測位置與 Host 差距超過這個距離就拉回（擊退、被拒絕的位移等） */
+const RECONCILE_DISTANCE = 2;
+
+export interface MinimapEntity {
+    id: string;
+    type: 'player' | StructureKind | 'creep';
+    team: 'red' | 'blue' | 'neutral';
+    position: { x: number; z: number };
+}
 
 /**
  * 遊戲引擎核心
  * 負責協調各個子系統與驅動遊戲循環
+ *
+ * 網路模型為 Host 權威：Host 處理所有玩家的輸入並模擬小兵、防禦塔，廣播玩家與建築、小兵狀態；
+ * Client 送出自己的輸入並在本地先行預測移動，建築與小兵是 Host 狀態的鏡像，不跑 AI 也不判定傷害。
  */
 export class GameEngine {
     app!: pc.Application;
     physicsWorld!: RAPIER.World;
 
     // Managers
-    networkManager!: NetworkManager;
-    hostManager!: HostManager;
+    networkManager: NetworkManager;
     uiManager!: UIManager;
     playerManager!: ECSPlayerManager;
     inputManager!: InputManager;
@@ -57,15 +85,16 @@ export class GameEngine {
     effectManager!: EffectManager;
     projectileManager!: ProjectileManager;
     mapManager!: MapManager;
-    towerManager!: ECSTowerManager;
+    structureManager!: ECSStructureManager;
     creepManager!: ECSCreepManager;
-    baseManager!: ECSBaseManager;
+    entitySync!: EntitySyncManager;
     soundManager!: SoundManager;
 
     // ECS
     ecsWorld!: World;
     entityFactory!: EntityFactory;
     collisionSystem!: CollisionSystem;
+    aiSystem!: AISystem;
     ecsSkillExecutor!: ECSSkillExecutor;
 
     readonly FIXED_TIMESTEP = 1 / 60;
@@ -77,23 +106,32 @@ export class GameEngine {
     private accumulator = 0;
     private isGameStarted = false;
 
-    // Power Economy
-    private fpsMonitor: number[] = [];
-    private currentTargetHz = 60;
-    private powerSavingMode = false;
-
     private pendingSkillUse: { skillId: string; direction: { x: number; z: number } } | null = null;
-    private pendingRemoteInputs: PlayerInput[] = [];
+    /** Host：各 Client 最新的移動輸入（封包沒到的幀沿用上一筆，避免抖動） */
+    private remoteMoves: Map<string, PlayerInput> = new Map();
+    /** 尚未處理的其他玩家技能輸入（Host 權威執行；Client 只播放表現） */
+    private remoteSkills: PlayerInput[] = [];
+
+    /** destroy 時要執行的清理（事件監聽等） */
+    private disposers: Array<() => void> = [];
+    /** 上次推進模擬與上次畫面更新的時間（performance.now） */
+    private lastSimTime = 0;
+    private lastFrameTime = 0;
+    private backgroundTicker = new BackgroundTicker(() => {
+        if (performance.now() - this.lastFrameTime > FRAME_STALL_MS) this.simulate();
+    }, BACKGROUND_TICK_MS);
 
     constructor(networkManager: NetworkManager) {
         this.networkManager = networkManager;
     }
 
+    private get isHost(): boolean {
+        return this.networkManager.isHost;
+    }
+
     async init(canvas: HTMLCanvasElement) {
         await RAPIER.init();
-        const gravity = { x: 0.0, y: -9.81, z: 0.0 };
-        this.physicsWorld = new RAPIER.World(gravity);
-        console.log("[GameEngine] Physics Initialized");
+        this.physicsWorld = new RAPIER.World({ x: 0.0, y: -9.81, z: 0.0 });
 
         this.app = new pc.Application(canvas, {
             mouse: new pc.Mouse(canvas),
@@ -104,73 +142,53 @@ export class GameEngine {
         this.app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
         this.app.setCanvasResolution(pc.RESOLUTION_AUTO);
 
+        const camera = this.createScene();
         this.mapManager = new MapManager(this.app, this.physicsWorld);
-        this.createScene();
-        this.mapManager.loadMap(demoArenaMap as unknown as MapConfig);
+        await this.mapManager.loadMap(demoArenaMap as unknown as MapConfig);
 
         this.uiManager = new UIManager(this.app);
         this.inputManager = new InputManager();
         this.renderManager = new RenderManager(this.app);
+        this.renderManager.setCamera(camera);
         this.effectManager = new EffectManager(this.app);
         this.projectileManager = new ProjectileManager(this.app);
+        this.soundManager = new SoundManager(this.app);
 
         this.ecsWorld = new World();
         this.collisionSystem = new CollisionSystem(this.physicsWorld);
         this.entityFactory = new EntityFactory(this.app, this.physicsWorld, this.ecsWorld);
         this.entityFactory.setCollisionSystem(this.collisionSystem);
 
-        this.ecsWorld.addSystem(new PlayerInputSystem());
+        const renderSystem = new RenderSystem();
+        renderSystem.camera = camera;
+
         this.ecsWorld.addSystem(new SkillSystem());
         this.ecsWorld.addSystem(new MovementSystem());
-        this.ecsWorld.addSystem(new ECSCombatSystem());
+        this.ecsWorld.addSystem(new CombatSystem());
         this.ecsWorld.addSystem(this.collisionSystem);
         this.ecsWorld.addSystem(new SpatialSystem());
-        this.ecsWorld.addSystem(new AISystem());
+        this.aiSystem = new AISystem();
+        this.ecsWorld.addSystem(this.aiSystem);
         this.ecsWorld.addSystem(new HealthSystem());
-        this.ecsWorld.addSystem(new ECSRenderSystem());
-
-        eventBus.on('ENTITY_DIED', (event) => {
-            const entityId = event.entityId;
-            const poolable = this.ecsWorld.getComponent<PoolableComponent>(entityId, ComponentType.POOLABLE);
-            if (poolable && poolable.templateName === 'creep') {
-                const render = this.ecsWorld.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
-                const team = this.ecsWorld.getComponent<TeamComponent>(entityId, ComponentType.TEAM);
-                if (render && team) {
-                    this.entityFactory.releaseCreepVisual(team.team, render.pcEntity);
-                }
-            }
-        });
+        this.ecsWorld.addSystem(renderSystem);
 
         this.ecsSkillExecutor = new ECSSkillExecutor(this.collisionSystem);
-        this.towerManager = new ECSTowerManager(this.ecsWorld, this.entityFactory, this.uiManager);
+        this.structureManager = new ECSStructureManager(this.ecsWorld, this.entityFactory, this.uiManager);
         this.creepManager = new ECSCreepManager(this.mapManager, this.uiManager, this.ecsWorld, this.entityFactory);
         this.playerManager = new ECSPlayerManager(this.ecsWorld, this.entityFactory, this.uiManager);
-        this.baseManager = new ECSBaseManager(this.ecsWorld, this.entityFactory, this.uiManager);
+        this.entitySync = new EntitySyncManager(this.ecsWorld, this.structureManager, this.creepManager);
 
-        this.spawnTowersFromMap();
-        this.spawnBasesFromMap();
-        this.soundManager = new SoundManager(this.app);
-
-        eventBus.on('GAME_OVER', () => {
-            this.soundManager.playGameOverSound();
-        });
-
-        const camera = this.app.root.findByName('Camera');
-        if (camera) {
-            this.renderManager.setCamera(camera as pc.Entity);
-        }
-
-        this.hostManager = new HostManager(this.app, this.physicsWorld);
         this.setupEventListeners();
 
+        const onUpdate = (dt: number) => this.gameLoop(dt);
+        this.app.on('update', onUpdate);
         this.app.start();
-        this.app.on('update', (dt) => this.gameLoop(dt));
-        window.addEventListener('resize', () => this.app.resizeCanvas());
+        this.backgroundTicker.start();
 
         console.log("[GameEngine] Initialized");
     }
 
-    private createScene() {
+    private createScene(): pc.Entity {
         const camera = new pc.Entity('Camera');
         camera.addComponent('camera', { clearColor: new pc.Color(0.05, 0.05, 0.15) });
         camera.setPosition(0, 25, 30);
@@ -181,66 +199,80 @@ export class GameEngine {
         light.addComponent('light', { type: 'directional', color: new pc.Color(1, 1, 1), castShadows: true, intensity: 1 });
         light.setEulerAngles(45, 0, 0);
         this.app.root.addChild(light);
+
+        return camera;
     }
 
     private setupEventListeners() {
         this.inputManager.setPlayerId(this.networkManager.peerId);
+
         this.networkManager.onInputReceived = (input) => {
-            this.pendingRemoteInputs.push(input);
+            // 移動以 Host 為準；Client 收到其他玩家的技能輸入只用來播放表現
+            if (this.isHost) this.remoteMoves.set(input.playerId, input);
+            if (input.skillUsed) this.remoteSkills.push(input);
         };
+        // onPeerLeft 同時被 RoomService 用來更新房間名單，這裡接在後面並在 destroy 時還原
+        const roomOnPeerLeft = this.networkManager.onPeerLeft;
         this.networkManager.onPeerLeft = (peerId) => {
+            roomOnPeerLeft?.(peerId);
+            this.remoteMoves.delete(peerId);
             this.playerManager.removePlayer(peerId);
         };
-        this.networkManager.onGameState = (state: GameState) => {
-            this.handleGameState(state);
+        this.disposers.push(() => { this.networkManager.onPeerLeft = roomOnPeerLeft; });
+        this.networkManager.onGameState = (state) => this.handleGameState(state);
+        this.networkManager.onEntityState = (_frame, entities) => {
+            if (!this.isHost && this.isGameStarted) this.entitySync.apply(entities);
+        };
+        this.networkManager.onShopRequest = (fromPeerId, request) => this.handleShopRequest(fromPeerId, request);
+        this.networkManager.onInventory = (update) => this.applyInventoryUpdate(update);
+        this.networkManager.onGameOver = (winnerTeam, reason) => {
+            if (!this.isHost) eventBus.emit({ type: 'GAME_OVER', winnerTeam, reason });
         };
 
-        eventBus.on('GAME_STARTED', () => {
-            this.startGame();
-        });
+        this.disposers.push(
+            eventBus.on('GAME_STARTED', () => this.startGame()),
+            eventBus.on('SKILL_USED', (event) => this.useSkill(event.skillId)),
+            eventBus.on('ENTITY_DIED', (event) => {
+                if (this.isHost) this.awardKillGold(event.entityId, event.killerId);
+            }),
+            eventBus.on('GAME_OVER', (event) => {
+                this.soundManager.playGameOverSound();
+                // 主堡死亡只在 Host 判定，再通知 Client
+                if (this.isHost) this.networkManager.broadcastGameOver(event.winnerTeam, event.reason);
+            }),
+        );
 
-        eventBus.on('SKILL_USED', (event) => {
-            this.useSkill(event.skillId);
-        });
-
-        eventBus.on('SKILL_EFFECT', (event) => {
-            const position = new pc.Vec3(event.position.x, event.position.y, event.position.z);
-            const direction = new pc.Vec3(event.direction.x, event.direction.y, event.direction.z);
-            this.effectManager.playSkillEffect(event.skillId, position, direction);
-        });
-
-        // 監聽來自 RefereeManager 的自癒請求
-        window.addEventListener('WEBDOTA_RESYNC_REQUEST', (e: any) => {
-            const frame = e.detail.frame;
-            console.log(`[GameEngine] 收到自癒請求 @ Frame ${frame}. 執行因果回溯...`);
-            this.restoreFromCheckpoint(frame);
-        });
+        const onResize = () => this.app.resizeCanvas();
+        window.addEventListener('resize', onResize);
+        this.disposers.push(() => window.removeEventListener('resize', onResize));
     }
 
     startGame() {
         this.inputManager.setPlayerId(this.networkManager.peerId);
         this.isGameStarted = true;
         this.currentFrame = 0;
+        this.accumulator = 0;
+        this.remoteMoves.clear();
+        this.remoteSkills = [];
 
         this.playerManager.clearAll();
-        this.towerManager.clearAll();
+        this.structureManager.clearAll();
         this.creepManager.clearAll();
-        this.baseManager.clearAll();
         this.creepManager.resetWaveTimer();
+        this.projectileManager.clearAll();
+        this.entitySync.reset();
 
-        this.spawnTowersFromMap();
-        this.spawnBasesFromMap();
+        // Client 的 AI 與傷害判定交給 Host；建築與小兵由 Host 同步生成
+        this.aiSystem.enabled = this.isHost;
+        this.collisionSystem.authoritative = this.isHost;
+        if (this.isHost) this.spawnStructuresFromMap();
 
         const players = [...this.roomStore.connectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
         const radius = 5;
         players.forEach((player, index) => {
             const angle = (index / players.length) * Math.PI * 2;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            this.playerManager.spawnPlayer(player.id, { x, y: 1, z });
+            this.playerManager.spawnPlayer(player.id, { x: Math.cos(angle) * radius, y: 1, z: Math.sin(angle) * radius });
         });
-
-        this.hostManager.setHost(this.roomStore.isHost);
 
         const peerId = this.networkManager.peerId;
         if (this.playerManager.getPlayer(peerId)) {
@@ -248,127 +280,75 @@ export class GameEngine {
             const normalSkills = skills.filter(s => s.type === 'normal');
             const ultimateSkill = skills.find(s => s.type === 'ultimate');
             const basicSkill = skills.find(s => s.type === 'basic');
-            const skillSlotIds = [
+            this.inputManager.setSkillSlots([
                 normalSkills[0]?.id || '', normalSkills[1]?.id || '', normalSkills[2]?.id || '',
                 ultimateSkill?.id || '', basicSkill?.id || ''
-            ];
-            this.inputManager.setSkillSlots(skillSlotIds);
+            ]);
         }
     }
 
+    /**
+     * Client：套用 Host 廣播的權威狀態
+     * 本地玩家保留本地預測的位置，偏離 Host 太多時才拉回
+     */
     private handleGameState(state: GameState) {
-        const referee = RefereeManager.getInstance();
-        const stateHash = referee.calculateHash(state);
-        
-        if (state.frame !== undefined) {
-            if (!referee.validate(state.frame, stateHash)) {
-                console.warn(`[GameEngine] Causal Divergence at frame ${state.frame}!`);
-            }
-            referee.submitState(state.frame, stateHash);
-            this.currentFrame = state.frame;
-            this.gameStore.setFrame(this.currentFrame);
-        }
+        this.currentFrame = state.frame;
 
-        state.players.forEach((pData: any) => {
+        for (const pData of state.players) {
             if (!this.playerManager.getPlayer(pData.id)) {
                 this.playerManager.spawnPlayer(pData.id, pData.pos);
             }
-            const playerId = pData.id;
-            if (playerId !== this.networkManager.peerId) {
-                const rb = this.playerManager.getPlayerRigidBody(playerId);
-                if (rb) {
+            const rb = this.playerManager.getPlayerRigidBody(pData.id);
+            if (rb) {
+                const isLocal = pData.id === this.networkManager.peerId;
+                const pos = rb.translation();
+                const drift = Math.hypot(pos.x - pData.pos.x, pos.z - pData.pos.z);
+                if (!isLocal) {
                     rb.setNextKinematicTranslation(pData.pos);
                     rb.setNextKinematicRotation(pData.rot);
+                } else if (drift > RECONCILE_DISTANCE) {
+                    // 直接瞬移（擊退、重生），不經過插值
+                    rb.setTranslation(pData.pos, true);
+                    rb.setNextKinematicTranslation(pData.pos);
                 }
             }
-            this.playerManager.setPlayerHp(playerId, pData.stats.hp);
-            this.playerManager.setPlayerEnergy(playerId, pData.stats.energy || 0);
-        });
-
-        if (state.isGameStarted) {
-            this.isGameStarted = true;
-            // 每 60 幀儲存一次硬核檢查點
-            if (this.currentFrame % 60 === 0) {
-                this.saveCheckpoint(state);
-            }
+            this.playerManager.setPlayerHp(pData.id, pData.stats.hp);
+            this.playerManager.setPlayerEnergy(pData.id, pData.stats.energy);
         }
-    }
 
-    /**
-     * 儲存檢查點：包含物理與邏輯的完整快照
-     */
-    private saveCheckpoint(state: GameState) {
-        try {
-            const checkpoint = {
-                frame: this.currentFrame,
-                timestamp: Date.now(),
-                physics: this.physicsWorld.takeSnapshot(),
-                logic: state
-            };
-            // 只保留最近 5 個檢查點以節省空間
-            const history = JSON.parse(localStorage.getItem('webdota_checkpoints') || '[]');
-            history.push(checkpoint);
-            if (history.length > 5) history.shift();
-            localStorage.setItem('webdota_checkpoints', JSON.stringify(history));
-        } catch (e) {
-            console.error("[Checkpoint] 儲存失敗:", e);
-        }
-    }
-
-    /**
-     * 從檢查點恢復狀態 (因果自癒)
-     */
-    private restoreFromCheckpoint(targetFrame: number) {
-        try {
-            const history = JSON.parse(localStorage.getItem('webdota_checkpoints') || '[]');
-            // 尋找最接近目標幀的檢查點
-            const bestFit = history.reverse().find((cp: any) => cp.frame <= targetFrame);
-            
-            if (bestFit) {
-                console.log(`[Checkpoint] 正在恢復至 Frame ${bestFit.frame}...`);
-                this.physicsWorld.free(); // 釋放舊物理世界
-                this.physicsWorld = RAPIER.World.restoreSnapshot(bestFit.physics);
-                this.currentFrame = bestFit.frame;
-                this.handleGameState(bestFit.logic); // 恢復邏輯狀態
-            }
-        } catch (e) {
-            console.error("[Checkpoint] 恢復失敗:", e);
-        }
+        if (state.isGameStarted) this.isGameStarted = true;
     }
 
     gameLoop(dt: number) {
-        this.updatePowerEconomy(dt);
-        const step = 1 / this.currentTargetHz;
-        
-        this.accumulator += dt;
-        while (this.accumulator >= step) {
-            this.fixedUpdate(step);
-            this.accumulator -= step;
-        }
+        this.lastFrameTime = performance.now();
+        this.simulate();
         this.renderManager.updateCamera(dt, this.networkManager.peerId, this.playerManager);
     }
 
-    private updatePowerEconomy(dt: number) {
-        const fps = 1 / dt;
-        this.fpsMonitor.push(fps);
-        if (this.fpsMonitor.length > 180) this.fpsMonitor.shift(); // 監測最近 3 秒
+    /**
+     * 依實際經過時間以固定步長推進模擬
+     * 前景由 PlayCanvas update 呼叫；畫面更新停滯時由 BackgroundTicker 補跑，兩者共用時間基準不會重複推進
+     */
+    private simulate() {
+        const now = performance.now();
+        const elapsed = this.lastSimTime === 0 ? 0 : (now - this.lastSimTime) / 1000;
+        this.lastSimTime = now;
 
-        const avgFps = this.fpsMonitor.reduce((a, b) => a + b, 0) / this.fpsMonitor.length;
-        
-        if (avgFps < 30 && !this.powerSavingMode && this.fpsMonitor.length >= 180) {
-            console.warn("[PowerEconomy] 偵測到極低幀率，啟動能耗規訓模式 (30Hz)");
-            this.currentTargetHz = 30;
-            this.powerSavingMode = true;
-            eventBus.emit({ type: 'POWER_ECONOMY_TRIGGERED', data: { hz: 30 } });
-        } else if (avgFps > 55 && this.powerSavingMode) {
-            console.log("[PowerEconomy] 效能恢復，回到主權模式 (60Hz)");
-            this.currentTargetHz = 60;
-            this.powerSavingMode = false;
+        // 超過 MAX_STEPS_PER_FRAME 的部分在迴圈後丟棄
+        this.accumulator += elapsed;
+        let steps = 0;
+        while (this.accumulator >= this.FIXED_TIMESTEP && steps < MAX_STEPS_PER_FRAME) {
+            this.fixedUpdate(this.FIXED_TIMESTEP);
+            this.accumulator -= this.FIXED_TIMESTEP;
+            steps++;
         }
+        // 追不上時丟掉剩餘時間，而不是越積越多
+        if (steps === MAX_STEPS_PER_FRAME) this.accumulator = 0;
     }
 
     fixedUpdate(dt: number) {
         if (!this.isGameStarted) return;
+
         const localInput = this.inputManager.collectInput(this.currentFrame);
         if (this.pendingSkillUse) {
             localInput.skillUsed = this.pendingSkillUse.skillId;
@@ -376,133 +356,232 @@ export class GameEngine {
             this.pendingSkillUse = null;
         }
 
-        if (this.hostManager.isHost) {
-            this.networkManager.inputBuffer.get(this.currentFrame)?.set(this.networkManager.peerId, localInput);
-        } else {
-            this.networkManager.sendInput(localInput);
-        }
+        // Client 每幀送輸入給 Host；Host 只在放技能時送，讓 Client 播放表現
+        if (!this.isHost || localInput.skillUsed) this.networkManager.sendInput(localInput);
 
-        this.processInputs([localInput], dt);
+        this.applyMovement(localInput, dt);
+        this.applySkill(localInput);
 
-        if (this.hostManager.isHost) {
-            if (this.pendingRemoteInputs.length > 0) {
-                this.processInputs(this.pendingRemoteInputs, dt);
-                this.pendingRemoteInputs = [];
-            }
-            this.physicsWorld.step();
-            this.towerManager.update(dt);
+        for (const input of this.remoteSkills) this.applySkill(input);
+        this.remoteSkills = [];
+
+        if (this.isHost) {
+            for (const input of this.remoteMoves.values()) this.applyMovement(input, dt);
+
             this.creepManager.update(dt);
-            this.baseManager.update(dt);
-            this.ecsWorld.update(dt);
+            this.structureManager.update();
+        }
+        this.playerManager.update(dt, this.isHost, (team) => this.getRespawnPosition(team));
 
-            if (this.currentFrame % 3 === 0) {
-                const playersData: any[] = [];
-                for (const [playerId] of this.playerManager.getAllPlayers()) {
-                    const rb = this.playerManager.getPlayerRigidBody(playerId);
-                    const hp = this.playerManager.getPlayerHp(playerId);
-                    const energy = this.playerManager.getPlayerEnergy(playerId);
-                    if (rb && hp && energy) {
-                        playersData.push({
-                            id: playerId, pos: rb.translation(), rot: rb.rotation(),
-                            stats: { hp: hp.current, energy: energy.current }
-                        });
-                    }
-                }
-                this.networkManager.broadcastGameState({
-                    frame: this.currentFrame, timestamp: Date.now(),
-                    players: playersData, isGameStarted: this.isGameStarted
-                });
+        this.projectileManager.update(dt, this.ecsWorld, this.collisionSystem);
+        this.physicsWorld.step();
+        this.ecsWorld.update(dt);
+
+        if (this.isHost) {
+            if (this.currentFrame % STATE_BROADCAST_INTERVAL === 0) this.broadcastState();
+            if (this.currentFrame % ENTITY_BROADCAST_INTERVAL === 0) {
+                this.networkManager.broadcastEntityState(this.currentFrame, this.entitySync.collect());
             }
-        } else {
-            this.physicsWorld.step();
-            this.ecsWorld.update(dt);
         }
 
-        const allEntities = this.getAllCombatEntities().filter(e => !this.playerManager.getPlayer(e.entityId));
-        this.uiManager.updateEntities(allEntities);
         this.currentFrame++;
         this.gameStore.setFrame(this.currentFrame);
     }
 
-    processInputs(inputs: PlayerInput[], dt: number) {
-        inputs.forEach((input) => {
-            const playerId = input.playerId;
-            if (!this.playerManager.getPlayer(playerId)) return;
-            const speed = this.playerManager.getPlayerMoveSpeed(playerId);
-            const rb = this.playerManager.getPlayerRigidBody(playerId);
-            if (!rb) return;
-
-            let safeMoveX = input.moveX;
-            let safeMoveY = input.moveY;
-            const mag = Math.sqrt(safeMoveX * safeMoveX + safeMoveY * safeMoveY);
-            if (mag > 1.05) { safeMoveX /= mag; safeMoveY /= mag; }
-
-            const moveDir = { x: safeMoveX, y: 0, z: -safeMoveY };
-            if (moveDir.x !== 0 || moveDir.z !== 0) {
-                const currentPos = rb.translation();
-                rb.setNextKinematicTranslation({
-                    x: currentPos.x + moveDir.x * speed * dt,
-                    y: currentPos.y,
-                    z: currentPos.z + moveDir.z * speed * dt
-                });
-                const angle = Math.atan2(moveDir.x, moveDir.z);
-                rb.setNextKinematicRotation(new pc.Quat().setFromEulerAngles(0, angle * pc.math.RAD_TO_DEG, 0));
-            }
-
-            if (input.skillUsed && input.skillDirection) {
-                const skill = this.playerManager.useSkill(playerId, input.skillUsed);
-                if (skill) {
-                    this.ecsSkillExecutor.executeSkill(
-                        skill, playerId, new pc.Vec3(input.skillDirection.x, 0, input.skillDirection.z),
-                        this.ecsWorld, this.effectManager, this.projectileManager, this.soundManager
-                    );
-                }
-            }
-        });
-        const collisionSystem = this.ecsWorld.getSystem<CollisionSystem>('CollisionSystem');
-        if (collisionSystem) {
-            this.projectileManager.update(dt, collisionSystem, this.getAllCombatEntities());
+    /**
+     * 商店操作：Host 直接驗證並執行，Client 送給 Host，結果由 Host 廣播的物品欄回來
+     */
+    requestShop(request: ShopRequest): void {
+        if (this.isHost) {
+            this.handleShopRequest(this.networkManager.peerId, request);
+        } else {
+            this.networkManager.sendShopRequest(request);
         }
     }
 
-    private getAllCombatEntities(): any[] {
-        const combatEntityIds = this.ecsWorld.query(ComponentType.TRANSFORM, ComponentType.HEALTH);
-        const entities: any[] = [];
-        for (const id of combatEntityIds) {
-            const transform = this.ecsWorld.getComponent(id, ComponentType.TRANSFORM) as any;
-            const health = this.ecsWorld.getComponent(id, ComponentType.HEALTH) as any;
-            if (!transform || !health) continue;
-            entities.push({
-                entityId: id, playerId: id, getPosition: () => transform.position,
-                isDead: () => health.isDead(),
-                combatStats: { currentHp: health.current, maxHp: health.max }
+    private handleShopRequest(playerId: string, request: ShopRequest): void {
+        const inventory = this.playerManager.getInventory(playerId);
+        if (!inventory) return;
+
+        let changed = false;
+        if (request.action === 'buy') {
+            const item = getItem(request.itemId);
+            changed = !!item && inventory.buyItem(item);
+        } else {
+            changed = inventory.sellItem(request.slot);
+        }
+        if (changed) this.commitInventory(playerId);
+    }
+
+    /**
+     * Host：重算裝備屬性並廣播物品欄
+     */
+    private commitInventory(playerId: string): void {
+        const inventory = this.playerManager.getInventory(playerId);
+        if (!inventory) return;
+
+        this.playerManager.applyItemStats(playerId);
+        this.networkManager.broadcastInventory({
+            playerId,
+            gold: inventory.gold,
+            items: inventory.slots.map(item => item?.id ?? null)
+        });
+    }
+
+    /**
+     * Client：套用 Host 廣播的物品欄
+     */
+    private applyInventoryUpdate(update: InventoryUpdate): void {
+        const inventory = this.playerManager.getInventory(update.playerId);
+        if (!inventory) return;
+
+        inventory.gold = update.gold;
+        inventory.slots = inventory.slots.map((_, i) => {
+            const itemId = update.items[i];
+            return itemId ? getItem(itemId) ?? null : null;
+        });
+        this.playerManager.applyItemStats(update.playerId);
+    }
+
+    /**
+     * Host：最後一擊的玩家獲得擊殺金幣
+     */
+    private awardKillGold(victimId: EntityId, killerId: string | null): void {
+        if (!killerId) return;
+        const killerPlayerId = this.playerManager.findPlayerIdByEntity(killerId);
+        const inventory = killerPlayerId ? this.playerManager.getInventory(killerPlayerId) : undefined;
+        if (!killerPlayerId || !inventory) return;
+
+        const kind = this.playerManager.findPlayerIdByEntity(victimId) ? 'player'
+            : this.creepManager.getAllCreepIds().has(victimId) ? 'creep'
+            : this.structureManager.getAll().get(victimId)?.kind;
+        const reward = kind ? KILL_GOLD[kind] : 0;
+        if (reward <= 0) return;
+
+        inventory.earnGold(reward);
+        this.commitInventory(killerPlayerId);
+    }
+
+    /**
+     * 重生位置：己方出生點往地圖中央退 3 單位，避開與主堡重疊；沒有出生點時回到中央
+     */
+    private getRespawnPosition(team: Team): { x: number; y: number; z: number } {
+        const spawnPoints = team === 'neutral' ? [] : this.mapManager.getSpawnPoints(team);
+        const sp = spawnPoints[spawnPoints.length - 1]?.position;
+        if (!sp) return { x: 0, y: 1, z: 0 };
+
+        const len = Math.hypot(sp.x, sp.z) || 1;
+        return { x: sp.x - (sp.x / len) * 3, y: 1, z: sp.z - (sp.z / len) * 3 };
+    }
+
+    private applyMovement(input: PlayerInput, dt: number) {
+        if (this.playerManager.isDead(input.playerId)) return;
+        const rb = this.playerManager.getPlayerRigidBody(input.playerId);
+        if (!rb) return;
+
+        let { moveX, moveY } = input;
+        const mag = Math.sqrt(moveX * moveX + moveY * moveY);
+        if (mag > 1.05) { moveX /= mag; moveY /= mag; }
+        if (moveX === 0 && moveY === 0) return;
+
+        const speed = this.playerManager.getPlayerMoveSpeed(input.playerId);
+        const moveZ = -moveY;
+        const currentPos = rb.translation();
+        rb.setNextKinematicTranslation({
+            x: currentPos.x + moveX * speed * dt,
+            y: currentPos.y,
+            z: currentPos.z + moveZ * speed * dt
+        });
+        const halfAngle = Math.atan2(moveX, moveZ) / 2;
+        rb.setNextKinematicRotation({ x: 0, y: Math.sin(halfAngle), z: 0, w: Math.cos(halfAngle) });
+    }
+
+    private applySkill(input: PlayerInput) {
+        if (!input.skillUsed || !input.skillDirection) return;
+        if (this.playerManager.isDead(input.playerId)) return;
+
+        // 技能執行器以 ECS Entity ID 查詢施放者的物理與隊伍，不是玩家（Peer）ID
+        const casterEntityId = this.playerManager.getPlayer(input.playerId);
+        const skill = this.playerManager.useSkill(input.playerId, input.skillUsed);
+        if (!casterEntityId || !skill) return;
+
+        this.ecsSkillExecutor.executeSkill(
+            skill, casterEntityId, new pc.Vec3(input.skillDirection.x, 0, input.skillDirection.z),
+            this.ecsWorld, this.effectManager, this.projectileManager, this.soundManager
+        );
+    }
+
+    private broadcastState() {
+        const players: PlayerState[] = [];
+        for (const playerId of this.playerManager.getAllPlayers().keys()) {
+            const rb = this.playerManager.getPlayerRigidBody(playerId);
+            const hp = this.playerManager.getPlayerHp(playerId);
+            const energy = this.playerManager.getPlayerEnergy(playerId);
+            if (!rb || !hp || !energy) continue;
+            players.push({
+                id: playerId,
+                pos: rb.translation(),
+                rot: rb.rotation(),
+                stats: { hp: hp.current, energy: energy.current }
             });
         }
-        return entities;
-    }
-
-    private spawnTowersFromMap() {
-        this.mapManager.getEntitiesByType('tower').forEach((entity, index) => {
-            this.towerManager.spawnTower(`tower_${entity.team}_${index}`, entity.team || 'neutral', 
-                { x: entity.position[0], y: entity.position[1], z: entity.position[2] }, entity.config || {});
+        this.networkManager.broadcastGameState({
+            frame: this.currentFrame,
+            timestamp: Date.now(),
+            players,
+            isGameStarted: this.isGameStarted
         });
     }
 
-    private spawnBasesFromMap() {
-        this.mapManager.getEntitiesByType('base').forEach((entity, index) => {
-            this.baseManager.spawnBase(`base_${entity.team}_${index}`, entity.team || 'neutral', 
-                { x: entity.position[0], y: entity.position[1], z: entity.position[2] }, entity.config || {});
-        });
+    private spawnStructuresFromMap() {
+        for (const kind of ['tower', 'base'] as const) {
+            for (const entity of this.mapManager.getEntitiesByType(kind)) {
+                const [x = 0, y = 0, z = 0] = entity.position;
+                this.structureManager.spawn(kind, entity.team || 'neutral', { x, y, z }, entity.config || {});
+            }
+        }
+    }
+
+    /**
+     * 小地圖資料
+     */
+    getMinimapEntities(): MinimapEntity[] {
+        const result: MinimapEntity[] = [];
+        const push = (entityId: EntityId, id: string, type: MinimapEntity['type']) => {
+            const transform = this.ecsWorld.getComponent<TransformComponent>(entityId, ComponentType.TRANSFORM);
+            const team = this.ecsWorld.getComponent<TeamComponent>(entityId, ComponentType.TEAM);
+            if (!transform || !team) return;
+            result.push({ id, type, team: team.team, position: { x: transform.position.x, z: transform.position.z } });
+        };
+
+        for (const [entityId, { kind }] of this.structureManager.getAll()) push(entityId, entityId, kind);
+        for (const entityId of this.creepManager.getAllCreepIds()) push(entityId, entityId, 'creep');
+        // 玩家用 Peer ID，讓小地圖能標出本地玩家
+        for (const [playerId, entityId] of this.playerManager.getAllPlayers()) {
+            if (!this.playerManager.isDead(playerId)) push(entityId, playerId, 'player');
+        }
+
+        return result;
+    }
+
+    /**
+     * 取得實體目前的世界座標（給螢幕空間 UI 投影用）
+     */
+    getEntityPosition(entityId: EntityId): pc.Vec3 | null {
+        return this.ecsWorld.getComponent<TransformComponent>(entityId, ComponentType.TRANSFORM)?.position ?? null;
+    }
+
+    getCamera(): pc.Entity | null {
+        return this.renderManager.camera;
     }
 
     useSkill(skillId: string) {
         const peerId = this.networkManager.peerId;
         if (!this.playerManager.getPlayer(peerId)) return;
-        const cooldowns = this.playerManager.getPlayerSkillCooldowns(peerId);
-        const skillCd = cooldowns.get(skillId);
-        const energy = this.playerManager.getPlayerEnergy(peerId);
+        const skillCd = this.playerManager.getPlayerSkillCooldowns(peerId).get(skillId);
         if (!skillCd || skillCd.current > 0) return;
         const skill = this.playerManager.getPlayerSkills(peerId).find(s => s.id === skillId);
+        const energy = this.playerManager.getPlayerEnergy(peerId);
         if (skill && energy && (skill.energyCost ?? 0) > energy.current) return;
         const direction = this.playerManager.getPlayerFacingDirection(peerId);
         if (!direction) return;
@@ -510,10 +589,45 @@ export class GameEngine {
     }
 
     getLocalPlayerSkills() { return this.playerManager.getPlayerSkills(this.networkManager.peerId); }
+
+    /**
+     * 本地玩家的剩餘重生秒數；存活時為 null
+     */
+    getLocalRespawnRemaining(): number | null {
+        return this.playerManager.getRespawnRemaining(this.networkManager.peerId);
+    }
+
     getLocalPlayerCooldowns(): Map<string, number> {
         const cooldowns = this.playerManager.getPlayerSkillCooldowns(this.networkManager.peerId);
         const result = new Map<string, number>();
         for (const [id, cd] of cooldowns) { result.set(id, cd.current); }
         return result;
+    }
+
+    /**
+     * 離開遊戲時釋放所有資源，避免舊引擎繼續跑或殘留事件監聽
+     */
+    destroy() {
+        this.disposers.forEach(dispose => dispose());
+        this.disposers = [];
+        this.backgroundTicker.destroy();
+
+        this.networkManager.onInputReceived = undefined;
+        this.networkManager.onGameState = undefined;
+        this.networkManager.onEntityState = undefined;
+        this.networkManager.onShopRequest = undefined;
+        this.networkManager.onInventory = undefined;
+        this.networkManager.onGameOver = undefined;
+
+        this.isGameStarted = false;
+        this.inputManager.destroy();
+        this.renderManager.destroy();
+        this.soundManager.destroy();
+        this.projectileManager.clearAll();
+        this.ecsWorld.clear();
+        colliderRegistry.clear();
+
+        this.app.destroy();
+        this.physicsWorld.free();
     }
 }

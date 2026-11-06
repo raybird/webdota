@@ -2,46 +2,25 @@ import * as pc from 'playcanvas';
 
 /**
  * UI 管理器
- * 統一管理所有玩家的頭頂 UI（血條、名稱等）
+ * 建立實體頭頂的 3D 血條；建立後交給 RenderComponent 管理位置、數值與銷毀
  */
 
-export interface PlayerUIConfig {
-    playerId: string;
-    playerName: string;          // 玩家顯示名稱
+export interface EntityBarUI {
     hpBarEntity: pc.Entity;
     hpBarFillEntity: pc.Entity;
-    energyBarFillEntity: pc.Entity;  // 新增能量條
-    nameTextEntity: pc.Entity;   // 名稱文字實體
+    energyBarFillEntity?: pc.Entity;
 }
 
 export class UIManager {
     private app: pc.Application;
-    private playerUIs: Map<string, PlayerUIConfig> = new Map();
-    private damageTextScreen!: pc.Entity; // 專門用於傷害數字的 2D Screen
 
     // UI 配置常數
     private readonly HP_BAR_WIDTH = 150;
     private readonly HP_BAR_HEIGHT = 20;
     private readonly ENERGY_BAR_HEIGHT = 10; // 能量條比血條矮
-    private readonly HP_BAR_OFFSET_Y = 2.0; // 血條離角色的高度
-    // private readonly NAME_TEXT_OFFSET_Y = 20; // 已改用固定數值
 
     constructor(app: pc.Application) {
         this.app = app;
-        this.initDamageTextScreen();
-    }
-
-    /**
-     * 初始化傷害數字的螢幕層
-     */
-    private initDamageTextScreen() {
-        this.damageTextScreen = new pc.Entity('DamageTextScreen');
-        this.damageTextScreen.addComponent('screen', {
-            referenceResolution: new pc.Vec2(1280, 720),
-            scaleBlend: 0.5,
-            screenSpace: true
-        });
-        this.app.root.addChild(this.damageTextScreen);
     }
 
     /**
@@ -49,7 +28,7 @@ export class UIManager {
      * @param playerId 玩家 ID
      * @param playerName 玩家顯示名稱（角色名稱或暱稱）
      */
-    createPlayerUI(playerId: string, playerName: string = 'Player'): PlayerUIConfig {
+    createPlayerUI(playerId: string, playerName: string = 'Player'): EntityBarUI {
         // 建立血條容器
         const hpBarEntity = new pc.Entity(`HPBar_${playerId}`);
         hpBarEntity.setLocalScale(0.01, 0.01, 0.01); // 重要：縮放 UI 以適應 3D 世界
@@ -181,26 +160,15 @@ export class UIManager {
         hpBarEntity.addChild(nameText);
         this.app.root.addChild(hpBarEntity);
 
-        const config: PlayerUIConfig = {
-            playerId,
-            playerName,
-            hpBarEntity,
-            hpBarFillEntity: hpBarFill,
-            energyBarFillEntity: energyBarFill,
-            nameTextEntity: nameText
-        };
-
-        this.playerUIs.set(playerId, config);
-        return config;
+        return { hpBarEntity, hpBarFillEntity: hpBarFill, energyBarFillEntity: energyBarFill };
     }
 
     /**
      * 為非玩家實體建立簡化 UI（僅血條）
      * @param entityId 實體 ID
      * @param team 隊伍 (用於顏色)
-     * @param isBase 是否為主堡
      */
-    createEntityUI(entityId: string, team: 'red' | 'blue' | 'neutral', _isBase: boolean = false): { hpBarEntity: pc.Entity, hpBarFillEntity: pc.Entity } {
+    createEntityUI(entityId: string, team: 'red' | 'blue' | 'neutral'): EntityBarUI {
         const ENTITY_HP_BAR_WIDTH = 80;
         const ENTITY_HP_BAR_HEIGHT = 10;
 
@@ -240,284 +208,6 @@ export class UIManager {
         hpBarEntity.addChild(hpBarFill);
         this.app.root.addChild(hpBarEntity);
 
-        // Store in playerUIs map for update (reusing structure)
-        this.playerUIs.set(entityId, {
-            playerId: entityId,
-            playerName: '',
-            hpBarEntity,
-            hpBarFillEntity: hpBarFill,
-            energyBarFillEntity: hpBarFill, // Dummy, won't be used
-            nameTextEntity: hpBarBg // Dummy
-        });
-
         return { hpBarEntity, hpBarFillEntity: hpBarFill };
-    }
-
-    /**
-     * 更新玩家血條位置（跟隨角色）
-     */
-    updatePlayerUIPosition(playerId: string, position: pc.Vec3) {
-        const ui = this.playerUIs.get(playerId);
-        if (!ui) return;
-
-        // 設定血條位置在角色上方
-        ui.hpBarEntity.setPosition(
-            position.x,
-            position.y + this.HP_BAR_OFFSET_Y,
-            position.z
-        );
-
-        // 血條永遠平行於地面，且面向攝影機 (Billboard)
-        const camera = this.app.root.findByName('Camera');
-        if (camera) {
-            ui.hpBarEntity.lookAt(camera.getPosition());
-            // 修正旋轉，使 UI 垂直且面向攝影機
-            const rot = ui.hpBarEntity.getEulerAngles();
-            ui.hpBarEntity.setEulerAngles(0, rot.y, 0);
-        } else {
-            ui.hpBarEntity.setEulerAngles(0, 0, 0);
-        }
-    }
-
-    /**
-     * 更新玩家血條數值
-     */
-    updatePlayerHP(playerId: string, currentHp: number, maxHp: number) {
-        const ui = this.playerUIs.get(playerId);
-        if (!ui || !ui.hpBarFillEntity.element) return;
-
-        const hpPercent = Math.max(0, Math.min(1, currentHp / maxHp));
-        ui.hpBarFillEntity.element.width = this.HP_BAR_WIDTH * hpPercent;
-
-        // 根據血量改變顏色（綠 -> 黃 -> 紅）
-        if (hpPercent > 0.6) {
-            ui.hpBarFillEntity.element.color = new pc.Color(0.2, 0.8, 0.2); // 綠色
-        } else if (hpPercent > 0.3) {
-            ui.hpBarFillEntity.element.color = new pc.Color(0.8, 0.8, 0.2); // 黃色
-        } else {
-            ui.hpBarFillEntity.element.color = new pc.Color(0.8, 0.2, 0.2); // 紅色
-        }
-    }
-
-    /**
-     * 更新玩家能量條數值
-     */
-    updatePlayerEnergy(playerId: string, currentEnergy: number, maxEnergy: number) {
-        const ui = this.playerUIs.get(playerId);
-        if (!ui || !ui.energyBarFillEntity.element) return;
-
-        const energyPercent = Math.max(0, Math.min(1, currentEnergy / maxEnergy));
-        ui.energyBarFillEntity.element.width = this.HP_BAR_WIDTH * energyPercent;
-    }
-
-    /**
-     * 移除玩家 UI
-     */
-    removePlayerUI(playerId: string) {
-        const ui = this.playerUIs.get(playerId);
-        if (!ui) return;
-
-        if (ui.hpBarEntity) {
-            ui.hpBarEntity.destroy();
-        }
-
-        this.playerUIs.delete(playerId);
-    }
-
-    /**
-     * 更新所有玩家 UI（在遊戲主循環中呼叫）
-     */
-    updateAll(players: Map<string, any>) {
-        for (const [playerId, player] of players) {
-            // 更新位置
-            const pos = player.getPosition();
-            this.updatePlayerUIPosition(playerId, pos);
-
-            // 更新血量
-            if (player.combatStats) {
-                this.updatePlayerHP(
-                    playerId,
-                    player.combatStats.currentHp,
-                    player.combatStats.maxHp
-                );
-                this.updatePlayerEnergy(
-                    playerId,
-                    player.combatStats.currentEnergy,
-                    player.combatStats.maxEnergy
-                );
-            }
-        }
-    }
-
-    /**
-     * 更新所有實體 UI（小兵、塔、主堡）
-     */
-    updateEntities(entities: Array<{ entityId: string; getPosition: () => pc.Vec3; combatStats: any }>) {
-        const ENTITY_HP_BAR_WIDTH = 80; // 與 createEntityUI 一致
-
-        for (const entity of entities) {
-            const ui = this.playerUIs.get(entity.entityId);
-            if (!ui) continue;
-
-            // 更新位置
-            const pos = entity.getPosition();
-            ui.hpBarEntity.setPosition(pos.x, pos.y + 1.5, pos.z);
-
-            // Billboard
-            const camera = this.app.root.findByName('Camera');
-            if (camera) {
-                ui.hpBarEntity.lookAt(camera.getPosition());
-                const rot = ui.hpBarEntity.getEulerAngles();
-                ui.hpBarEntity.setEulerAngles(0, rot.y, 0);
-            }
-
-            // 更新血量
-            if (entity.combatStats && ui.hpBarFillEntity.element) {
-                const hpPercent = Math.max(0, Math.min(1, entity.combatStats.currentHp / entity.combatStats.maxHp));
-                ui.hpBarFillEntity.element.width = ENTITY_HP_BAR_WIDTH * hpPercent;
-            }
-        }
-    }
-
-    /**
-     * 顯示傷害飄字 (3D Billboard + Always On Top)
-     */
-    showDamageText(position: pc.Vec3, damage: number, isCritical: boolean = false) {
-        // 1. 建立 Canvas 並繪製文字
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        canvas.width = 256;
-        canvas.height = 128;
-
-        // 設定字型樣式
-        const fontSize = isCritical ? 80 : 60;
-        const color = isCritical ? '#FFFF00' : '#FFFFFF';
-
-        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        // 陰影/描邊
-        ctx.shadowColor = 'black';
-        ctx.shadowBlur = 4;
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = 'black';
-
-        const text = Math.round(damage).toString();
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-
-        ctx.strokeText(text, cx, cy);
-        ctx.fillStyle = color;
-        ctx.fillText(text, cx, cy);
-
-        // 2. 建立 PlayCanvas Texture
-        const texture = new pc.Texture(this.app.graphicsDevice, {
-            width: canvas.width,
-            height: canvas.height,
-            format: pc.PIXELFORMAT_R8_G8_B8_A8,
-            magFilter: pc.FILTER_LINEAR,
-            minFilter: pc.FILTER_LINEAR_MIPMAP_LINEAR
-        });
-        texture.setSource(canvas);
-
-        // 3. 建立材質 (StandardMaterial + No Depth Test)
-        const material = new pc.StandardMaterial();
-        material.diffuseMap = texture;
-        material.emissiveMap = texture;
-        material.emissive = new pc.Color(1, 1, 1);
-        material.opacityMap = texture;
-        material.blendType = pc.BLEND_NORMAL;
-        material.alphaTest = 0.1;
-        material.useLighting = false;
-        material.useSkybox = false;
-        material.depthTest = false; // 關鍵：關閉深度測試，永遠顯示在最上層
-        material.update();
-
-        // 4. 建立實體 (Plane)
-        const textEntity = new pc.Entity('DamageText');
-        textEntity.addComponent('render', {
-            type: 'plane',
-            material: material,
-            castShadows: false,
-            receiveShadows: false
-        });
-
-        // 初始位置
-        const offsetX = (Math.random() - 0.5) * 0.5;
-        textEntity.setPosition(position.x + offsetX, position.y + 2.0, position.z);
-
-        // 縮放與旋轉
-        textEntity.setLocalScale(1, 1, 1);
-
-        // Billboard (面向攝影機)
-        const camera = this.app.root.findByName('Camera');
-        if (camera) {
-            textEntity.lookAt(camera.getPosition());
-            textEntity.rotateLocal(90, 0, 0); // Plane 需要轉 90 度
-        }
-
-        this.app.root.addChild(textEntity);
-
-        // 5. 動畫
-        let timer = 0;
-        const duration = 1.0;
-        const startPos = textEntity.getPosition().clone();
-        const baseScale = 1.0;
-
-        const update = (dt: number) => {
-            timer += dt;
-            if (timer >= duration) {
-                textEntity.destroy();
-                material.destroy();
-                texture.destroy();
-                this.app.off('update', update);
-                return;
-            }
-
-            const progress = timer / duration;
-
-            // 向上移動
-            textEntity.setPosition(
-                startPos.x,
-                startPos.y + progress * 2.0,
-                startPos.z
-            );
-
-            // 確保始終面向攝影機
-            if (camera) {
-                textEntity.lookAt(camera.getPosition());
-                textEntity.rotateLocal(90, 0, 0);
-            }
-
-            // 縮放動畫
-            let s = baseScale;
-            if (isCritical) {
-                if (progress < 0.2) s = baseScale * (1 + progress * 5);
-                else s = baseScale * (2 - progress);
-            } else {
-                s = baseScale * (1 + Math.sin(progress * Math.PI) * 0.2);
-            }
-
-            // 淡出
-            if (progress > 0.7) {
-                s *= (1 - (progress - 0.7) / 0.3);
-            }
-
-            textEntity.setLocalScale(s, 1, s);
-        };
-
-        this.app.on('update', update);
-    }
-
-    /**
-     * 清理所有 UI
-     */
-    cleanup() {
-        for (const [playerId] of this.playerUIs) {
-            this.removePlayerUI(playerId);
-        }
     }
 }

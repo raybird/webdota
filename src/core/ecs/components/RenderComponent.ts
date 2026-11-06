@@ -6,6 +6,9 @@
 import * as pc from 'playcanvas';
 import { type Component, ComponentType } from '../Component';
 
+/** 受擊閃白時覆寫的 emissive 值 */
+const FLASH_EMISSIVE = new Float32Array([1, 1, 1]);
+
 export class RenderComponent implements Component {
     readonly type = ComponentType.RENDER;
 
@@ -15,87 +18,81 @@ export class RenderComponent implements Component {
     /** 是否需要同步 Transform */
     syncTransform: boolean = true;
 
-    /** 血條 Entity */
+    /** 血條（由 UIManager 建立，生命週期跟著這個 Component） */
     hpBarEntity: pc.Entity | null = null;
     hpBarFillEntity: pc.Entity | null = null;
+    energyBarFillEntity: pc.Entity | null = null;
+    /** 血條離實體原點的高度 */
+    hpBarOffsetY: number = 2;
 
-    constructor(pcEntity: pc.Entity) {
-        this.pcEntity = pcEntity;
-    }
+    /** 有值時 dispose 交還視覺物件（物件池），否則直接銷毀 */
+    private release: ((pcEntity: pc.Entity) => void) | null;
 
-    /** 原始材質顏色緩存，用於恢復 Hit Flash */
-    private originalEmissiveColors: Map<pc.Material, pc.Color> = new Map();
     private flashTimeout: number | null = null;
 
-    /**
-     * 受擊閃爍 (Hit Flash)
-     */
-    flashHit(color: pc.Color = new pc.Color(1, 1, 1, 1), durationMs: number = 80): void {
-        let meshInstances: pc.MeshInstance[] = [];
-        if (this.pcEntity.render) {
-            meshInstances = this.pcEntity.render.meshInstances;
-        } else if ((this.pcEntity as any).model && (this.pcEntity as any).model.meshInstances) {
-            meshInstances = (this.pcEntity as any).model.meshInstances;
-        }
+    constructor(pcEntity: pc.Entity, release: ((pcEntity: pc.Entity) => void) | null = null) {
+        this.pcEntity = pcEntity;
+        this.release = release;
+    }
 
+    /**
+     * 受擊閃白
+     * 材質由 MaterialCache 共用，所以只覆寫這個實體的 mesh instance 參數，不改材質本身
+     */
+    flashHit(durationMs: number = 80): void {
+        const meshInstances = this.getMeshInstances();
         if (meshInstances.length === 0) return;
 
-        if (this.flashTimeout !== null) {
-            window.clearTimeout(this.flashTimeout);
-        }
-
-        const materials = meshInstances.map(mi => mi.material as pc.StandardMaterial).filter(Boolean);
-
-        for (const mat of materials) {
-            if (!this.originalEmissiveColors.has(mat)) {
-                this.originalEmissiveColors.set(mat, mat.emissive.clone());
-            }
-            mat.emissive = color;
-            mat.update();
-        }
+        if (this.flashTimeout !== null) window.clearTimeout(this.flashTimeout);
+        for (const mi of meshInstances) mi.setParameter('material_emissive', FLASH_EMISSIVE);
 
         this.flashTimeout = window.setTimeout(() => {
-            for (const mat of materials) {
-                const orig = this.originalEmissiveColors.get(mat);
-                if (orig) {
-                    mat.emissive = orig;
-                    mat.update();
-                }
-            }
+            for (const mi of meshInstances) mi.deleteParameter('material_emissive');
             this.flashTimeout = null;
         }, durationMs);
     }
 
-    /**
-     * 設定血條 UI 參考
-     */
-    setHpBar(hpBarEntity: pc.Entity, hpBarFillEntity: pc.Entity): void {
-        this.hpBarEntity = hpBarEntity;
-        this.hpBarFillEntity = hpBarFillEntity;
+    private getMeshInstances(): pc.MeshInstance[] {
+        const renders = this.pcEntity.findComponents('render') as pc.RenderComponent[];
+        return renders.flatMap(r => r.meshInstances);
     }
 
     /**
-     * 更新血條顯示
+     * 顯示或隱藏模型與頭頂血條（玩家陣亡時隱藏）
      */
-    updateHpBar(hpPercent: number): void {
-        if (this.hpBarFillEntity) {
-            const scale = this.hpBarFillEntity.getLocalScale();
-            this.hpBarFillEntity.setLocalScale(hpPercent, scale.y, scale.z);
-        }
+    setVisible(visible: boolean): void {
+        this.pcEntity.enabled = visible;
+        if (this.hpBarEntity) this.hpBarEntity.enabled = visible;
     }
 
-    /**
-     * 銷毀視覺實體
-     */
-    destroy(): void {
+    setHpBar(
+        bar: { hpBarEntity: pc.Entity; hpBarFillEntity: pc.Entity; energyBarFillEntity?: pc.Entity },
+        offsetY: number
+    ): void {
+        this.hpBarEntity = bar.hpBarEntity;
+        this.hpBarFillEntity = bar.hpBarFillEntity;
+        this.energyBarFillEntity = bar.energyBarFillEntity ?? null;
+        this.hpBarOffsetY = offsetY;
+    }
+
+    /** 填充條的 pivot 在左側，用 X 縮放表示百分比 */
+    static setBarPercent(fill: pc.Entity | null, percent: number): void {
+        if (!fill) return;
+        const scale = fill.getLocalScale();
+        const x = Math.max(0, Math.min(1, percent));
+        if (scale.x !== x) fill.setLocalScale(x, scale.y, scale.z);
+    }
+
+    dispose(): void {
         if (this.flashTimeout !== null) {
             window.clearTimeout(this.flashTimeout);
+            for (const mi of this.getMeshInstances()) mi.deleteParameter('material_emissive');
         }
-        if (this.pcEntity) {
+        this.hpBarEntity?.destroy();
+        if (this.release) {
+            this.release(this.pcEntity);
+        } else {
             this.pcEntity.destroy();
-        }
-        if (this.hpBarEntity) {
-            this.hpBarEntity.destroy();
         }
     }
 }

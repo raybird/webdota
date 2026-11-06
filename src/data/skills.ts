@@ -1,4 +1,4 @@
-import type { Skill } from '../core/combat/SkillManager';
+import type { Skill } from '../types/Skill';
 
 export const SKILLS: Record<string, Skill> = {
     // --- 通用技能 ---

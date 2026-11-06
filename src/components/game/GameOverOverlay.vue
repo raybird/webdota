@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoomStore } from '../../stores/roomStore'
 
 const props = defineProps<{
   isVisible: boolean
@@ -9,10 +10,8 @@ const props = defineProps<{
 
 const emit = defineEmits(['back-to-lobby'])
 
-const isVictory = computed(() => {
-  // 假設本地玩家是藍隊（此處邏輯需與 RoomStore 連動，MVP 先簡單處理）
-  return props.winnerTeam === 'blue'
-})
+const roomStore = useRoomStore()
+const isVictory = computed(() => props.winnerTeam !== null && props.winnerTeam === roomStore.myPlayer?.team)
 </script>
 
 <template>
