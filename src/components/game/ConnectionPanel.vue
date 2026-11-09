@@ -74,6 +74,10 @@ const hints = computed(() => {
         <dd>{{ data.isHost ? '房主（負責模擬）' : '玩家' }}</dd>
       </div>
       <div>
+        <dt>本機 ID · 玩家數</dt>
+        <dd>{{ roomStore.myPeerId?.substring(0, 8) || '—' }} · {{ roomStore.connectedPlayers.length }} 人</dd>
+      </div>
+      <div>
         <dt>{{ data.isHost ? '狀態送出' : '狀態接收' }}</dt>
         <dd>玩家 {{ data.gameRate.toFixed(1) }}/秒 · 建築小兵 {{ data.entityRate.toFixed(1) }}/秒</dd>
       </div>
