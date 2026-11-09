@@ -25,3 +25,6 @@ dist-ssr
 
 # 本機 MCP 記憶工具在專案根目錄建立的資料庫
 mcp-memory-libsql.db
+
+# Serena（MCP 程式碼工具）的本機設定與快取：啟用時自動產生，升級時會自動改寫 project.yml
+/.serena/
