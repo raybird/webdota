@@ -163,53 +163,29 @@ onUnmounted(() => {
     
     <!-- HUD -->
     <div class="hud-layer">
-      <!-- 左上角：狀態資訊 -->
-      <div class="status-panel card-glass">
-        <div class="hud-header">
-          <div class="frame-counter">Frame: {{ gameStore.currentFrame }}</div>
-          <div class="role-indicator" :class="{ host: roomStore.isHost }">
-            {{ roomStore.isHost ? '♔ HOST' : '♙ CLIENT' }}
-          </div>
-        </div>
-        
-        <!-- Team Indicator -->
-        <div class="team-banner" 
-             :class="{ 
-               'team-red': roomStore.myPlayer?.team === 'red',
-               'team-blue': roomStore.myPlayer?.team === 'blue'
-             }">
-           {{ roomStore.myPlayer?.team === 'red' ? '🔴 RED TEAM' : roomStore.myPlayer?.team === 'blue' ? '🔵 BLUE TEAM' : '⚪ SPECTATOR' }}
-        </div>
-
-        <div class="hud-content">
-          <div class="info-row">
-            <span class="label">PLAYERS:</span>
-            <span class="value">{{ roomStore.connectedPlayers.length }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">ID:</span>
-            <span class="value">{{ roomStore.myPeerId?.substring(0, 8) || 'N/A' }}</span>
-          </div>
-          <button
-            type="button"
-            class="info-row ping-row"
-            :aria-expanded="showConnectionPanel"
-            aria-controls="connection-panel"
-            title="連線診斷 (N)"
-            @click="onPingRowClick"
-          >
-            <span class="label">PING:</span>
-            <span class="value" :class="{'high-ping': currentPing > 150}">{{ currentPing }} ms ⓘ</span>
-          </button>
-          <div class="cooldown-debug">
-            CDs: {{ Array.from(currentCooldowns.entries()).map(([k, v]) => `${k}:${v.toFixed(1)}`).join(', ') }}
-          </div>
-          <div class="gold-display">
-            <span class="gold-icon">💰</span>
-            <span class="gold-value">{{ gameStore.gold }}</span>
-          </div>
-        </div>
-        <button class="shop-btn" @click="toggleShop">🏪 商店 (B)</button>
+      <!-- 左上角：精簡狀態列（隊伍、角色、Frame、PING、金幣），不擋畫面操作 -->
+      <div
+        class="status-bar"
+        :class="{
+          'team-red': roomStore.myPlayer?.team === 'red',
+          'team-blue': roomStore.myPlayer?.team === 'blue'
+        }"
+      >
+        <span class="role-indicator" :class="{ host: roomStore.isHost }" :title="roomStore.isHost ? '房主' : '玩家'">
+          {{ roomStore.isHost ? 'HOST' : 'CLIENT' }}
+        </span>
+        <span class="stat frame-counter" title="Frame">F {{ gameStore.currentFrame }}</span>
+        <button
+          type="button"
+          class="stat ping-row"
+          :aria-expanded="showConnectionPanel"
+          aria-controls="connection-panel"
+          title="連線診斷 (N)"
+          @click="onPingRowClick"
+        >
+          <span :class="{ 'high-ping': currentPing > 150 }">{{ currentPing }} ms</span> ⓘ
+        </button>
+        <span class="stat gold-display" title="金幣">💰 <span class="gold-value">{{ gameStore.gold }}</span></span>
       </div>
 
       <ConnectionPanel
@@ -229,7 +205,7 @@ onUnmounted(() => {
       </div>
 
       <!-- 浮動商店按鈕 (手機用) -->
-      <button class="floating-shop-btn" @click="toggleShop">
+      <button type="button" class="floating-shop-btn" title="商店 (B)" aria-label="商店 (B)" @click="toggleShop">
         🏪
       </button>
 
@@ -356,103 +332,51 @@ onUnmounted(() => {
   right: 30px;
 }
 
-.status-panel {
+.status-bar {
   position: absolute;
-  top: 20px;
-  left: 20px;
-  width: 250px;
-  pointer-events: auto;
-  /* 搖桿的觸控區佔滿全畫面（z-index 50），面板要在它上面才點得到；傷害數字（60）仍畫在面板上方 */
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-inline-size: calc(100vw - 24px);
+  padding: 4px 10px 4px 6px;
+  border-radius: 999px;
+  border-inline-start: 3px solid #777;
+  background: rgba(10, 8, 24, 0.55);
+  backdrop-filter: blur(4px);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--c-text-main);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  /* 只有 PING 可以點：其餘部分讓點擊穿透到畫面 */
+  pointer-events: none;
+  /* 搖桿的觸控區佔滿全畫面（z-index 50），PING 要在它上面才點得到；傷害數字（60）仍畫在上方 */
   z-index: 55;
 }
 
-.hud-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
-  padding-bottom: 8px;
-  margin-bottom: 8px;
-  font-family: var(--font-heading);
-  color: var(--c-primary);
-}
+.status-bar.team-red { border-inline-start-color: var(--c-cta); }
+.status-bar.team-blue { border-inline-start-color: #38BDF8; }
 
-.hud-content {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
+.stat {
   color: var(--c-text-muted);
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.label {
-  color: var(--c-primary-dim);
-}
-
-.value {
-  color: var(--c-text-main);
-  font-weight: bold;
-}
-
-.cooldown-debug {
-  margin-top: 10px;
-  font-size: 0.75rem;
-  color: var(--c-text-muted);
-  opacity: 0.7;
-}
-
-.frame-counter {
-  margin-bottom: 5px;
 }
 
 .role-indicator {
+  font-family: var(--font-heading);
   font-weight: bold;
-  font-size: 0.8rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
   color: #4a9eff;
 }
 
 .role-indicator.host {
   color: var(--c-primary);
-  border: 1px solid var(--c-primary-dim);
   text-shadow: 0 0 5px var(--c-primary);
 }
-
-.team-banner {
-  text-align: center;
-  font-family: var(--font-heading);
-  font-weight: bold;
-  font-size: 1.1rem;
-  margin: 12px 0;
-  padding: 6px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.4);
-  color: #aaa;
-  border: 1px solid #555;
-  text-shadow: 0 2px 2px rgba(0,0,0,0.8);
-  letter-spacing: 1px;
-}
-
-.team-banner.team-red {
-  color: var(--c-cta);
-  border-color: var(--c-cta);
-  background: linear-gradient(90deg, rgba(244,63,94,0.15) 0%, transparent 50%, rgba(244,63,94,0.15) 100%);
-  box-shadow: 0 0 10px rgba(244, 63, 94, 0.2);
-}
-
-.team-banner.team-blue {
-  color: #38BDF8;
-  border-color: #38BDF8;
-  background: linear-gradient(90deg, rgba(56,189,248,0.15) 0%, transparent 50%, rgba(56,189,248,0.15) 100%);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
-}
-
 
 .minimap-area {
   position: absolute;
@@ -486,53 +410,16 @@ onUnmounted(() => {
   transform: translateX(-50%) scale(0.95);
 }
 
-.gold-display {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 4px 8px;
-  background: rgba(255, 215, 0, 0.1);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 215, 0, 0.3);
-}
-
-.gold-icon {
-  font-size: 1rem;
-}
-
 .gold-value {
   font-weight: bold;
-  color: #ffd700;
-  font-size: 1rem;
-}
-
-.shop-btn {
-  margin-top: 10px;
-  width: 100%;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, var(--c-secondary-dark) 0%, var(--c-bg-dark) 100%);
-  border: 1px solid var(--c-primary-dim);
-  border-radius: 4px;
-  color: var(--c-text-main);
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.shop-btn:hover {
-  background: linear-gradient(135deg, var(--c-bg-dark) 0%, var(--c-primary-dim) 100%);
-  border-color: var(--c-secondary);
-  color: #fff;
-  box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
+  color: var(--c-gold);
 }
 
 .ping-row {
-  inline-size: 100%;
-  padding: 0;
+  /* 觸控目標至少 32px 高 */
+  min-block-size: 32px;
+  padding: 0 4px;
+  pointer-events: auto;
   border: 0;
   background: none;
   font: inherit;
@@ -541,8 +428,8 @@ onUnmounted(() => {
   text-align: start;
 }
 
-.ping-row:hover .value,
-.ping-row:focus-visible .value {
+.ping-row:hover,
+.ping-row:focus-visible {
   color: var(--c-secondary);
 }
 
