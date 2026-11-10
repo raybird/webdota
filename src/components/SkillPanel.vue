@@ -6,6 +6,8 @@ import SkillButton from './SkillButton.vue'
 interface Props {
   skills: SkillData[]
   currentCooldowns: Map<string, number>
+  /** 大招未解鎖時為所需等級，解鎖後為 null */
+  ultimateLockedLevel?: number | null
 }
 
 interface SkillData {
@@ -65,6 +67,7 @@ watch(() => props.skills, (newSkills) => {
         :cooldown="ultimateSkill.cooldown"
         :current-cooldown="getCooldown(ultimateSkill.id)"
         :is-ready="isReady(ultimateSkill.id)"
+        :locked-level="ultimateLockedLevel ?? null"
         @press="handleSkillPress(ultimateSkill.id)"
       />
     </div>

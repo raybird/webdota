@@ -69,3 +69,9 @@ python3 tools/env/generate_fx.py
 若一併重製場景，先執行 `generate.py`，再執行 `generate_fx.py`。後者只寫入上述四組 PNG／JSON、此段 NOTICE、`tools/env/preview-bolt.png` 與 `tools/env/validation.json`；保留其餘既有素材及驗證資料。同一 Pillow 版本重跑產生相同位元組。規格日期固定為 2026-11-06。
 
 `tools/env/preview-bolt.png` 包含所有影格的 nearest 5 倍放大、pivot 標記，以及以既有地面、塔與敵方小兵合成的紅藍攻擊示意（nearest 2 倍，飛行與命中分圖）。灰色虛線僅為預覽的飛行路線輔助線，不屬於素材。驗證報告新增 `tower_fx` 與各檔案紀錄，檢查影格格式、尺寸、fps、loop、pivot、色盤、二值 alpha、彈頭固定、最大範圍、透明結尾、紅藍輪廓一致與 SHA-256。
+
+## 升級特效（2026-11-10）
+
+2026-11-10 新增原創連續圖 `level-up.png`／`level-up.json`：英雄升級時在身上播放一次。單列 14 格，每格 64×96（整張 896×96），12 fps、不循環，pivot [32,88] 為英雄腳底中心，第 14 格全透明。金黃 5 色加箭形外框 `#1a1422`（`#8a5a12`、`#d99a1e`、`#f5c542`、`#ffe58a`、`#fff8d6`），無抗鋸齒、alpha 只有 0／255，19px／世界單位。畫面依序為腳下扁橢圓光環擴大、三道光帶升起超過頭頂、向上的箭形與星點，之後光環斷成虛線、光帶收束消失。
+
+重製：`python3 tools/env/generate_levelup_fx.py`（Python 3 + Pillow，無亂數；同版 Pillow 重跑位元組相同）。只寫入上述 PNG／JSON、`tools/env/preview-level-up.png` 與 `tools/env/validation-level-up.json`。

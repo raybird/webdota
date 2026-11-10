@@ -1,0 +1,239 @@
+{
+  "date": "2026-11-10",
+  "pillow": "12.2.0",
+  "checks_passed": true,
+  "randomness": "none",
+  "sheet_size": [
+    896,
+    96
+  ],
+  "frame_size": [
+    64,
+    96
+  ],
+  "frames": 14,
+  "fps": 12,
+  "duration_seconds": 1.1666666666666667,
+  "aseprite_duration_ms": 83,
+  "loop": false,
+  "pivot": [
+    32,
+    88
+  ],
+  "columns": 14,
+  "px_per_world_unit": 19,
+  "alpha_values": [
+    0,
+    255
+  ],
+  "opaque_color_count": 6,
+  "palette": {
+    "deep_gold": "#8a5a12",
+    "gold": "#d99a1e",
+    "bright_gold": "#f5c542",
+    "pale_gold": "#ffe58a",
+    "white_gold": "#fff8d6",
+    "arrow_outline": "#1a1422"
+  },
+  "halo": {
+    "center": [
+      32,
+      82
+    ],
+    "height_to_width": 0.6,
+    "max_radius": [
+      20,
+      12
+    ]
+  },
+  "column_top_y": 18,
+  "height_above_pivot": 70,
+  "preview": {
+    "size": [
+      1936,
+      1544
+    ],
+    "nearest_scale": 4,
+    "reference_hero_size": [
+      30,
+      38
+    ],
+    "grass_frames": [
+      2,
+      5,
+      8
+    ]
+  },
+  "per_frame": [
+    {
+      "index": 0,
+      "description": "Foot halo ignites; two seed sparks.",
+      "bounds": [
+        13,
+        76,
+        50,
+        86
+      ],
+      "opaque_pixels": 48,
+      "opaque_colors": 5
+    },
+    {
+      "index": 1,
+      "description": "Halo expands; three short light ribbons emerge.",
+      "bounds": [
+        13,
+        68,
+        50,
+        88
+      ],
+      "opaque_pixels": 159,
+      "opaque_colors": 5
+    },
+    {
+      "index": 2,
+      "description": "Ribbons climb; first upward chevron appears.",
+      "bounds": [
+        11,
+        51,
+        52,
+        90
+      ],
+      "opaque_pixels": 445,
+      "opaque_colors": 6
+    },
+    {
+      "index": 3,
+      "description": "Two ascending chevrons; ribbons reach above the hero.",
+      "bounds": [
+        10,
+        33,
+        53,
+        91
+      ],
+      "opaque_pixels": 722,
+      "opaque_colors": 6
+    },
+    {
+      "index": 4,
+      "description": "Three ascending chevrons; gold column opens fully.",
+      "bounds": [
+        10,
+        20,
+        53,
+        93
+      ],
+      "opaque_pixels": 1100,
+      "opaque_colors": 6
+    },
+    {
+      "index": 5,
+      "description": "Peak: bright ribbon middles, wide halo, three chevrons.",
+      "bounds": [
+        10,
+        18,
+        53,
+        94
+      ],
+      "opaque_pixels": 1178,
+      "opaque_colors": 6
+    },
+    {
+      "index": 6,
+      "description": "Peak holds; sparks and chevrons continue upward.",
+      "bounds": [
+        11,
+        18,
+        53,
+        95
+      ],
+      "opaque_pixels": 1076,
+      "opaque_colors": 6
+    },
+    {
+      "index": 7,
+      "description": "Ribbons narrow; halo thins and begins to break.",
+      "bounds": [
+        11,
+        20,
+        53,
+        95
+      ],
+      "opaque_pixels": 868,
+      "opaque_colors": 6
+    },
+    {
+      "index": 8,
+      "description": "Broken halo; contracting ribbons and rising chevrons.",
+      "bounds": [
+        11,
+        20,
+        53,
+        95
+      ],
+      "opaque_pixels": 815,
+      "opaque_colors": 6
+    },
+    {
+      "index": 9,
+      "description": "Sparse halo dashes; ribbons separate into streaks.",
+      "bounds": [
+        10,
+        17,
+        53,
+        95
+      ],
+      "opaque_pixels": 300,
+      "opaque_colors": 6
+    },
+    {
+      "index": 10,
+      "description": "Two chevrons remain; short elevated light streaks.",
+      "bounds": [
+        14,
+        14,
+        53,
+        95
+      ],
+      "opaque_pixels": 110,
+      "opaque_colors": 5
+    },
+    {
+      "index": 11,
+      "description": "Last high chevron and small departing sparks.",
+      "bounds": [
+        14,
+        10,
+        52,
+        95
+      ],
+      "opaque_pixels": 28,
+      "opaque_colors": 5
+    },
+    {
+      "index": 12,
+      "description": "Two final high sparks; ground and column are clear.",
+      "bounds": [
+        41,
+        16,
+        51,
+        24
+      ],
+      "opaque_pixels": 4,
+      "opaque_colors": 2
+    },
+    {
+      "index": 13,
+      "description": "Fully transparent end frame.",
+      "bounds": null,
+      "opaque_pixels": 0,
+      "opaque_colors": 0
+    }
+  ],
+  "sha256": {
+    "tools/env/generate_levelup_fx.py": "85aef9d297b6b20717bbf3f33f65735794112bba5a228b58846f0e93a4d455dc",
+    "public/env/level-up.png": "9f99c0a268020d614a58340ef6047119727c2a126b41e42ece8d0b33011078e5",
+    "public/env/level-up.json": "b9c27048bf529a5b4ba07466c6c1972dcd02a8d3ab685f7b7cfeb29a0058abb9",
+    "tools/env/preview-level-up.png": "a73154c72370e8059abbc9f8a6b917715d8b743239292e072c02b01278272a69"
+  },
+  "hash_note": "Report excludes its own SHA-256 to avoid a self-referential hash."
+}

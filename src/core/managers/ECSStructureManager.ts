@@ -129,7 +129,7 @@ export class ECSStructureManager {
         return null;
     }
 
-    getAll(): ReadonlyMap<EntityId, { kind: StructureKind; team: Team }> {
+    getAll(): ReadonlyMap<EntityId, { kind: StructureKind; team: Team; order?: number }> {
         return this.structures;
     }
 

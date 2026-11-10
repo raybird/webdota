@@ -41,3 +41,29 @@ export const REGEN = {
     /** 泉水額外回血 */
     fountainRatio: 0.15,
 } as const;
+
+/** 等級與成長（docs/gameplay-v2/features/f6-leveling.md） */
+export const LEVELING = {
+    maxLevel: 10,
+    /** 從 n 級升到 n+1 級需要的經驗（索引 0 是 1→2） */
+    thresholds: [150, 200, 250, 300, 350, 400, 450, 500, 550],
+    /** 被動經驗（每秒，陣亡中也有） */
+    passivePerSecond: 3,
+    /** 小兵死亡時，死亡位置這個半徑內的敵方英雄平分 */
+    shareRadius: 9,
+    creepXp: 30,
+    /** 擊殺英雄：基礎 + 被殺者等級 × perLevel，擊殺者與半徑內的隊友平分 */
+    heroKillBase: 50,
+    heroKillPerLevel: 20,
+    /** 摧毀建築：對方全隊每人拿；依地圖的 order（外塔 1、內塔 2、主堡前塔 3） */
+    towerXp: 80,
+    frontTowerXp: 120,
+    frontTowerOrder: 3,
+    /** 每升一級：最大生命 +8%（以基礎生命計）、技能傷害 +5% */
+    hpPerLevel: 0.08,
+    damagePerLevel: 0.05,
+    ultimateUnlockLevel: 4,
+    /** 復活時間 = base + 等級 × perLevel */
+    respawnBase: 4,
+    respawnPerLevel: 0.8,
+} as const;

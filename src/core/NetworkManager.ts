@@ -1,3 +1,4 @@
+import { BUILD_ID } from '../buildInfo';
 import Peer, { type DataConnection } from 'peerjs';
 import { ConnectionDiagnostics, readIceInfo } from './net/ConnectionDiagnostics';
 import { eventBus } from '../events/EventBus';
@@ -36,9 +37,9 @@ const JOIN_TIMEOUT_MS = 12000;
 
 /** 加入房間失敗的原因：房間不存在，或在時限內連不上 Host */
 export class JoinRoomError extends Error {
-    reason: 'not-found' | 'timeout';
-    constructor(reason: 'not-found' | 'timeout') {
-        super(reason === 'not-found' ? '找不到這個房間' : '連線逾時');
+    reason: 'not-found' | 'timeout' | 'version';
+    constructor(reason: 'not-found' | 'timeout' | 'version') {
+        super(reason === 'not-found' ? '找不到這個房間' : reason === 'version' ? '遊戲版本與房主不同' : '連線逾時');
         this.reason = reason;
     }
 }
@@ -65,6 +66,8 @@ export interface PlayerState {
     stats: { hp: number; energy: number; status: number };
     /** 被擊退的次數（PhysicsComponent.forcedMoves）；Client 看到變化就把自己的英雄拉到 pos */
     kb?: number;
+    /** 累計經驗（整數，等級由此推得，見 progression/leveling.ts） */
+    xp?: number;
 }
 
 export interface GameState {
@@ -256,7 +259,8 @@ export class NetworkManager {
         conn.send({
             type: 'peer_list',
             peers: peerList,
-            hostId: this.hostId
+            hostId: this.hostId,
+            build: BUILD_ID
         });
 
         // 發送完整的玩家狀態給新加入的玩家
@@ -294,7 +298,13 @@ export class NetworkManager {
         }
 
         switch (data.type) {
-            case 'peer_list':
+            case 'peer_list': {
+                // 加入中：先比對版本，不同就不連其他玩家（D16）
+                const build = typeof data.build === 'string' ? data.build : null;
+                if (this.onHostBuild && build !== BUILD_ID) {
+                    this.onHostBuild(build);
+                    break;
+                }
                 // 收到 Host 發來的 Peer 列表，連線到所有其他玩家
                 data.peers.forEach((peerId: string) => {
                     const normalized = peerId.toUpperCase();
@@ -303,7 +313,9 @@ export class NetworkManager {
                     }
                 });
                 this.hostId = data.hostId;
+                this.onHostBuild?.(build);
                 break;
+            }
 
 
             case 'host_migration':
@@ -355,6 +367,12 @@ export class NetworkManager {
                 break;
 
             case 'player_profile':
+                // 版本不同（舊版不會帶 build）的玩家由 Host 斷線，免得 GAME_STATE 解析錯（D16）
+                if (this.isHost && data.build !== BUILD_ID) {
+                    console.warn(`[Network] ${fromPeerId} 的版本 ${data.build ?? '舊版'} 與房主 ${BUILD_ID} 不同，中斷連線`);
+                    this.connections.get(fromPeerId.toUpperCase())?.close();
+                    break;
+                }
                 // 只接受對方描述自己，避免冒用別人的 ID
                 if (this.onPlayerProfile) this.onPlayerProfile(fromPeerId, data.profile);
                 break;
@@ -531,7 +549,7 @@ export class NetworkManager {
      * 傳送自己的資料；指定 peerId 時只傳給那位玩家，否則廣播
      */
     sendProfile(profile: PlayerProfile, peerId?: string) {
-        const message = { type: 'player_profile', profile };
+        const message = { type: 'player_profile', profile, build: BUILD_ID };
         if (peerId) {
             this.connections.get(peerId.toUpperCase())?.send(message);
         } else {
@@ -654,7 +672,14 @@ export class NetworkManager {
             };
             const timer = window.setTimeout(() => done(new JoinRoomError('timeout')), JOIN_TIMEOUT_MS);
             this.peer.on('error', onError);
-            conn.once('open', () => done());
+            // 連線打開後等 Host 的 peer_list，比對版本（D16）；舊版 Host 不帶版本，也算不同
+            this.onHostBuild = (build) => {
+                this.onHostBuild = undefined;
+                done(build === BUILD_ID ? undefined : new JoinRoomError('version'));
+            };
         });
     }
+
+    /** 加入房間時收到 Host 的版本 */
+    private onHostBuild?: (build: string | null) => void;
 }

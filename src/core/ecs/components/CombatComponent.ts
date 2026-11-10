@@ -25,6 +25,9 @@ export class CombatComponent implements Component {
     /** 技能額外傷害（裝備攻擊力加成） */
     bonusDamage: number = 0;
 
+    /** 等級的技能傷害倍率（ECSPlayerManager 依等級設定） */
+    damageMultiplier: number = 1;
+
     constructor(config: {
         attackPower?: number;
         attackRange?: number;

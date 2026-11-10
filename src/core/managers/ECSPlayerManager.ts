@@ -12,6 +12,8 @@ import { useRoomStore } from '../../stores/roomStore';
 import { getCharacter } from '../../data/characters';
 import { eventBus } from '../../events/EventBus';
 import { isInFountain, regenPerSecond } from '../combat/regen';
+import { MAX_XP, damageMultiplierFor, levelHpBonus, levelOf, respawnSecondsFor } from '../progression/leveling';
+import type { EntityBarUI } from '../UIManager';
 
 import {
     World,
@@ -31,8 +33,6 @@ import {
     StatusComponent,
 } from '../ecs';
 
-/** 玩家陣亡後幾秒重生 */
-export const RESPAWN_SECONDS = 5;
 
 type Vec3Like = { x: number; y: number; z: number };
 type GroundPoint = { x: number; z: number };
@@ -51,6 +51,12 @@ export class ECSPlayerManager {
 
     /** 陣亡中的玩家與剩餘重生秒數 */
     private respawnTimers: Map<string, number> = new Map();
+
+    /** 累計經驗（Host 計算，Client 由 GAME_STATE 同步；Host 遷移後沿用） */
+    private xp: Map<string, number> = new Map();
+
+    /** 頭上名稱（顯示為「Lv3 名稱」） */
+    private labels: Map<string, { name: string; bar: EntityBarUI }> = new Map();
 
     constructor(
         world: World,
@@ -142,7 +148,11 @@ export class ECSPlayerManager {
         // 建立 UI
         const displayName = playerInfo?.name || normalizedId.substring(0, 6);
         const render = this.world.getComponent<RenderComponent>(entityId, ComponentType.RENDER);
-        render?.setHpBar(this.uiManager.createPlayerUI(normalizedId, displayName), 2);
+        const bar = this.uiManager.createPlayerUI(normalizedId, labelText(1, displayName));
+        render?.setHpBar(bar, 2);
+        this.labels.set(normalizedId, { name: displayName, bar });
+        // 重新生成（例如重連）時保留經驗
+        if (this.getLevel(normalizedId) > 1) this.applyItemStats(normalizedId);
 
         console.log(`[ECSPlayerManager] Spawned player ${normalizedId} (${entityId.substring(0, 8)}) team=${playerTeam} at (${x.toFixed(2)}, ${z.toFixed(2)})`);
 
@@ -162,6 +172,8 @@ export class ECSPlayerManager {
         this.players.delete(normalizedId);
         this.respawnTimers.delete(normalizedId);
         this.baseStats.delete(normalizedId);
+        this.labels.delete(normalizedId);
+        this.xp.delete(normalizedId);
 
         console.log(`[ECSPlayerManager] Removed player ${normalizedId}`);
     }
@@ -196,6 +208,8 @@ export class ECSPlayerManager {
         this.players.clear();
         this.respawnTimers.clear();
         this.baseStats.clear();
+        this.labels.clear();
+        this.xp.clear();
         console.log('[ECSPlayerManager] Cleared all players');
     }
 
@@ -221,7 +235,7 @@ export class ECSPlayerManager {
                     if (authoritative) this.regenerate(entityId, health, dt, fountainOf);
                     continue;
                 }
-                this.respawnTimers.set(playerId, RESPAWN_SECONDS);
+                this.respawnTimers.set(playerId, respawnSecondsFor(this.getLevel(playerId)));
                 this.getStatus(entityId)?.clear();
                 this.setAlive(entityId, false);
                 eventBus.emit({ type: 'ENTITY_DIED', entityId, killerId: health.lastAttackerId });
@@ -288,8 +302,42 @@ export class ECSPlayerManager {
         this.world.getComponent<RenderComponent>(entityId, ComponentType.RENDER)?.setVisible(alive);
     }
 
+    // ==================== 等級與經驗 ====================
+
+    getXp(playerId: string): number {
+        return this.xp.get(playerId.toUpperCase()) ?? 0;
+    }
+
+    getLevel(playerId: string): number {
+        return levelOf(this.getXp(playerId));
+    }
+
+    /** Host：加經驗（滿級後不再累加） */
+    addXp(playerId: string, amount: number): void {
+        if (amount <= 0) return;
+        this.setXp(playerId, Math.min(MAX_XP, this.getXp(playerId) + amount));
+    }
+
     /**
-     * 依物品欄重算裝備加成；最大生命值變動時，目前生命值同步增減
+     * 設定累計經驗（Host 加經驗、Client 套用同步值、Host 遷移沿用）；
+     * 等級改變時重算最大生命與技能傷害、更新頭上名稱，升級時發 PLAYER_LEVEL_UP
+     */
+    setXp(playerId: string, totalXp: number): void {
+        const normalizedId = playerId.toUpperCase();
+        const before = this.getLevel(normalizedId);
+        this.xp.set(normalizedId, totalXp);
+        const after = levelOf(totalXp);
+        if (after === before) return;
+
+        this.applyItemStats(normalizedId);
+        const label = this.labels.get(normalizedId);
+        label?.bar.setLabel?.(labelText(after, label.name));
+        const entityId = this.players.get(normalizedId);
+        if (after > before && entityId) eventBus.emit({ type: 'PLAYER_LEVEL_UP', playerId: normalizedId, entityId, level: after });
+    }
+
+    /**
+     * 依物品欄與等級重算加成；最大生命值變動時，目前生命值同步增減（升級時目前生命增加升級量）
      */
     applyItemStats(playerId: string): void {
         const normalizedId = playerId.toUpperCase();
@@ -300,10 +348,11 @@ export class ECSPlayerManager {
         const inventory = this.world.getComponent<InventoryComponent>(entityId, ComponentType.INVENTORY);
         if (!inventory) return;
         const bonus = inventory.getTotalStats();
+        const level = this.getLevel(normalizedId);
 
         const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
         if (health) {
-            const newMax = base.maxHp + bonus.maxHp;
+            const newMax = base.maxHp + levelHpBonus(base.maxHp, level) + bonus.maxHp;
             if (!health.isDead()) {
                 health.currentHp = Math.min(newMax, Math.max(1, health.currentHp + newMax - health.maxHp));
             }
@@ -316,6 +365,7 @@ export class ECSPlayerManager {
         if (combat) {
             combat.moveSpeed = base.moveSpeed + bonus.moveSpeed;
             combat.bonusDamage = bonus.attackPower;
+            combat.damageMultiplier = damageMultiplierFor(level);
         }
 
         const skill = this.world.getComponent<SkillComponent>(entityId, ComponentType.SKILL);
@@ -523,4 +573,9 @@ export class ECSPlayerManager {
         q.transformVector(forward, forward);
         return forward;
     }
+}
+
+/** 頭上名稱：等級 + 名稱 */
+function labelText(level: number, name: string): string {
+    return `Lv${level} ${name}`;
 }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { eventBus } from '../../events/EventBus'
+import { useRoomStore } from '../../stores/roomStore'
+import { LEVELING } from '../../data/balance'
 
 interface Notification {
   id: number
@@ -29,6 +31,8 @@ const removeNotification = (id: number) => {
 let onPeerLeft: any
 let onPeerJoined: any
 let onLatency: any
+const roomStore = useRoomStore()
+let offLevelUp: (() => void) | undefined
 
 onMounted(() => {
   onPeerLeft = (e: any) => {
@@ -55,12 +59,19 @@ onMounted(() => {
     }
   }
 
+  // 本地玩家升到大招解鎖等級時提示
+  offLevelUp = eventBus.on('PLAYER_LEVEL_UP', (e) => {
+    if (e.playerId !== roomStore.myPeerId?.toUpperCase()) return
+    if (e.level === LEVELING.ultimateUnlockLevel) addNotification(`升到 ${e.level} 級，大招已解鎖！`, 'success')
+  })
+
   eventBus.on('PLAYER_LEFT', onPeerLeft)
   eventBus.on('PLAYER_JOINED', onPeerJoined)
   eventBus.on('PING_UPDATED', onLatency)
 })
 
 onUnmounted(() => {
+  offLevelUp?.()
   eventBus.off('PLAYER_LEFT', onPeerLeft)
   eventBus.off('PLAYER_JOINED', onPeerJoined)
   eventBus.off('PING_UPDATED', onLatency)

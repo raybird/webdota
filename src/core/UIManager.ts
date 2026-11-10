@@ -9,6 +9,8 @@ export interface EntityBarUI {
     hpBarEntity: pc.Entity;
     hpBarFillEntity: pc.Entity;
     energyBarFillEntity?: pc.Entity;
+    /** 重畫頭上的名稱（只有玩家有） */
+    setLabel?: (text: string) => void;
 }
 
 export class UIManager {
@@ -87,26 +89,33 @@ export class UIManager {
         // 名稱文字（在血條上方）- 使用 Canvas 繪製確保顯示
         const nameText = new pc.Entity('NameText');
 
-        // 使用 Canvas 繪製名稱文字
+        // 使用 Canvas 繪製名稱文字；setLabel 重畫（等級改變時）
         const nameCanvas = document.createElement('canvas');
         const nameCtx = nameCanvas.getContext('2d');
         nameCanvas.width = 512;   // 加大解析度
         nameCanvas.height = 128;  // 加大解析度
 
-        if (nameCtx) {
+        const drawLabel = (text: string) => {
+            if (!nameCtx) return;
+            nameCtx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
             nameCtx.font = 'bold 64px Arial, sans-serif'; // 加大字體
+            // 太長（加上等級後）就縮小字體，不要被畫布切掉
+            const width = nameCtx.measureText(text).width;
+            const maxWidth = nameCanvas.width - 24;
+            if (width > maxWidth) nameCtx.font = `bold ${Math.floor(64 * maxWidth / width)}px Arial, sans-serif`;
             nameCtx.textAlign = 'center';
             nameCtx.textBaseline = 'middle';
 
             // 黑色描邊
             nameCtx.strokeStyle = 'black';
             nameCtx.lineWidth = 8; // 加粗描邊
-            nameCtx.strokeText(playerName, nameCanvas.width / 2, nameCanvas.height / 2);
+            nameCtx.strokeText(text, nameCanvas.width / 2, nameCanvas.height / 2);
 
             // 白色文字
             nameCtx.fillStyle = 'white';
-            nameCtx.fillText(playerName, nameCanvas.width / 2, nameCanvas.height / 2);
-        }
+            nameCtx.fillText(text, nameCanvas.width / 2, nameCanvas.height / 2);
+        };
+        drawLabel(playerName);
 
         // 建立紋理
         const nameTexture = new pc.Texture(this.app.graphicsDevice, {
@@ -160,7 +169,12 @@ export class UIManager {
         hpBarEntity.addChild(nameText);
         this.app.root.addChild(hpBarEntity);
 
-        return { hpBarEntity, hpBarFillEntity: hpBarFill, energyBarFillEntity: energyBarFill };
+        const setLabel = (text: string) => {
+            drawLabel(text);
+            nameTexture.upload();
+        };
+
+        return { hpBarEntity, hpBarFillEntity: hpBarFill, energyBarFillEntity: energyBarFill, setLabel };
     }
 
     /**

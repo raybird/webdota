@@ -99,6 +99,8 @@ async function joinRoom() {
     console.error('Failed to join room:', error)
     if (error instanceof JoinRoomError && error.reason === 'not-found') {
       errorMessage.value = `找不到房間 ${roomCode.value}，可能已關閉或房間碼有誤`
+    } else if (error instanceof JoinRoomError && error.reason === 'version') {
+      errorMessage.value = '你和房主的遊戲版本不同，請兩邊都重新整理頁面後再加入'
     } else if (error instanceof JoinRoomError) {
       errorMessage.value = '連線逾時，請確認房主仍在房間內後再試一次'
     } else {

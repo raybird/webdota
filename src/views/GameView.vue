@@ -14,6 +14,8 @@ import DamageNumberLayer from '../components/game/DamageNumberLayer.vue'
 import NotificationLayer from '../components/game/NotificationLayer.vue'
 import ConnectionPanel from '../components/game/ConnectionPanel.vue'
 import { useRoomStore } from '../stores/roomStore'
+import { levelProgress, isUltimateUnlocked } from '../core/progression/leveling'
+import { LEVELING } from '../data/balance'
 
 const gameStore = useGameStore()
 const roomStore = useRoomStore()
@@ -22,6 +24,8 @@ const roomStore = useRoomStore()
 const isGameOver = ref(false)
 /** 本地玩家陣亡時的剩餘重生秒數 */
 const respawnSeconds = ref<number | null>(null)
+/** 本地玩家的等級與本級經驗（滿級時 need 為 0） */
+const progress = ref({ level: 1, current: 0, need: LEVELING.thresholds[0] as number })
 const winnerTeam = ref<'red' | 'blue' | null>(null)
 const gameOverReason = ref('')
 
@@ -104,6 +108,7 @@ const updateHud = () => {
   minimapLayout.value ??= engine.getMinimapLayout()
   const remaining = engine.getLocalRespawnRemaining()
   respawnSeconds.value = remaining === null ? null : Math.ceil(remaining)
+  progress.value = levelProgress(engine.getLocalProgress().xp)
   props.gameService.syncInventory()
 }
 
@@ -187,6 +192,7 @@ onUnmounted(() => {
         >
           <span :class="{ 'high-ping': currentPing > 150 }">{{ currentPing }} ms</span> ⓘ
         </button>
+        <span class="stat level-display" title="等級">Lv <span class="level-value">{{ progress.level }}</span></span>
         <span class="stat gold-display" title="金幣">💰 <span class="gold-value">{{ gameStore.gold }}</span></span>
       </div>
 
@@ -226,6 +232,7 @@ onUnmounted(() => {
           ref="skillPanelRef"
           :skills="skills"
           :current-cooldowns="currentCooldowns"
+          :ultimate-locked-level="isUltimateUnlocked(progress.level) ? null : LEVELING.ultimateUnlockLevel"
           @skill-press="handleSkillPress"
         />
       </div>
@@ -242,6 +249,21 @@ onUnmounted(() => {
       <NotificationLayer />
 
       <!-- 陣亡倒數 -->
+      <!-- 下方中央：經驗條 -->
+      <div
+        class="xp-bar"
+        role="progressbar"
+        :aria-valuenow="progress.current"
+        :aria-valuemax="progress.need || 1"
+        :aria-label="`等級 ${progress.level} 經驗`"
+      >
+        <span class="xp-level">Lv {{ progress.level }}</span>
+        <span class="xp-track">
+          <span class="xp-fill" :style="{ width: progress.need ? `${(progress.current / progress.need) * 100}%` : '100%' }"></span>
+        </span>
+        <span class="xp-text">{{ progress.need ? `${Math.floor(progress.current)}/${progress.need}` : 'MAX' }}</span>
+      </div>
+
       <div v-if="respawnSeconds !== null && !isGameOver" class="respawn-banner card-glass">
         <span class="respawn-title">陣亡</span>
         <span class="respawn-count">{{ respawnSeconds }} 秒後重生</span>
@@ -421,6 +443,56 @@ onUnmounted(() => {
 
 .floating-shop-btn:active {
   transform: translateX(-50%) scale(0.95);
+}
+
+.level-value {
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.xp-bar {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(10, 8, 20, 0.6);
+  font-size: 12px;
+  color: #e5e7eb;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.xp-level {
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.xp-track {
+  position: relative;
+  display: block;
+  inline-size: clamp(100px, 22vw, 220px);
+  block-size: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.xp-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: linear-gradient(90deg, #d99a1e, #f5c542);
+  transition: width 0.2s linear;
+}
+
+.xp-text {
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 5.5em;
 }
 
 .gold-value {

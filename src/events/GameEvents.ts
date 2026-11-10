@@ -104,6 +104,14 @@ export type EntityHealedEvent = {
     label?: string
 }
 
+/** 英雄升級（Host 加經驗、Client 套用同步的經驗時都會發） */
+export type PlayerLevelUpEvent = {
+    type: 'PLAYER_LEVEL_UP'
+    playerId: string
+    entityId: string
+    level: number
+}
+
 /** 本地玩家靠近受保護的敵方建築（依序攻擊），頭上顯示提示；只在本機發出 */
 export type StructureShieldedEvent = {
     type: 'STRUCTURE_SHIELDED'
@@ -152,6 +160,7 @@ export type GameEvent =
     | EntityTookDamageEvent
     | EntityHealedEvent
     | StructureShieldedEvent
+    | PlayerLevelUpEvent
     | TowerAttackEvent
     | EntityDiedEvent
     | PlayerRespawnedEvent

@@ -85,7 +85,7 @@ export class BinarySerializer {
     /**
      * 序列化 GameState
      * 格式: [Type(1), Frame(4), PlayerCount(1), ...Players]
-     * 每位玩家: [ID_Len(1), ID(N), Pos(12), Rot(16), HP(4), Energy(4), Status(1), Knockback(1)]
+     * 每位玩家: [ID_Len(1), ID(N), Pos(12), Rot(16), HP(4), Energy(4), Status(1), Knockback(1), XP(2)]
      * Knockback 是擊退次數除以 256 的餘數，Client 只比較有沒有變
      */
     static serializeGameState(state: GameState): ArrayBuffer {
@@ -93,7 +93,7 @@ export class BinarySerializer {
         
         const encodedPlayers = state.players.map(p => {
             const idBytes = encoder.encode(p.id);
-            size += 1 + idBytes.length + 12 + 16 + 4 + 4 + 1 + 1; // Len(1) + ID + Pos(12) + Rot(16) + Stats(8) + Status(1) + Knockback(1)
+            size += 1 + idBytes.length + 12 + 16 + 4 + 4 + 1 + 1 + 2; // Len(1) + ID + Pos(12) + Rot(16) + Stats(8) + Status(1) + Knockback(1) + XP(2)
             return { p, idBytes };
         });
 
@@ -131,7 +131,8 @@ export class BinarySerializer {
             view.setFloat32(offset + 4, p.stats.energy);
             view.setUint8(offset + 8, p.stats.status);
             view.setUint8(offset + 9, (p.kb ?? 0) & 0xff);
-            offset += 10;
+            view.setUint16(offset + 10, Math.min(0xffff, Math.max(0, Math.floor(p.xp ?? 0))));
+            offset += 12;
         }
         
         return buffer;
@@ -177,9 +178,10 @@ export class BinarySerializer {
                 status: view.getUint8(offset + 8)
             };
             const kb = view.getUint8(offset + 9);
-            offset += 10;
+            const xp = view.getUint16(offset + 10);
+            offset += 12;
             
-            players.push({ id, pos, rot, stats, kb });
+            players.push({ id, pos, rot, stats, kb, xp });
         }
         
         return {
