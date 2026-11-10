@@ -178,6 +178,15 @@ Entity ID 不重複使用。
 - **建築依序攻擊**：`src/core/combat/structureOrder.ts` 依地圖的 `order` 算出受保護的建築，`ECSStructureManager.updateShields` 每個模擬幀設定 `HealthComponent.shielded`（兩端各自從同步來的建築算），受保護時 `dealDamage` 不扣血、血條變灰；`updateShieldHints` 在本地玩家走近時發 `STRUCTURE_SHIELDED`，由 `DamageNumberLayer` 顯示提示。
 - **地圖選擇**：`src/data/maps/index.ts` 預設 `arena_v2`，網址 `?map=demo_arena` 換回舊圖（Host 與 Client 要一致）。
 
+### 戰爭迷霧與草叢（2026-11-10）
+細節見 `docs/gameplay-v2/features/f7-vision.md`。只影響畫面（D3），資料照常同步，每一端依本地隊伍各自計算。
+
+- **計算**：`core/vision/vision.ts` 的 `VisionGrid`（96×96 格、每格 1 單位）、`BrushMap`、`isUnitVisible`。
+- **套用**：`core/vision/FogOfWar.ts` 在 `gameLoop` 每 0.1 秒重算；看不到的敵方英雄與小兵 `RenderComponent.setFogHidden(true)`（和隱身一樣關掉模型與血條）。`GameEngine.isEntityVisible` 給小地圖、傷害數字、受擊等特效用。
+- **地面變暗**：`PixelMapSkin` 的地面是每 2 單位一個格點的網格，`setGroundShade` 改頂點色；不要改回全畫面的半透明平面（手機模擬掉到 71%）。
+- **草叢**：`PixelMapSkin.createBrush`，本地英雄所在的草叢換成半透明材質（`setFadedBrush`）。
+- **暴露**：`applySkill` 成功後 `fog.reveal(caster)`，在草叢內 1 秒內看得到。
+
 ### 等級與經驗（2026-11-10）
 細節見 `docs/gameplay-v2/features/f6-leveling.md`。
 

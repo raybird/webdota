@@ -75,3 +75,9 @@ python3 tools/env/generate_fx.py
 2026-11-10 新增原創連續圖 `level-up.png`／`level-up.json`：英雄升級時在身上播放一次。單列 14 格，每格 64×96（整張 896×96），12 fps、不循環，pivot [32,88] 為英雄腳底中心，第 14 格全透明。金黃 5 色加箭形外框 `#1a1422`（`#8a5a12`、`#d99a1e`、`#f5c542`、`#ffe58a`、`#fff8d6`），無抗鋸齒、alpha 只有 0／255，19px／世界單位。畫面依序為腳下扁橢圓光環擴大、三道光帶升起超過頭頂、向上的箭形與星點，之後光環斷成虛線、光帶收束消失。
 
 重製：`python3 tools/env/generate_levelup_fx.py`（Python 3 + Pillow，無亂數；同版 Pillow 重跑位元組相同）。只寫入上述 PNG／JSON、`tools/env/preview-level-up.png` 與 `tools/env/validation-level-up.json`。
+
+## 草叢（2026-11-10）
+
+2026-11-10 新增原創可平鋪貼圖：`brush-top.png`（95×57，頂面，上下左右無縫、完全不透明）與 `brush-side.png`（95×24，正面，左右無縫；下方 19px 不透明為草叢側面，上方 5px 是參差葉尖，alpha 只有 0／255）。比例與牆相同：5 單位一格，水平 19px／單位、頂面縱深 11.4px／單位、垂直 15.2px／單位。遊戲把草叢畫成高 1.25 單位的草堆（頂面接在正面不透明部分的上緣）。7 色：`#173331`、`#1d3526`、`#23432a`、`#28562f`、`#346b36`、`#4d853f`、`#94b154`，左上光源，無抗鋸齒、無抖色。
+
+重製：`python3 tools/env/generate_brush.py`（Python 3 + Pillow，無亂數；同版 Pillow 重跑位元組相同）。只寫入上述兩張 PNG、`tools/env/preview-brush.png` 與 `tools/env/validation-brush.json`。

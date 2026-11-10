@@ -33,6 +33,7 @@ import { mapCollisionFor, setActiveMapCollision, type MapCollision, type Obstacl
 import { FOOTPRINT } from '../data/balance';
 import { ExperienceAwards } from './progression/ExperienceAwards';
 import { isUltimateUnlocked } from './progression/leveling';
+import { FogOfWar } from './vision/FogOfWar';
 import {
     World,
     EntityFactory,
@@ -133,6 +134,7 @@ export class GameEngine {
     spriteFx!: SpriteFxManager;
     private pixelActors!: PixelActorManager;
     private towerFeedback!: TowerFeedback;
+    private fog!: FogOfWar;
     private facingIndicator!: FacingIndicator;
     private hitboxDebugView!: HitboxDebugView;
     private regenFeedback!: RegenFeedback;
@@ -246,6 +248,8 @@ export class GameEngine {
         this.experience = new ExperienceAwards(this.ecsWorld, this.playerManager, this.creepManager, this.structureManager);
         this.entitySync = new EntitySyncManager(this.ecsWorld, this.structureManager, this.creepManager, this.mapManager);
         this.towerFeedback = new TowerFeedback(this.app, this.ecsWorld, this.spriteFx, this.structureManager);
+        this.fog = new FogOfWar(this.ecsWorld);
+        this.fog.setGroundShadeSink((colors) => this.mapManager.setGroundShade(colors));
         this.facingIndicator = new FacingIndicator(this.app);
         this.hitboxDebugView = new HitboxDebugView(this.app, this.collisionSystem);
         this.regenFeedback = new RegenFeedback(this.ecsWorld);
@@ -333,6 +337,7 @@ export class GameEngine {
             eventBus.on('PLAYER_RESPAWNED', (event) => this.playSpriteFxAt('respawn-beam', event.entityId, 0)),
             // 升級光環跟著英雄移動
             eventBus.on('PLAYER_LEVEL_UP', (event) => {
+                if (!this.fog.isVisible(event.entityId)) return;
                 const physics = this.ecsWorld.getComponent<PhysicsComponent>(event.entityId, ComponentType.PHYSICS);
                 const start = physics?.getPosition();
                 if (!physics || !start) return;
@@ -380,6 +385,8 @@ export class GameEngine {
             // 開局就出第一波小兵，之後每 30 秒一波（M4 實測：等 30 秒才出，1v1 到 4 級要約 2 分 20 秒）
             this.creepManager.spawnWave();
         }
+        const mapConfig = this.mapManager.getCurrentMapConfig();
+        if (mapConfig) this.fog.setMap(mapConfig);
 
         // 開局在己方基地（與重生位置相同），同隊玩家沿基地兩側錯開；各端依相同排序算出相同位置
         const players = [...this.roomStore.connectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
@@ -476,6 +483,15 @@ export class GameEngine {
             const localTeam = this.statusVisualSystem.localTeam;
             const localPosition = localPlayer ? this.playerManager.getPlayerPosition(me) : null;
             this.structureManager.updateShieldHints(dt, localTeam, localPosition);
+            this.fog.update(dt, {
+                localTeam,
+                players: this.playerManager.getAllPlayers(),
+                isDead: (playerId) => this.playerManager.isDead(playerId),
+                creeps: this.creepManager.getAllCreepIds(),
+                structures: this.structureManager.getAll()
+            });
+            // 本地英雄所在的草叢變半透明
+            this.mapManager.setFadedBrush(localPosition ? this.fog.brushAt(localPosition.x, localPosition.z) : -1);
             this.regenFeedback.update(dt, {
                 players: this.playerManager.getAllPlayers(),
                 localPlayerId: me,
@@ -680,6 +696,8 @@ export class GameEngine {
      * 在實體位置播放像素特效；y 為離地高度（0 為地面）
      */
     private playSpriteFxAt(name: SpriteFxName, entityId: EntityId, y: number): void {
+        // 看不到的敵人（迷霧、草叢）不播放受擊、死亡、重生特效，免得暴露位置
+        if (!this.fog.isVisible(entityId)) return;
         // 剛體位置比 Transform 新（重生瞬移後 Transform 要等下一次 ECS 更新才同步）
         const pos = this.ecsWorld.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS)?.getPosition()
             ?? this.ecsWorld.getComponent<TransformComponent>(entityId, ComponentType.TRANSFORM)?.position;
@@ -740,6 +758,9 @@ export class GameEngine {
             skill, casterEntityId, new pc.Vec3(input.skillDirection.x, 0, input.skillDirection.z),
             this.ecsWorld, this.effectManager, this.projectileManager, this.soundManager
         );
+
+        // 草叢內出手會暴露一下（每一端都會跑到這裡）
+        this.fog.reveal(casterEntityId);
 
         const visual = this.ecsWorld.getComponent<RenderComponent>(casterEntityId, ComponentType.RENDER)?.pcEntity;
         if (visual) this.pixelActors.playAction(visual, characterActionOf(skill), input.skillDirection);
@@ -810,16 +831,25 @@ export class GameEngine {
         };
 
         for (const [entityId, { kind }] of this.structureManager.getAll()) push(entityId, entityId, kind);
-        for (const entityId of this.creepManager.getAllCreepIds()) push(entityId, entityId, 'creep');
+        // 看不到的敵人（迷霧、草叢、隱身）不出現在小地圖
+        for (const entityId of this.creepManager.getAllCreepIds()) {
+            if (!this.fog.isVisible(entityId)) continue;
+            push(entityId, entityId, 'creep');
+        }
         // 玩家用 Peer ID，讓小地圖能標出本地玩家
         for (const [playerId, entityId] of this.playerManager.getAllPlayers()) {
             if (this.playerManager.isDead(playerId)) continue;
-            // 敵方隱身中的玩家不出現在小地圖
-            if (this.ecsWorld.getComponent<RenderComponent>(entityId, ComponentType.RENDER)?.hiddenByStealth) continue;
+            if (this.ecsWorld.getComponent<RenderComponent>(entityId, ComponentType.RENDER)?.hiddenFromView) continue;
             push(entityId, playerId, 'player');
         }
 
         return result;
+    }
+
+    /** 本地玩家看不看得到這個實體（迷霧、草叢、隱身）；傷害數字等畫面提示用 */
+    isEntityVisible(entityId: EntityId): boolean {
+        if (!this.fog.isVisible(entityId)) return false;
+        return !this.ecsWorld.getComponent<RenderComponent>(entityId, ComponentType.RENDER)?.hiddenFromView;
     }
 
     /**
@@ -911,6 +941,7 @@ export class GameEngine {
         this.renderManager.destroy();
         this.soundManager.destroy();
         this.towerFeedback.destroy();
+        this.fog.destroy();
         this.facingIndicator.destroy();
         this.spriteFx.destroy();
         this.pixelActors.clear();

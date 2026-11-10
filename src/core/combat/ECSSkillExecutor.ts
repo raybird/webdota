@@ -11,6 +11,7 @@ import { ComponentType } from '../ecs/Component';
 import { PhysicsComponent } from '../ecs/components/PhysicsComponent';
 import { TeamComponent } from '../ecs/components/TeamComponent';
 import { CombatComponent } from '../ecs/components/CombatComponent';
+import { RenderComponent } from '../ecs/components/RenderComponent';
 import { CollisionSystem } from '../ecs/systems/CollisionSystem';
 import { StatusComponent, type StatusKind } from '../ecs/components/StatusComponent';
 import type { HitStatus } from '../ecs/ColliderMetadata';
@@ -71,7 +72,10 @@ export class ECSSkillExecutor {
         }
 
         // 1. 播放特效
-        effectManager.playSkillEffect(skill, casterPos, direction, () => physics.getPosition());
+        effectManager.playSkillEffect(
+            skill, casterPos, direction, () => physics.getPosition(),
+            () => !world.getComponent<RenderComponent>(casterId, ComponentType.RENDER)?.hiddenFromView
+        );
 
         // 狀態只由 Host 施加，再隨 GAME_STATE 同步
         if (this.collisionSystem.authoritative) this.applyCasterStatus(skill, casterId, world);

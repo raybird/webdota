@@ -371,6 +371,16 @@ export class MapManager {
     /**
      * 取得當前地圖配置
      */
+    /** 戰爭迷霧：地面每個格點的顏色（見 PixelMapSkin.setGroundShade） */
+    setGroundShade(colors: Uint8Array): void {
+        this.pixelSkin.setGroundShade(colors);
+    }
+
+    /** 本地英雄所在的草叢變半透明（-1 表示都不透明） */
+    setFadedBrush(index: number): void {
+        this.pixelSkin.setFadedBrush(index);
+    }
+
     getCurrentMapConfig(): MapConfig | null {
         return this.currentMapConfig;
     }

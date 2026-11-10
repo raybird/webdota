@@ -1,0 +1,276 @@
+{
+  "date": "2026-11-10",
+  "pillow_version": "12.2.0",
+  "method": "Original integer-pixel polygons; no randomness, antialiasing or dithering",
+  "palette": {
+    "shadow": "#173331",
+    "root": "#1d3526",
+    "dark": "#23432a",
+    "green": "#28562f",
+    "leaf": "#346b36",
+    "light": "#4d853f",
+    "tip": "#94b154"
+  },
+  "combined_texture_opaque_color_count": 7,
+  "images": {
+    "public/env/brush-top.png": {
+      "size_px": [
+        95,
+        57
+      ],
+      "mode": "RGB",
+      "opaque_color_count": 6,
+      "opaque_colors": [
+        "#173331",
+        "#23432a",
+        "#28562f",
+        "#346b36",
+        "#4d853f",
+        "#94b154"
+      ],
+      "alpha_values": [
+        255
+      ],
+      "seams": {
+        "left_right": {
+          "different_pixels": 0,
+          "max_channel_difference": 0,
+          "required_equal": true
+        },
+        "top_bottom": {
+          "different_pixels": 0,
+          "max_channel_difference": 0,
+          "required_equal": true
+        }
+      }
+    },
+    "public/env/brush-side.png": {
+      "size_px": [
+        95,
+        24
+      ],
+      "mode": "RGBA",
+      "opaque_color_count": 6,
+      "opaque_colors": [
+        "#173331",
+        "#1d3526",
+        "#23432a",
+        "#28562f",
+        "#346b36",
+        "#4d853f"
+      ],
+      "alpha_values": [
+        0,
+        255
+      ],
+      "seams": {
+        "left_right": {
+          "different_pixels": 0,
+          "max_channel_difference": 0,
+          "required_equal": true
+        },
+        "top_bottom": {
+          "different_pixels": 95,
+          "max_channel_difference": 255,
+          "required_equal": false
+        }
+      }
+    },
+    "tools/env/preview-brush.png": {
+      "size_px": [
+        1440,
+        1792
+      ],
+      "mode": "RGB",
+      "opaque_color_count": 30,
+      "opaque_colors": [
+        "#173331",
+        "#1a1422",
+        "#1d3526",
+        "#23432a",
+        "#28562f",
+        "#30443e",
+        "#346b36",
+        "#3a5143",
+        "#435b46",
+        "#4b6449",
+        "#4d853f",
+        "#566e4d",
+        "#575564",
+        "#647b52",
+        "#6d5c4c",
+        "#777580",
+        "#806d53",
+        "#84915f",
+        "#8d8891",
+        "#94805d",
+        "#94b154",
+        "#a18c65",
+        "#a49ca1",
+        "#b19b74",
+        "#bca7ae",
+        "#bdb4b0",
+        "#c3ad85",
+        "#d6c58c",
+        "#d6d0b0",
+        "#e2dacb"
+      ],
+      "alpha_values": [
+        255
+      ]
+    }
+  },
+  "top_side_edge_color_mismatches": 0,
+  "top_period_px": [
+    94,
+    56
+  ],
+  "side_period_x_px": 94,
+  "side_solid_rows_inclusive": [
+    5,
+    23
+  ],
+  "side_leaf_tip_rows_inclusive": [
+    0,
+    4
+  ],
+  "preview_scenes": [
+    {
+      "terrain": "GRASS",
+      "world_size": [
+        4,
+        4,
+        1.25
+      ],
+      "ground_crop_px": [
+        815,
+        375,
+        985,
+        485
+      ],
+      "top_size_px": [
+        76,
+        46
+      ],
+      "side_body_height_px": 19,
+      "hero_size_px": null,
+      "hero_lower_half_opaque_pixels_occluded": 0
+    },
+    {
+      "terrain": "GRASS",
+      "world_size": [
+        5,
+        4,
+        1.25
+      ],
+      "ground_crop_px": [
+        815,
+        375,
+        985,
+        485
+      ],
+      "top_size_px": [
+        95,
+        46
+      ],
+      "side_body_height_px": 19,
+      "hero_size_px": [
+        30,
+        38
+      ],
+      "hero_lower_half_opaque_pixels_occluded": 338
+    },
+    {
+      "terrain": "DIRT ROAD",
+      "world_size": [
+        4,
+        4,
+        1.25
+      ],
+      "ground_crop_px": [
+        815,
+        499,
+        985,
+        609
+      ],
+      "top_size_px": [
+        76,
+        46
+      ],
+      "side_body_height_px": 19,
+      "hero_size_px": null,
+      "hero_lower_half_opaque_pixels_occluded": 0
+    },
+    {
+      "terrain": "DIRT ROAD",
+      "world_size": [
+        5,
+        4,
+        1.25
+      ],
+      "ground_crop_px": [
+        815,
+        499,
+        985,
+        609
+      ],
+      "top_size_px": [
+        95,
+        46
+      ],
+      "side_body_height_px": 19,
+      "hero_size_px": null,
+      "hero_lower_half_opaque_pixels_occluded": 0
+    },
+    {
+      "terrain": "MOSSY JUNGLE",
+      "world_size": [
+        4,
+        4,
+        1.25
+      ],
+      "ground_crop_px": [
+        1015,
+        695,
+        1185,
+        805
+      ],
+      "top_size_px": [
+        76,
+        46
+      ],
+      "side_body_height_px": 19,
+      "hero_size_px": null,
+      "hero_lower_half_opaque_pixels_occluded": 0
+    },
+    {
+      "terrain": "MOSSY JUNGLE",
+      "world_size": [
+        5,
+        4,
+        1.25
+      ],
+      "ground_crop_px": [
+        1015,
+        695,
+        1185,
+        805
+      ],
+      "top_size_px": [
+        95,
+        46
+      ],
+      "side_body_height_px": 19,
+      "hero_size_px": null,
+      "hero_lower_half_opaque_pixels_occluded": 0
+    }
+  ],
+  "sha256": {
+    "tools/env/generate_brush.py": "a4164df81abab2e93efcbe56de6fc5cb366b223847d3e70a85a7858ac9d3bb65",
+    "public/env/brush-top.png": "30aa874bcef1f67f2d8652030b858a1199684f1a24319ff9cca8ff66d15be4ff",
+    "public/env/brush-side.png": "81307bc56aa34e6f115f40d369ff4a8f90de08f196e35e2dd458448395ddd8d8",
+    "tools/env/preview-brush.png": "a77de3e5ce549644a34162703994caa97a52ee5e143014cb6ab591cd9fbdd849"
+  },
+  "input_ground_sha256": "b69bcb231e9a7b3e20fb134cee587250f496ba78a7e7c8ffc93158a8fae759b8",
+  "report_hash_note": "Self hash excluded to avoid a circular digest"
+}

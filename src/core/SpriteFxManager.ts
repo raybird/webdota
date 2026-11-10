@@ -36,6 +36,8 @@ export interface SpriteFxOptions {
     facing?: 'rotate' | 'mirror';
     /** 每幀讀取位置，讓特效跟著單位移動 */
     follow?: () => Vec3Like;
+    /** 每幀判斷要不要畫（跟著單位的特效，單位進入迷霧或隱身時一起隱藏） */
+    visible?: () => boolean;
 }
 
 /** play() 傳回的控制代碼；特效結束後就不再有作用 */
@@ -71,6 +73,7 @@ interface ActiveFx {
     direction: { x: number; z: number } | null;
     facing: 'rotate' | 'mirror';
     follow: (() => Vec3Like) | null;
+    visible: (() => boolean) | null;
     stopped: boolean;
     /** 每次從池中取出就加一，讓舊的控制代碼失效 */
     generation: number;
@@ -127,6 +130,7 @@ export class SpriteFxManager {
         fx.direction = options.direction ?? null;
         fx.facing = options.facing ?? 'rotate';
         fx.follow = options.follow ?? null;
+        fx.visible = options.visible ?? null;
         fx.stopped = false;
         const generation = ++fx.generation;
 
@@ -157,7 +161,7 @@ export class SpriteFxManager {
 
         return {
             name, root, spin, origin: new pc.Vec3(), quad, material, time: 0, frameIndex: -1,
-            duration: Infinity, direction: null, facing: 'rotate', follow: null, stopped: false, generation: 0
+            duration: Infinity, direction: null, facing: 'rotate', follow: null, visible: null, stopped: false, generation: 0
         };
     }
 
@@ -189,7 +193,7 @@ export class SpriteFxManager {
             }
             index %= count;
 
-            fx.root.enabled = true;
+            fx.root.enabled = !fx.visible || fx.visible();
             this.place(fx);
             this.setFrame(fx, sheet, index);
         }
@@ -233,6 +237,7 @@ export class SpriteFxManager {
         fx.root.enabled = false;
         fx.stopped = true;
         fx.follow = null;
+        fx.visible = null;
         fx.spin.setLocalScale(1, 1, 1);
         fx.spin.setLocalEulerAngles(0, 0, 0);
 
