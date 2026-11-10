@@ -18,7 +18,7 @@ const portraitEl = ref<HTMLElement | null>(null)
 const spriteScale = useIntegerFit(portraitEl, FRAME_SIZE, FRAME_SIZE)
 
 /** 技能順序與遊戲內按鍵一致 */
-const SKILL_KEYS = ['Q', 'W', 'E', 'R']
+const SKILL_KEYS = ['1', '2', '3', '4']
 
 const skills = computed(() => {
   const list = props.character.skills.map((id, i) => ({ skill: getSkill(id), key: SKILL_KEYS[i] ?? '' }))
@@ -166,6 +166,10 @@ const skills = computed(() => {
   color: var(--c-gold);
   background: rgba(0, 0, 0, 0.4);
   border-bottom: 2px solid rgba(245, 196, 81, 0.35);
+}
+/* 觸控裝置沒有鍵盤：保留欄位、隱藏按鍵 */
+@media (hover: none) and (pointer: coarse) {
+  .skill-key { visibility: hidden; }
 }
 .skill-text { display: flex; flex-direction: column; min-width: 0; }
 .skill-name { font-weight: 700; color: #fff; font-size: 0.88rem; line-height: 1.3; }

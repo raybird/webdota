@@ -28,7 +28,7 @@ const basicSkill = computed(() => props.skills.find(s => s.type === 'basic'))
 const ultimateSkill = computed(() => props.skills.find(s => s.type === 'ultimate'))
 const normalSkills = computed(() => props.skills.filter(s => s.type === 'normal'))
 
-// 分配 normal 技能到 Q, W, E 位置
+// 分配 normal 技能到 1、2、3 位置
 const skill1 = computed(() => normalSkills.value[0] || null)
 const skill2 = computed(() => normalSkills.value[1] || null)
 const skill3 = computed(() => normalSkills.value[2] || null)
@@ -54,9 +54,9 @@ watch(() => props.skills, (newSkills) => {
 
 <template>
   <div class="skill-panel" v-if="skills.length > 0">
-    <!-- 大招按鈕 (R / 4) -->
+    <!-- 大招按鈕（4） -->
     <div class="ultimate-slot" v-if="ultimateSkill">
-      <div class="key-hint">R / 4</div>
+      <div class="key-hint">4</div>
       <SkillButton
         :skill-id="ultimateSkill.id"
         :name="ultimateSkill.name"
@@ -72,7 +72,7 @@ watch(() => props.skills, (newSkills) => {
     <!-- 技能 1-3（弧形排列） -->
     <div class="skills-arc">
       <div class="skill-slot skill-1" v-if="skill1">
-        <div class="key-hint">Q / 1</div>
+        <div class="key-hint">1</div>
         <SkillButton
           :skill-id="skill1.id"
           :name="skill1.name"
@@ -86,7 +86,7 @@ watch(() => props.skills, (newSkills) => {
       </div>
       
       <div class="skill-slot skill-2" v-if="skill2">
-        <div class="key-hint">W / 2</div>
+        <div class="key-hint">2</div>
         <SkillButton
           :skill-id="skill2.id"
           :name="skill2.name"
@@ -100,7 +100,7 @@ watch(() => props.skills, (newSkills) => {
       </div>
       
       <div class="skill-slot skill-3" v-if="skill3">
-        <div class="key-hint">E / 3</div>
+        <div class="key-hint">3</div>
         <SkillButton
           :skill-id="skill3.id"
           :name="skill3.name"
@@ -116,7 +116,7 @@ watch(() => props.skills, (newSkills) => {
     
     <!-- 基本攻擊按鈕 (Space / 0) -->
     <div class="basic-slot" v-if="basicSkill">
-      <div class="key-hint">Space / 0</div>
+      <div class="key-hint">Space</div>
       <SkillButton
         :skill-id="basicSkill.id"
         :name="basicSkill.name"
@@ -181,6 +181,13 @@ watch(() => props.skills, (newSkills) => {
   white-space: nowrap;
 }
 
+/* 觸控裝置沒有鍵盤，不顯示按鍵提示 */
+@media (hover: none) and (pointer: coarse) {
+  .key-hint {
+    display: none;
+  }
+}
+
 /* 大招 - 最上方 */
 .ultimate-slot {
   position: absolute;
@@ -203,19 +210,19 @@ watch(() => props.skills, (newSkills) => {
   pointer-events: auto;
 }
 
-/* 技能1（Q）- 籃板正上方 */
+/* 技能 1 - 籃板正上方 */
 .skill-1 {
   bottom: 135px;
   right: 35px;
 }
 
-/* 技能2（W）- 籃板左上方 */
+/* 技能 2 - 籃板左上方 */
 .skill-2 {
   bottom: 95px;
   right: 105px;
 }
 
-/* 技能3（E）- 籃板正左方 */
+/* 技能 3 - 籃板正左方 */
 .skill-3 {
   bottom: 25px;
   right: 135px;

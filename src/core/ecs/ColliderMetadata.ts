@@ -30,6 +30,9 @@ export interface ColliderMetadata {
     /** 如果是 Hitbox，擊退力道 */
     knockback?: { x: number; z: number };
 
+    /** 如果是 Hitbox，從判定中心往外推的擊退距離（以自身為中心的範圍技能） */
+    radialKnockback?: number;
+
     /** 如果是 Hitbox，已命中的目標 */
     hitTargets?: Set<string>;
 

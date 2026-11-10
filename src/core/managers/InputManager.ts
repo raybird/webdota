@@ -1,6 +1,14 @@
 import { eventBus } from '../../events/EventBus';
 import type { PlayerInput } from '../NetworkManager';
 
+/** 技能鍵 → 技能欄位（0～3 為技能 1～4，4 為普攻） */
+const SKILL_KEYS: Record<string, number> = { '1': 0, '2': 1, '3': 2, '4': 3, ' ': 4, '0': 4 };
+
+function isTypingTarget(target: EventTarget | null | undefined): boolean {
+    return target instanceof HTMLElement
+        && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable);
+}
+
 /**
  * 輸入管理器
  * 負責收集本地輸入與處理輸入緩衝
@@ -23,11 +31,11 @@ export class InputManager {
         up: false, left: false, down: false, right: false
     };
 
-    // 技能按鍵映射 (Q, W, E, R 和數字鍵 1, 2, 3, 4, 0, Space)
+    // 技能鍵是否按住中（按住不連發）
     private skillKeys: { [key: string]: boolean } = {};
 
     // 技能 ID 映射表 (由 GameEngine 設定)
-    private skillSlotIds: string[] = []; // [Q/1, W/2, E/3, R/4, Basic/0]
+    private skillSlotIds: string[] = []; // [1, 2, 3, 4, 普攻]
 
     private onKeyDown = (e: KeyboardEvent) => this.handleKey(e.key, true, e);
     private onKeyUp = (e: KeyboardEvent) => this.handleKey(e.key, false, e);
@@ -43,6 +51,8 @@ export class InputManager {
     }
 
     private handleKey(key: string, isPressed: boolean, event?: KeyboardEvent) {
+        // 在輸入框打字時不當成遊戲操作（放開仍要處理，避免按鍵卡住）
+        if (isPressed && isTypingTarget(event?.target)) return;
         const k = key.toLowerCase();
 
         // 移動鍵
@@ -71,35 +81,8 @@ export class InputManager {
     }
 
     private handleSkillKey(key: string) {
-        // 技能按鍵映射 - 使用右手 Numpad
-        // Numpad 4 -> 技能 1
-        // Numpad 5 -> 技能 2
-        // Numpad 6 -> 技能 3
-        // Numpad + -> 技能 4 (大招)
-        // Numpad 0 -> 基本攻擊
-
-        let skillIndex = -1;
-
-        // Q / 1 -> Skill 1 (Index 0)
-        if (key === 'q' || key === '1') skillIndex = 0;
-
-        // 2 -> Skill 2 (Index 1)
-        if (key === '2') skillIndex = 1;
-
-        // 3 -> Skill 3 (Index 2)
-        if (key === '3') skillIndex = 2;
-
-        // 4 -> Skill 4 (Ultimate) (Index 3)
-        if (key === '4') skillIndex = 3;
-
-        // Space / 0 -> Basic Attack (Index 4)
-        if (key === ' ' || key === '0') skillIndex = 4;
-
-        // Legacy / Numpad Support (Optional, keeping for backward compatibility if needed)
-        if (key === 'num4') skillIndex = 0;
-        if (key === 'num5') skillIndex = 1;
-        if (key === 'num6') skillIndex = 2;
-        if (key === '+') skillIndex = 3;
+        // 數字鍵 1～4 放技能 1～4，空白鍵（或 0）普攻；WASD 用於移動，所以 Q／W／E／R 不綁技能
+        const skillIndex = SKILL_KEYS[key] ?? -1;
 
         if (skillIndex >= 0 && skillIndex < this.skillSlotIds.length) {
             const skillId = this.skillSlotIds[skillIndex];
@@ -115,7 +98,7 @@ export class InputManager {
 
     /**
      * 設定技能 ID 映射 (由 GameEngine 呼叫)
-     * @param skillIds 技能 ID 陣列 [Q/1, W/2, E/3, R/4, Basic/0]
+     * @param skillIds 技能 ID 陣列 [1, 2, 3, 4, 普攻]
      */
     setSkillSlots(skillIds: string[]) {
         this.skillSlotIds = skillIds;

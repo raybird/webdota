@@ -15,6 +15,8 @@ import { ECSStructureManager, type StructureKind } from './managers/ECSStructure
 import { ECSCreepManager } from './managers/ECSCreepManager';
 import { EntitySyncManager } from './managers/EntitySyncManager';
 import { TowerFeedback } from './TowerFeedback';
+import { FacingIndicator } from './FacingIndicator';
+import { HitboxDebugView } from './HitboxDebugView';
 import { RemoteBoltLog } from './RemoteBoltLog';
 import type { TowerAttackMessage } from './NetworkManager';
 import { SoundManager } from './SoundManager';
@@ -116,6 +118,8 @@ export class GameEngine {
     spriteFx!: SpriteFxManager;
     private pixelActors!: PixelActorManager;
     private towerFeedback!: TowerFeedback;
+    private facingIndicator!: FacingIndicator;
+    private hitboxDebugView!: HitboxDebugView;
     /** Client：Host 轉播的光彈，Host 遷移時由新 Host 接手結算 */
     private boltLog = new RemoteBoltLog();
 
@@ -220,6 +224,8 @@ export class GameEngine {
         this.playerManager = new ECSPlayerManager(this.ecsWorld, this.entityFactory, this.uiManager);
         this.entitySync = new EntitySyncManager(this.ecsWorld, this.structureManager, this.creepManager, this.mapManager);
         this.towerFeedback = new TowerFeedback(this.app, this.ecsWorld, this.spriteFx, this.structureManager);
+        this.facingIndicator = new FacingIndicator(this.app);
+        this.hitboxDebugView = new HitboxDebugView(this.app, this.collisionSystem);
 
         this.setupEventListeners();
 
@@ -356,6 +362,7 @@ export class GameEngine {
         setViewTeam(this.statusVisualSystem.localTeam);
         this.mapManager.applyView();
         this.towerFeedback.reset();
+        this.facingIndicator.reset();
         this.boltLog.clear();
         if (this.playerManager.getPlayer(peerId)) {
             const skills = this.playerManager.getPlayerSkills(peerId);
@@ -412,6 +419,11 @@ export class GameEngine {
             const me = this.networkManager.peerId;
             const localPlayer = this.playerManager.isDead(me) ? null : this.playerManager.getPlayer(me) ?? null;
             this.towerFeedback.update(dt, this.statusVisualSystem.localTeam, localPlayer);
+            this.facingIndicator.update(
+                localPlayer ? this.playerManager.getPlayerPosition(me) : null,
+                localPlayer ? this.playerManager.getPlayerFacingDirection(me) : null
+            );
+            this.hitboxDebugView.update();
         }
     }
 
@@ -779,6 +791,7 @@ export class GameEngine {
         this.renderManager.destroy();
         this.soundManager.destroy();
         this.towerFeedback.destroy();
+        this.facingIndicator.destroy();
         this.spriteFx.destroy();
         this.pixelActors.clear();
         this.projectileManager.clearAll();
