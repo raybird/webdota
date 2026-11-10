@@ -154,12 +154,12 @@ Entity ID 不重複使用。
 - **鏡頭**（`RenderManager`、`src/core/view.ts`）：正交投影，俯角 36.87°（3:4:5）。在這個角度，像素密度剛好是整數比：水平每單位 19px、地面與頂面縱深每單位 11.4px、垂直面每單位 15.2px。`public/env` 的素材照這個比例畫，與螢幕像素 1:1 對齊。放大倍數 = floor(畫面高度 ÷ 360)，最少 1 倍；注視點對齊螢幕像素，跟隨時畫面不會在像素之間閃爍。
 - **視角依隊伍**：跟手機 MOBA 一樣，每位玩家都看到自家主堡在左下、敵方主堡在右上。藍方鏡頭繞 y 軸 -90°、紅方 +90°，在 `startGame` 依本地隊伍設定（`setViewTeam`），接著 `MapManager.applyView()` 依視角重建像素圖層；小地圖以相同角度旋轉。
 - **輸入**：鍵盤與搖桿是畫面方向，`fixedUpdate` 送出前用 `screenToWorld` 轉成世界方向，Host 與 Client 套用移動時不需要知道對方的鏡頭。技能方向取剛體朝向，本來就是世界方向。
-- **重生位置**：出生點沿 z 往中央移 7 單位。z 是兩隊畫面的左右方向，玩家出現在主堡右側，不會在主堡像素圖後方被擋住。小兵從主堡中心往地圖中央移 5 單位出生（主堡底面半寬 2.5），一出生就看得到，也已朝向兵線。
+- **重生位置**：出生點沿 z 往中央移 7 單位。z 是兩隊畫面的左右方向，玩家出現在主堡右側，不會在主堡像素圖後方被擋住。小兵從地圖的 `creep_spawn` 出生（沒有時從主堡中心往地圖中央移 5 單位）。
 - **地圖像素圖層**（`src/core/map/PixelMapSkin.ts`）：碰撞體與缺素材時的打光積木在 `loadMap` 建立；有像素素材的部分（`handles()`）由 `build()` 依視角建立。
-  - 地面：`ground-blue.png`／`ground-red.png`（1140×684），各是一隊視角的整張烘焙圖，兩張只差主堡廣場的隊伍色。主堡廣場、塔台與小徑已畫在地面上，所以 `highlight_*` 主堡標記方塊不再繪製。
+  - 地面：每隊視角一張整張烘焙圖，兩張只差主堡廣場的隊伍色。`demo_arena` 是 `public/env/ground-{blue,red}.png`（1140×684），其他地圖是 `public/env/<地圖 id>/ground-{blue,red}.png`（arena_v2 為 1824×1094）。主堡廣場、塔台與路已畫在地面上，所以 `highlight_*` 主堡標記方塊不再繪製。PNG 第 0 列（圖片最上面）上傳後在 v=0，地面平面的 UV 以此對應畫面上方（2026-11-10 修正：原本上下顛倒）。
   - 牆與掩體：自建網格，UV 以畫面座標（右、下）計算，貼圖每 5 單位一格（頂面 95×57、正面 95×76），兩隊都以正向顯示；明暗用頂點色，頂面最亮，正對鏡頭的面次之。
   - 石柱：直立像素圖（`pillar-s`／`pillar-l`），平面放在柱子靠近鏡頭的邊緣。
-  - 投影：牆、柱、防禦塔、主堡沿畫面左上光源，把每一層截面往右下位移後取聯集，畫在與地面同解析度的畫布上，二值化後以 55% 不透明度疊在地面上。重疊的影子不會疊得更深，邊緣維持像素鋸齒。畫布上傳成貼圖時列序與 PNG 相反，所以縱向倒過來畫。
+  - 投影：牆、柱、防禦塔、主堡沿畫面左上光源，把每一層截面往右下位移後取聯集，畫在與地面同解析度的畫布上，二值化後以 55% 不透明度疊在地面上。重疊的影子不會疊得更深，邊緣維持像素鋸齒。畫布與 PNG 一樣，第 0 列是畫面上方。
 - **單位像素圖**（`src/core/PixelActorManager.ts`）：玩家（`public/characters/`）與防禦塔、主堡、小兵（`public/env/`）共用同一套；放技能時播一次 `attack` 或 `cast`。小兵停下時就是在攻擊，所以待機循環播攻擊動作。
   - 平面直立、只隨鏡頭水平方向轉向，高度拉長 1/cos(俯角)：正交投影下畫面像素大小不變，深度等於單位實際站的位置。如果平面跟著俯角傾斜，上半部會往後倒，站在柱子前面也會被切掉上半身。
   - 防禦塔、主堡與石柱素材的 pivot 是底面最靠近鏡頭的點，平面移到底面靠近鏡頭的邊緣（`groundRadius`），下緣才不會沒入地面。
@@ -167,6 +167,16 @@ Entity ID 不重複使用。
   - 每個單位一份材質，`RenderComponent` 銷毀時由 `onDispose` 釋放；小兵視覺池建立時就掛上像素圖，重複使用。
 - **素材**：`public/env/` 由 `tools/env/generate.py` 離線產生（原創，規格與座標對應見 `public/env/NOTICE.md`，合成預覽 `tools/env/preview-scene.png`）；`public/characters/` 的戰場連續圖是 48×48、與場景同鏡頭的斜俯視（2026-11-06 v2，產生器 `tools/portraits/generate_battle.py`，合成預覽 `tools/portraits/preview-battle-scene.png`），大廳 96px 立繪只用於 UI。
 - 玩家腳下的隊伍色圓環同樣帶 `no-status-fx` tag；受擊閃白、狀態色調與半透明由 `RenderComponent` 以 mesh instance 參數覆寫。
+
+### 移動碰撞與地圖 v2（2026-11-10）
+英雄與小兵是 kinematic 剛體，Rapier 不會讓牆擋住它們，所以移動碰撞另外寫在 `src/core/map/MapCollision.ts`，只看水平面（細節見 `docs/gameplay-v2/features/f5-map-v2.md`）。
+
+- **障礙物**：地圖積木（高度 0.3 以上、`isCollider` 不是 false；圓柱當圓，其他當矩形、忽略旋轉）、`deadZones` 封閉區，以及每幀由 `GameEngine.syncStructureObstacles` 更新的塔（半徑 1）與主堡（5×5）。
+- **推開**：單位是圓（`FOOTPRINT`：英雄 0.4、小兵 0.35），每步最多 0.25，與障礙物重疊時沿最近點推出，貼牆時自然沿牆滑動；正面撞上圓形障礙物時改沿切線繞過。
+- **套用的地方**：英雄移動（`applyMovement`，Host 與 Client 同一份，所以 Client 的預測一致）、小兵 AI、擊退（`CollisionSystem`）、衝刺與瞬移（`ECSSkillExecutor`，瞬移可越過薄牆，落點推不開時停在牆邊）。ECS 系統透過 `activeMapCollision()` 取得目前地圖的碰撞資料。
+- **擊退同步**：擊退立即移位（`PhysicsComponent.teleport`）並累加 `forcedMoves`；GAME_STATE 每位玩家多 1 byte 擊退次數，Client 看到變化就把自己的英雄拉到 Host 的位置。
+- **建築依序攻擊**：`src/core/combat/structureOrder.ts` 依地圖的 `order` 算出受保護的建築，`ECSStructureManager.updateShields` 每個模擬幀設定 `HealthComponent.shielded`（兩端各自從同步來的建築算），受保護時 `dealDamage` 不扣血、血條變灰；`updateShieldHints` 在本地玩家走近時發 `STRUCTURE_SHIELDED`，由 `DamageNumberLayer` 顯示提示。
+- **地圖選擇**：`src/data/maps/index.ts` 預設 `arena_v2`，網址 `?map=demo_arena` 換回舊圖（Host 與 Client 要一致）。
 
 ### 防禦塔攻擊回饋（TowerFeedback，2026-11-06）
 防禦塔與主堡原本每次冷卻結束就直接扣最近敵人的血，畫面上看不出射程與誰在被打。

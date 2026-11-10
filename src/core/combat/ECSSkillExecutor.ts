@@ -4,6 +4,8 @@
  */
 
 import * as pc from 'playcanvas';
+import { moveWithCollision, teleportDestination } from '../map/MapCollision';
+import { FOOTPRINT } from '../../data/balance';
 import { World } from '../ecs/World';
 import { ComponentType } from '../ecs/Component';
 import { PhysicsComponent } from '../ecs/components/PhysicsComponent';
@@ -111,10 +113,14 @@ export class ECSSkillExecutor {
     private handleDash(skill: Skill, physics: PhysicsComponent, direction: pc.Vec3): void {
         const dashDistance = skill.dashDistance || 5;
         const currentPos = physics.getPosition();
-        const targetX = currentPos.x + direction.x * dashDistance;
-        const targetZ = currentPos.z + direction.z * dashDistance;
+        // 衝刺途中撞牆就停在牆邊（沿牆滑動）
+        const next = moveWithCollision(
+            currentPos,
+            { x: currentPos.x + direction.x * dashDistance, z: currentPos.z + direction.z * dashDistance },
+            FOOTPRINT.hero
+        );
 
-        physics.setKinematicPosition(targetX, currentPos.y, targetZ);
+        physics.setKinematicPosition(next.x, currentPos.y, next.z);
     }
 
     /**
@@ -123,10 +129,14 @@ export class ECSSkillExecutor {
     private handleTeleport(skill: Skill, physics: PhysicsComponent, direction: pc.Vec3): void {
         const range = skill.range || 6;
         const currentPos = physics.getPosition();
-        const targetX = currentPos.x + direction.x * range;
-        const targetZ = currentPos.z + direction.z * range;
+        // 瞬移可以越過薄牆；落點在障礙物裡時推到旁邊，推不出來（例如落進封閉區）就改成走過去、停在牆邊
+        const next = teleportDestination(
+            currentPos,
+            { x: currentPos.x + direction.x * range, z: currentPos.z + direction.z * range },
+            FOOTPRINT.hero
+        );
 
-        physics.setKinematicPosition(targetX, currentPos.y, targetZ);
+        physics.setKinematicPosition(next.x, currentPos.y, next.z);
     }
 
     /**

@@ -29,6 +29,23 @@ export interface MapConfig {
 
     // 邏輯實體 (出生點、野怪等)
     entities: MapEntity[];
+
+    /** 小兵路線：各隊從自家走到敵方主堡前的中繼點 [x, z] */
+    lanes?: Partial<Record<'red' | 'blue', [number, number][]>>;
+
+    /** 草叢（矩形，不擋路；規則見 docs/gameplay-v2/features/f7-vision.md） */
+    brush?: GroundRect[];
+
+    /** 封閉、不能走的區域（矩形），移動碰撞當成障礙物 */
+    deadZones?: GroundRect[];
+}
+
+/** 地面上的矩形：中心 (x, z)，x 方向寬 w、z 方向深 d */
+export interface GroundRect {
+    x: number;
+    z: number;
+    w: number;
+    d: number;
 }
 
 export interface MaterialConfig {
@@ -50,7 +67,7 @@ export interface MapBlock {
 }
 
 export interface MapEntity {
-    type: 'spawn_point' | 'tower' | 'creep_camp' | 'objective' | 'base';
+    type: 'spawn_point' | 'creep_spawn' | 'tower' | 'creep_camp' | 'objective' | 'base';
     team?: 'red' | 'blue' | 'neutral';
     position: [number, number, number];
     rotation?: [number, number, number];

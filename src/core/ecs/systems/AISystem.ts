@@ -17,6 +17,12 @@ import { CombatComponent } from '../components/CombatComponent';
 import { AIComponent } from '../components/AIComponent';
 import { HealthSystem } from './HealthSystem';
 import { eventBus } from '../../../events/EventBus';
+import { moveWithCollision } from '../../map/MapCollision';
+import { FOOTPRINT } from '../../../data/balance';
+import { hurtRadiusOf } from '../../combat/hurtRadius';
+
+/** 離中繼點這麼近就換下一點（中繼點旁可能有塔或柱子，走不到正中央） */
+const WAYPOINT_REACH = 1.5;
 
 /** 防禦塔光彈的飛行速度（單位／秒）；射程 12 約 0.75 秒命中 */
 const TOWER_BOLT_SPEED = 16;
@@ -79,20 +85,26 @@ export class AISystem extends System {
 
         if (!physics || !combat || !team) return;
 
-        // 移動向目標
-        if (ai.targetPosition) {
+        // 射程內有敵人時停下來打，否則沿路線前進
+        const target = this.findNearestEnemy(world, entityId, transform.position, ai.attackRange, team.team);
+
+        if (ai.targetPosition && !target) {
+            const toTarget = (p: pc.Vec3) => Math.hypot(p.x - transform.position.x, p.z - transform.position.z);
+            while (ai.waypoints.length > 0 && toTarget(ai.targetPosition) < WAYPOINT_REACH) ai.advanceWaypoint();
+
             const direction = ai.targetPosition.clone().sub(transform.position);
+            direction.y = 0;
             const distance = direction.length();
 
             if (distance > 0.5) {
                 direction.normalize();
                 const speed = combat.moveSpeed * StatusSystem.speedMultiplier(world, entityId);
-                const newPos = {
-                    x: transform.position.x + direction.x * speed * dt,
-                    y: transform.position.y,
-                    z: transform.position.z + direction.z * speed * dt
-                };
-                physics.setKinematicPosition(newPos.x, newPos.y, newPos.z);
+                const next = moveWithCollision(
+                    transform.position,
+                    { x: transform.position.x + direction.x * speed * dt, z: transform.position.z + direction.z * speed * dt },
+                    FOOTPRINT.creep
+                );
+                physics.setKinematicPosition(next.x, transform.position.y, next.z);
 
                 // 更新朝向
                 const angle = Math.atan2(direction.x, direction.z);
@@ -101,13 +113,9 @@ export class AISystem extends System {
             }
         }
 
-        // 嘗試攻擊範圍內的敵人
-        if (ai.canAttack()) {
-            const target = this.findNearestEnemy(world, entityId, transform.position, ai.attackRange, team.team);
-            if (target) {
-                HealthSystem.dealDamage(world, target.entityId, combat.attackPower, entityId);
-                ai.triggerAttack();
-            }
+        if (target && ai.canAttack()) {
+            HealthSystem.dealDamage(world, target.entityId, combat.attackPower, entityId);
+            ai.triggerAttack();
         }
     }
 
@@ -189,7 +197,12 @@ export class AISystem extends System {
             // 隱身的單位不會被小兵與防禦塔鎖定（範圍技能仍打得到）
             if (StatusSystem.has(world, candidateId, 'invisible')) continue;
 
-            const dist = position.distance(candidateTransform.position);
+            // 建築量到底面邊緣：小兵被移動碰撞擋在主堡外，量中心會永遠打不到
+            const center = Math.hypot(position.x - candidateTransform.position.x, position.z - candidateTransform.position.z);
+            const isStructure = world.getComponent<AIComponent>(candidateId, ComponentType.AI)?.aiType === 'tower';
+            const dist = isStructure
+                ? Math.max(0, center - hurtRadiusOf(world.getComponent<PhysicsComponent>(candidateId, ComponentType.PHYSICS)))
+                : center;
             if (dist <= range) {
                 if (!nearest || dist < nearest.distance) {
                     nearest = { entityId: candidateId, distance: dist };

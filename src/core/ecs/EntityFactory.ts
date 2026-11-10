@@ -49,7 +49,8 @@ export interface PlayerConfig {
 export interface CreepConfig {
     team: Team;
     position: { x: number; y: number; z: number };
-    targetPosition?: { x: number; y: number; z: number };
+    /** 依序走過的中繼點，最後一點是終點（敵方主堡） */
+    route?: { x: number; y: number; z: number }[];
     maxHp?: number;
     attackPower?: number;
     moveSpeed?: number;
@@ -243,8 +244,7 @@ export class EntityFactory {
             attackRange: config.attackRange ?? 1.5,
             attackCooldown: config.attackCooldown ?? 2.0
         });
-        const target = config.targetPosition;
-        if (target) ai.setTargetPosition(new pc.Vec3(target.x, target.y, target.z));
+        if (config.route?.length) ai.setRoute(config.route.map(p => new pc.Vec3(p.x, p.y, p.z)));
         this.world.addComponent(entityId, ai);
         this.world.addComponent(entityId, new StatusComponent());
 

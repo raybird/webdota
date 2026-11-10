@@ -63,6 +63,8 @@ export interface PlayerState {
     rot: { x: number; y: number; z: number; w: number };
     /** status：狀態效果位元旗標（STATUS_FLAG） */
     stats: { hp: number; energy: number; status: number };
+    /** 被擊退的次數（PhysicsComponent.forcedMoves）；Client 看到變化就把自己的英雄拉到 pos */
+    kb?: number;
 }
 
 export interface GameState {

@@ -167,10 +167,11 @@ export class UIManager {
      * 為非玩家實體建立簡化 UI（僅血條）
      * @param entityId 實體 ID
      * @param team 隊伍 (用於顏色)
+     * @param size 血條大小（UI 像素，實際大小再乘 0.01 世界單位）；預設是小兵用的 80×10
      */
-    createEntityUI(entityId: string, team: 'red' | 'blue' | 'neutral'): EntityBarUI {
-        const ENTITY_HP_BAR_WIDTH = 80;
-        const ENTITY_HP_BAR_HEIGHT = 10;
+    createEntityUI(entityId: string, team: 'red' | 'blue' | 'neutral', size: { width: number; height: number } = { width: 80, height: 10 }): EntityBarUI {
+        const ENTITY_HP_BAR_WIDTH = size.width;
+        const ENTITY_HP_BAR_HEIGHT = size.height;
 
         const hpBarEntity = new pc.Entity(`HPBar_${entityId}`);
         hpBarEntity.setLocalScale(0.01, 0.01, 0.01);

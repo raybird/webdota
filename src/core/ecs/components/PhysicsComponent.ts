@@ -16,6 +16,9 @@ export class PhysicsComponent implements Component {
     /** 主要 Collider */
     collider: RAPIER.Collider | null = null;
 
+    /** 被擊退的次數：Host 累加並隨 GAME_STATE 同步，Client 看到變化就把自己的英雄拉到 Host 的位置 */
+    forcedMoves = 0;
+
     /** Sensor Collider（用於攻擊判定） */
     sensorCollider: RAPIER.Collider | null = null;
 
@@ -59,6 +62,12 @@ export class PhysicsComponent implements Component {
      * 設定 Kinematic 位置
      */
     setKinematicPosition(x: number, y: number, z: number): void {
+        this.rigidBody.setNextKinematicTranslation({ x, y, z });
+    }
+
+    /** 立即移到指定位置（擊退）：同一幀之後讀到的位置與廣播出去的位置都已經是新位置 */
+    teleport(x: number, y: number, z: number): void {
+        this.rigidBody.setTranslation({ x, y, z }, true);
         this.rigidBody.setNextKinematicTranslation({ x, y, z });
     }
 

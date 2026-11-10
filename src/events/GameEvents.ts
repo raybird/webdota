@@ -104,6 +104,13 @@ export type EntityHealedEvent = {
     label?: string
 }
 
+/** 本地玩家靠近受保護的敵方建築（依序攻擊），頭上顯示提示；只在本機發出 */
+export type StructureShieldedEvent = {
+    type: 'STRUCTURE_SHIELDED'
+    targetId: string
+    label: string
+}
+
 /** 防禦塔（含主堡）發射光彈；傷害在 flightTime 秒後光彈命中時才結算（Host 發出，GameEngine 轉播給 Client） */
 export type TowerAttackEvent = {
     type: 'TOWER_ATTACK'
@@ -144,6 +151,7 @@ export type GameEvent =
     | PlayerHealedEvent
     | EntityTookDamageEvent
     | EntityHealedEvent
+    | StructureShieldedEvent
     | TowerAttackEvent
     | EntityDiedEvent
     | PlayerRespawnedEvent

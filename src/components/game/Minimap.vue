@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { viewYawDeg } from '../../core/view'
+import type { MinimapLayout } from '../../core/GameEngine'
 
 // 畫布以世界座標俯視繪製（x 向右、z 向下），再旋轉成與遊戲鏡頭同方向（自家主堡在左下）；
 // 視角在遊戲開始時才依隊伍決定，所以每次繪製時更新
@@ -17,6 +18,8 @@ const props = defineProps<{
   }>
   // 本地玩家 ID
   localPlayerId?: string
+  // 地形（牆、柱子、封閉區）；沒有時只畫底色
+  layout?: MinimapLayout | null
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -34,6 +37,25 @@ const worldToMinimap = (worldX: number, worldZ: number): { x: number; y: number 
   return {
     x: normX * minimapSize,
     y: normY * minimapSize
+  }
+}
+
+const drawObstacles = (ctx: CanvasRenderingContext2D, obstacles: MinimapLayout['walls'], color: string) => {
+  const scaleX = minimapSize / props.mapSize.w
+  const scaleY = minimapSize / props.mapSize.h
+  ctx.fillStyle = color
+  for (const o of obstacles) {
+    const c = worldToMinimap(o.x, o.z)
+    if (o.kind === 'rect') {
+      // 至少 1px，薄牆才看得到
+      const w = Math.max(1, o.hw * 2 * scaleX)
+      const h = Math.max(1, o.hd * 2 * scaleY)
+      ctx.fillRect(c.x - w / 2, c.y - h / 2, w, h)
+    } else {
+      ctx.beginPath()
+      ctx.arc(c.x, c.y, Math.max(1, o.r * scaleX), 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 }
 
@@ -56,14 +78,20 @@ const draw = () => {
   ctx.lineWidth = 2
   ctx.strokeRect(1, 1, minimapSize - 2, minimapSize - 2)
 
-  // 繪製中線
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)'
-  ctx.beginPath()
-  ctx.moveTo(0, minimapSize / 2)
-  ctx.lineTo(minimapSize, minimapSize / 2)
-  ctx.moveTo(minimapSize / 2, 0)
-  ctx.lineTo(minimapSize / 2, minimapSize)
-  ctx.stroke()
+  // 地形：封閉區最暗，牆與柱子灰色
+  if (props.layout) {
+    drawObstacles(ctx, props.layout.deadZones, '#0b130b')
+    drawObstacles(ctx, props.layout.walls, '#6b6b78')
+  } else {
+    // 沒有地形資料時畫中線當參考
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+    ctx.beginPath()
+    ctx.moveTo(0, minimapSize / 2)
+    ctx.lineTo(minimapSize, minimapSize / 2)
+    ctx.moveTo(minimapSize / 2, 0)
+    ctx.lineTo(minimapSize / 2, minimapSize)
+    ctx.stroke()
+  }
 
   // 繪製實體
   for (const entity of props.entities) {

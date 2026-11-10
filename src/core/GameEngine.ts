@@ -28,7 +28,9 @@ import { eventBus } from '../events/EventBus';
 import { ProjectileManager } from './combat/ProjectileManager';
 import { ECSSkillExecutor } from './combat/ECSSkillExecutor';
 import { MapManager, type MapConfig } from './map';
-import demoArenaMap from '../data/maps/demo_arena.json';
+import { selectMap } from '../data/maps';
+import { mapCollisionFor, setActiveMapCollision, type MapCollision, type Obstacle } from './map/MapCollision';
+import { FOOTPRINT } from '../data/balance';
 import {
     World,
     EntityFactory,
@@ -82,8 +84,16 @@ const KILL_GOLD: Record<'player' | 'creep' | 'tower' | 'base', number> = {
     tower: 150,
     base: 0
 };
+/** 建築擋路的範圍：與 EntityFactory 的碰撞體相同（塔半徑 1、主堡半邊 2.5） */
+const STRUCTURE_FOOTPRINT = { tower: 1, base: 2.5 };
 /** 本地玩家預測位置與 Host 差距超過這個距離就拉回（擊退、被拒絕的位移等） */
 const RECONCILE_DISTANCE = 2;
+
+export interface MinimapLayout {
+    size: { w: number; h: number };
+    walls: Obstacle[];
+    deadZones: Obstacle[];
+}
 
 export interface MinimapEntity {
     id: string;
@@ -112,6 +122,7 @@ export class GameEngine {
     effectManager!: EffectManager;
     projectileManager!: ProjectileManager;
     mapManager!: MapManager;
+    private mapCollision!: MapCollision;
     structureManager!: ECSStructureManager;
     creepManager!: ECSCreepManager;
     entitySync!: EntitySyncManager;
@@ -147,6 +158,8 @@ export class GameEngine {
     private pendingSkillUse: { skillId: string; direction: { x: number; z: number } } | null = null;
     /** Host：各 Client 最新的移動輸入（封包沒到的幀沿用上一筆，避免抖動） */
     private remoteMoves: Map<string, PlayerInput> = new Map();
+    /** Client：上次 GAME_STATE 裡本地英雄的擊退次數 */
+    private lastKnockbackCount: number | null = null;
     /** 尚未處理的其他玩家技能輸入（Host 權威執行；Client 只播放表現） */
     private remoteSkills: PlayerInput[] = [];
 
@@ -182,7 +195,10 @@ export class GameEngine {
 
         const camera = this.createScene();
         this.mapManager = new MapManager(this.app, this.physicsWorld);
-        await this.mapManager.loadMap(demoArenaMap as unknown as MapConfig);
+        const mapConfig: MapConfig = selectMap();
+        await this.mapManager.loadMap(mapConfig);
+        this.mapCollision = mapCollisionFor(mapConfig);
+        setActiveMapCollision(this.mapCollision);
 
         this.uiManager = new UIManager(this.app);
         this.inputManager = new InputManager();
@@ -326,6 +342,7 @@ export class GameEngine {
         this.currentFrame = 0;
         this.accumulator = 0;
         this.remoteMoves.clear();
+        this.lastKnockbackCount = null;
         this.remoteSkills = [];
 
         this.playerManager.clearAll();
@@ -396,10 +413,13 @@ export class GameEngine {
                 const isLocal = pData.id === this.networkManager.peerId;
                 const pos = rb.translation();
                 const drift = Math.hypot(pos.x - pData.pos.x, pos.z - pData.pos.z);
+                // 本地英雄被 Host 擊退時，不論距離都拉到 Host 的位置（本地不會預測擊退）
+                const knockedBack = isLocal && pData.kb !== undefined && this.lastKnockbackCount !== null && pData.kb !== this.lastKnockbackCount;
+                if (isLocal && pData.kb !== undefined) this.lastKnockbackCount = pData.kb;
                 if (!isLocal && !this.playerManager.isDead(pData.id)) {
                     rb.setNextKinematicTranslation(pData.pos);
                     rb.setNextKinematicRotation(pData.rot);
-                } else if (!isLocal || drift > RECONCILE_DISTANCE) {
+                } else if (!isLocal || knockedBack || drift > RECONCILE_DISTANCE) {
                     // 直接瞬移（擊退、陣亡中的玩家重生），不經過插值
                     rb.setTranslation(pData.pos, true);
                     rb.setNextKinematicTranslation(pData.pos);
@@ -430,6 +450,7 @@ export class GameEngine {
             this.hitboxDebugView.update();
             const localTeam = this.statusVisualSystem.localTeam;
             const localPosition = localPlayer ? this.playerManager.getPlayerPosition(me) : null;
+            this.structureManager.updateShieldHints(dt, localTeam, localPosition);
             this.regenFeedback.update(dt, {
                 players: this.playerManager.getAllPlayers(),
                 localPlayerId: me,
@@ -519,6 +540,8 @@ export class GameEngine {
         // Client 每幀送輸入給 Host；Host 只在放技能時送，讓 Client 播放表現
         if (!this.isHost || localInput.skillUsed) this.networkManager.sendInput(localInput);
 
+        this.syncStructureObstacles();
+        this.structureManager.updateShields();
         this.applyMovement(localInput, dt);
         this.applySkill(localInput);
 
@@ -664,11 +687,13 @@ export class GameEngine {
         const speed = this.playerManager.getPlayerMoveSpeed(input.playerId);
         const moveZ = -moveY;
         const currentPos = rb.translation();
-        rb.setNextKinematicTranslation({
-            x: currentPos.x + moveX * speed * dt,
-            y: currentPos.y,
-            z: currentPos.z + moveZ * speed * dt
-        });
+        // Host 與 Client 用同一份地圖碰撞，Client 的預測才會與 Host 一致
+        const next = this.mapCollision.move(
+            currentPos,
+            { x: currentPos.x + moveX * speed * dt, z: currentPos.z + moveZ * speed * dt },
+            FOOTPRINT.hero
+        );
+        rb.setNextKinematicTranslation({ x: next.x, y: currentPos.y, z: next.z });
         const halfAngle = Math.atan2(moveX, moveZ) / 2;
         rb.setNextKinematicRotation({ x: 0, y: Math.sin(halfAngle), z: 0, w: Math.cos(halfAngle) });
     }
@@ -691,6 +716,11 @@ export class GameEngine {
         if (visual) this.pixelActors.playAction(visual, characterActionOf(skill), input.skillDirection);
     }
 
+    private playerPhysics(playerId: string): PhysicsComponent | undefined {
+        const entityId = this.playerManager.getPlayer(playerId);
+        return entityId ? this.ecsWorld.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS) : undefined;
+    }
+
     private broadcastState() {
         const players: PlayerState[] = [];
         for (const playerId of this.playerManager.getAllPlayers().keys()) {
@@ -702,7 +732,8 @@ export class GameEngine {
                 id: playerId,
                 pos: rb.translation(),
                 rot: rb.rotation(),
-                stats: { hp: hp.current, energy: energy.current, status: this.playerManager.getPlayerStatusFlags(playerId) }
+                stats: { hp: hp.current, energy: energy.current, status: this.playerManager.getPlayerStatusFlags(playerId) },
+                kb: (this.playerPhysics(playerId)?.forcedMoves ?? 0) & 0xff
             });
         }
         this.networkManager.broadcastGameState({
@@ -711,6 +742,20 @@ export class GameEngine {
             players,
             isGameStarted: this.isGameStarted
         });
+    }
+
+    /** 建築會被摧毀，每幀把還在的塔與主堡交給地圖碰撞（Host 與 Client 各自從自己的 ECS 世界讀） */
+    private syncStructureObstacles() {
+        const obstacles: Obstacle[] = [];
+        for (const [entityId, { kind }] of this.structureManager.getAll()) {
+            const transform = this.ecsWorld.getComponent<TransformComponent>(entityId, ComponentType.TRANSFORM);
+            if (!transform) continue;
+            const { x, z } = transform.position;
+            obstacles.push(kind === 'tower'
+                ? { kind: 'circle', x, z, r: STRUCTURE_FOOTPRINT.tower }
+                : { kind: 'rect', x, z, hw: STRUCTURE_FOOTPRINT.base, hd: STRUCTURE_FOOTPRINT.base });
+        }
+        this.mapCollision.setStructures(obstacles);
     }
 
     private spawnStructuresFromMap() {
@@ -754,6 +799,20 @@ export class GameEngine {
         return this.ecsWorld.getComponent<TransformComponent>(entityId, ComponentType.TRANSFORM)?.position ?? null;
     }
 
+    /** 小地圖的地形：地圖大小、牆與柱子、封閉區 */
+    getMinimapLayout(): MinimapLayout | null {
+        const config = this.mapManager?.getCurrentMapConfig();
+        if (!config || !this.mapCollision) return null;
+        const deadZones = config.deadZones ?? [];
+        const isDead = (o: Obstacle) => o.kind === 'rect' && deadZones.some(z => z.x === o.x && z.z === o.z && z.w === o.hw * 2 && z.d === o.hd * 2);
+        const obstacles = this.mapCollision.staticObstacles();
+        return {
+            size: config.size,
+            walls: obstacles.filter(o => !isDead(o)),
+            deadZones: obstacles.filter(isDead)
+        };
+    }
+
     getCamera(): pc.Entity | null {
         return this.renderManager.camera;
     }
@@ -791,6 +850,7 @@ export class GameEngine {
      * 離開遊戲時釋放所有資源，避免舊引擎繼續跑或殘留事件監聽
      */
     destroy() {
+        setActiveMapCollision(null);
         this.disposers.forEach(dispose => dispose());
         this.disposers = [];
         this.backgroundTicker.destroy();
