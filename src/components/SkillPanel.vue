@@ -228,4 +228,23 @@ watch(() => props.skills, (newSkills) => {
   right: 15px;
   pointer-events: auto;
 }
+
+/*
+ * 矮螢幕（手機橫向）：整組技能以右下角為原點縮小，弧形頂端才不會疊到右上角的小地圖
+ * 844×390 時縮成 0.75：技能鈕 60px → 45px，維持在 44px 觸控目標以上；更矮的螢幕再縮到 0.68
+ */
+@media (max-height: 500px) {
+  .skill-panel {
+    right: 12px;
+    bottom: 12px;
+    transform: scale(0.75);
+    transform-origin: 100% 100%;
+  }
+}
+
+@media (max-height: 370px) {
+  .skill-panel {
+    transform: scale(0.68);
+  }
+}
 </style>

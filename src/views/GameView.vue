@@ -384,6 +384,16 @@ onUnmounted(() => {
   right: 20px;
 }
 
+/* 矮螢幕（手機橫向）：小地圖縮小貼齊右上角，讓出空間給右下的技能弧形 */
+@media (max-height: 500px) {
+  .minimap-area {
+    top: 12px;
+    right: 12px;
+    transform: scale(0.72);
+    transform-origin: 100% 0;
+  }
+}
+
 .floating-shop-btn {
   position: absolute;
   top: 20px;
