@@ -42,6 +42,8 @@ const headScreenPos = (targetId: string, height: number): pc.Vec3 | null => {
   const camera = engine?.getCamera()?.camera
   const position = engine?.getEntityPosition(targetId)
   if (!camera || !position) return null
+  // 看不到的敵人（迷霧、草叢、隱身）不跳數字，免得暴露位置
+  if (!engine.isEntityVisible(targetId)) return null
 
   worldPos.set(position.x, position.y + height, position.z)
   // 在攝影機後方不顯示；正交鏡頭的 worldToScreen 的 z 不是與鏡頭的距離（會是負值），改用鏡頭前方向判斷

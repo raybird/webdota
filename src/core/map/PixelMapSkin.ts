@@ -5,10 +5,12 @@
  * 所以這裡的 UV 一律以「畫面座標」計算（右 = screenRight、下 = screenDown），兩隊的畫面方向不同，貼圖仍以正向顯示、
  * 像素與螢幕 1:1 對齊。視角依本地隊伍決定，所以整個圖層由 build() 在視角確定後建立。
  *
- * - 地面：依視角的整張烘焙圖（ground-blue／ground-red），自家主堡永遠在畫面左下
+ * - 地面：依視角的整張烘焙圖（ground-blue／ground-red），自家主堡永遠在畫面左下；網格每 VISION.shadeStep 單位一個格點，
+ *   頂點色由戰爭迷霧調暗（setGroundShade）
  * - 牆、掩體：自建網格，頂面與正面各一張可平鋪貼圖（5 單位一格），不打光、以頂點色做頂面與正面的明暗
  * - 石柱：直立的像素圖（只畫物體本身的明暗），平面放在柱子最靠近鏡頭的邊緣，下緣剛好貼地
  * - 投影：牆、柱、防禦塔、主堡依畫面左上光源投在地面上的影子，畫在一張與地面同解析度的遮罩上，重疊處不會加深
+ * - 草叢：與牆相同的自建網格，頂面在 1.25 單位高，正面多 5px 參差的葉尖（alpha 裁切）；不擋移動，只遮視線（core/vision）
  * 素材缺少時，對應的積木由 MapManager 維持原本的打光材質（handles() 傳回 false）
  */
 
@@ -16,6 +18,7 @@ import * as pc from 'playcanvas';
 import type { MapBlock, MapConfig } from './MapData';
 import { loadPixelSheet, createPixelMaterial, createSheetQuad, setSheetFrame, type PixelSheet } from '../pixelSheet';
 import { PITCH_COS, screenDown, screenRight, viewTeam } from '../view';
+import { VISION } from '../../data/balance';
 
 const ENV_URL = '/env/';
 /** 平鋪貼圖每格對應 5 個世界單位（頂面 95×57、正面 95×76） */
@@ -43,6 +46,11 @@ const SKIN_OF_MATERIAL: Record<string, string> = {
     obstacle_wood: 'crate',
 };
 const PILLAR_MATERIAL = 'pillar_dark';
+/** 草叢頂面高度（正面貼圖不透明部分 19px ÷ 15.2px／單位）與側面含葉尖的高度（24px） */
+const BRUSH_TOP_HEIGHT = 19 / 15.2;
+const BRUSH_SIDE_HEIGHT = 24 / 15.2;
+/** 本地英雄在草叢內時，那叢草的不透明度 */
+const BRUSH_FADED_OPACITY = 0.45;
 const HIDDEN_WITH_GROUND = /^highlight_/;
 
 /** 投影的形狀：圓（半徑隨高度收窄）或方塊 */
@@ -75,6 +83,15 @@ export class PixelMapSkin {
     private grounds = new Map<string, pc.StandardMaterial>();
     private skins = new Map<string, Skin>();
     private pillars = new Map<'s' | 'l', PixelSheet>();
+    private brushSkin: Skin | null = null;
+    /** 本地英雄所在的草叢改用的半透明材質 */
+    private brushFaded: Skin | null = null;
+    /** 已建立的草叢，順序與地圖的 brush 相同 */
+    private brushes: (pc.Entity | null)[] = [];
+    private fadedBrush = -1;
+    /** 地面網格（頂點色用來畫戰爭迷霧）與格點數 */
+    private groundMesh: pc.Mesh | null = null;
+    private groundVertices = 0;
     private textures: pc.Texture[] = [];
     private materials: pc.StandardMaterial[] = [];
     /** build() 每次建立、下次 build 或 destroy 時釋放的資源 */
@@ -102,6 +119,11 @@ export class PixelMapSkin {
             ...(['s', 'l'] as const).map(async (size) => {
                 this.pillars.set(size, await loadPixelSheet(this.app.graphicsDevice, `${ENV_URL}pillar-${size}-idle`));
             }),
+            (async () => {
+                const [side, top] = await Promise.all([this.loadTexture('brush-side', true), this.loadTexture('brush-top', true)]);
+                this.brushSkin = { side: this.createCutoutMaterial(side), top: this.createMaterial(top) };
+                this.brushFaded = { side: this.createFadedMaterial(side, true), top: this.createFadedMaterial(top, false) };
+            })(),
         ]);
         if (results.some(r => r.status === 'rejected')) console.warn('[PixelMapSkin] Some environment textures failed to load');
     }
@@ -144,6 +166,9 @@ export class PixelMapSkin {
             });
         }
         if (this.hasGround) root.addChild(this.createShadowLayer(config, casters));
+        this.brushes = (config.brush ?? []).map(rect => this.createBrush(rect));
+        this.fadedBrush = -1;
+        for (const brush of this.brushes) if (brush) root.addChild(brush);
         return root;
     }
 
@@ -157,6 +182,9 @@ export class PixelMapSkin {
         this.skins.clear();
         this.grounds.clear();
         this.pillars.clear();
+        this.brushSkin = null;
+        this.brushFaded = null;
+        this.brushes = [];
     }
 
     private releaseBuilt(): void {
@@ -174,11 +202,50 @@ export class PixelMapSkin {
         return { r: x * right.x + z * right.z, d: x * down.x + z * down.z };
     }
 
-    /** 地面：整張地圖一個平面，頂面在 y=0 */
+    /**
+     * 地面：整張地圖一個平面，頂面在 y=0。切成每 VISION.shadeStep 單位一格的網格（row 沿 z、col 沿 x，
+     * (cols + 1) × (rows + 1) 個點，與 FogOfWar 送來的顏色順序相同），頂點色給戰爭迷霧調暗用
+     */
     private createGround(config: MapConfig): pc.Entity | null {
         const material = this.grounds.get(viewTeam());
+        this.groundMesh = null;
         if (!material) return null;
-        return this.entityWith('Ground', [new pc.MeshInstance(this.groundQuad(config, 0), material)]);
+        const step = VISION.shadeStep;
+        const cols = Math.ceil(config.size.w / step), rows = Math.ceil(config.size.h / step);
+        const hw = config.size.w / 2, hh = config.size.h / 2;
+        const positions: number[] = [];
+        const uvs: number[] = [];
+        for (let r = 0; r <= rows; r++) {
+            for (let c = 0; c <= cols; c++) {
+                const x = Math.min(-hw + c * step, hw), z = Math.min(-hh + r * step, hh);
+                const { r: sr, d } = this.toScreen(x, z);
+                positions.push(x, 0, z);
+                uvs.push((sr + hw) / config.size.w, (d + hh) / config.size.h);
+            }
+        }
+        const indices: number[] = [];
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const i = r * (cols + 1) + c;
+                indices.push(i, i + 1, i + cols + 2, i, i + cols + 2, i + cols + 1);
+            }
+        }
+        const mesh = new pc.Mesh(this.app.graphicsDevice);
+        mesh.setPositions(positions);
+        mesh.setUvs(0, uvs);
+        mesh.setColors32(new Uint8Array(positions.length / 3 * 4).fill(255));
+        mesh.setIndices(indices);
+        mesh.update();
+        this.groundMesh = mesh;
+        this.groundVertices = positions.length / 3;
+        return this.entityWith('Ground', [new pc.MeshInstance(mesh, material)]);
+    }
+
+    /** 戰爭迷霧：設定地面每個格點的顏色（RGBA，數量要與網格相同） */
+    setGroundShade(colors: Uint8Array): void {
+        if (!this.groundMesh || colors.length !== this.groundVertices * 4) return;
+        this.groundMesh.setColors32(colors);
+        this.groundMesh.update();
     }
 
     /**
@@ -359,6 +426,64 @@ export class PixelMapSkin {
         return entity;
     }
 
+    /** 本地英雄所在的草叢變半透明，看得到草裡的自己；-1 表示都不透明 */
+    setFadedBrush(index: number): void {
+        if (index === this.fadedBrush) return;
+        this.applyBrushMaterials(this.fadedBrush, this.brushSkin);
+        this.fadedBrush = index;
+        this.applyBrushMaterials(index, this.brushFaded);
+    }
+
+    private applyBrushMaterials(index: number, skin: Skin | null): void {
+        const entity = this.brushes[index];
+        if (!entity || !skin) return;
+        const [side, top] = entity.render!.meshInstances;
+        if (side) side.material = skin.side;
+        if (top) top.material = skin.top;
+    }
+
+    /**
+     * 草叢：四個側面 + 頂面。側面貼圖下方 19px 是草叢正面（0～1.25 單位），上方 5px 是葉尖；
+     * 頂面在 1.25 單位高，背面的葉尖從頂面後緣露出來，邊緣看起來參差
+     */
+    private createBrush(rect: { x: number; z: number; w: number; d: number }): pc.Entity | null {
+        const skin = this.brushSkin;
+        if (!skin) return null;
+        const hx = rect.w / 2, hz = rect.d / 2;
+        const { x: cx, z: cz } = rect;
+        const side = new MeshBuilder();
+        const top = new MeshBuilder();
+        const faces: [[number, number], [number, number]][] = [
+            [[cx - hx, cz + hz], [cx + hx, cz + hz]],
+            [[cx + hx, cz - hz], [cx - hx, cz - hz]],
+            [[cx + hx, cz + hz], [cx + hx, cz - hz]],
+            [[cx - hx, cz - hz], [cx - hx, cz + hz]],
+        ];
+        // 圖片上方（v=0）是葉尖頂端
+        for (const [a, b] of faces) {
+            const ua = this.toScreen(a[0], a[1]).r / TILE_UNITS;
+            const ub = this.toScreen(b[0], b[1]).r / TILE_UNITS;
+            side.quad(
+                [a[0], 0, a[1]], [b[0], 0, b[1]], [b[0], BRUSH_SIDE_HEIGHT, b[1]], [a[0], BRUSH_SIDE_HEIGHT, a[1]],
+                [ua, 1], [ub, 1], [ub, 0], [ua, 0],
+                SHADE_TOP
+            );
+        }
+        const corners: [number, number][] = [[cx - hx, cz + hz], [cx + hx, cz + hz], [cx + hx, cz - hz], [cx - hx, cz - hz]];
+        top.raw(
+            corners.flatMap(([x, z]) => [x, BRUSH_TOP_HEIGHT, z]),
+            corners.flatMap(([x, z]) => {
+                const { r, d } = this.toScreen(x, z);
+                return [r / TILE_UNITS, -d / TILE_UNITS];
+            }),
+            SHADE_TOP
+        );
+        return this.entityWith('Brush', [
+            new pc.MeshInstance(side.build(this.app.graphicsDevice), skin.side),
+            new pc.MeshInstance(top.build(this.app.graphicsDevice), skin.top),
+        ]);
+    }
+
     private entityWith(name: string, meshInstances: pc.MeshInstance[]): pc.Entity {
         const entity = new pc.Entity(name);
         entity.addComponent('render', { meshInstances, castShadows: false, receiveShadows: false });
@@ -387,6 +512,26 @@ export class PixelMapSkin {
         texture.setSource(image);
         this.textures.push(texture);
         return texture;
+    }
+
+    /** 半透明版本（本地英雄所在的草叢）；不寫深度，草裡的單位都畫得出來 */
+    private createFadedMaterial(texture: pc.Texture, cutout: boolean): pc.StandardMaterial {
+        const material = cutout ? this.createCutoutMaterial(texture) : this.createMaterial(texture);
+        material.blendType = pc.BLEND_NORMAL;
+        material.opacity = BRUSH_FADED_OPACITY;
+        material.depthWrite = false;
+        material.update();
+        return material;
+    }
+
+    /** 同 createMaterial，另以 alpha 裁切（草叢葉尖） */
+    private createCutoutMaterial(texture: pc.Texture): pc.StandardMaterial {
+        const material = this.createMaterial(texture);
+        material.opacityMap = texture;
+        material.opacityMapChannel = 'a';
+        material.alphaTest = 0.5;
+        material.update();
+        return material;
     }
 
     /** 不打光、貼圖乘上頂點色明暗 */

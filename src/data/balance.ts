@@ -67,3 +67,19 @@ export const LEVELING = {
     respawnBase: 4,
     respawnPerLevel: 0.8,
 } as const;
+
+/** 視野與草叢（docs/gameplay-v2/features/f7-vision.md） */
+export const VISION = {
+    heroRadius: 9,
+    creepRadius: 6,
+    towerRadius: 10,
+    baseRadius: 12,
+    /** 視野格子（世界單位） */
+    cellSize: 1,
+    /** 地面調暗用的格點間距（世界單位）；1 單位一點時地面三角形太多，手機模擬掉幀 */
+    shadeStep: 2,
+    /** 重新計算的間隔（秒） */
+    updateInterval: 0.1,
+    /** 在草叢內出手後暴露的秒數 */
+    revealSeconds: 1,
+} as const;

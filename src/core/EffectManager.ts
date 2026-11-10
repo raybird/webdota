@@ -25,8 +25,9 @@ export class EffectManager {
     /**
      * 播放技能特效
      * @param follow 施法者目前位置，用於跟著施法者移動的持續效果
+     * @param visible 本地玩家看不看得到施法者；跟著施法者的效果在看不到時隱藏（迷霧、隱身）
      */
-    playSkillEffect(skill: Skill, position: Vec3Like, direction: { x: number; z: number }, follow?: () => Vec3Like) {
+    playSkillEffect(skill: Skill, position: Vec3Like, direction: { x: number; z: number }, follow?: () => Vec3Like, visible?: () => boolean) {
         const feet = { x: position.x, y: 0, z: position.z };
         const ahead = (distance: number) => ({ x: feet.x + direction.x * distance, y: 0, z: feet.z + direction.z * distance });
         const facing = { direction, facing: 'mirror' as const };
@@ -43,7 +44,8 @@ export class EffectManager {
             case 'warrior_e': // 鋼鐵意志
                 this.fx.play('divine-shield', feet, {
                     duration: skill.duration ?? 2,
-                    follow: follow && (() => ({ ...follow(), y: 0 }))
+                    follow: follow && (() => ({ ...follow(), y: 0 })),
+                    visible
                 });
                 break;
             case 'warrior_r': // 旋風斬

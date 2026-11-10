@@ -12,6 +12,9 @@ const FLASH_EMISSIVE = new Float32Array([3, 3, 3]);
 /** 隱身時隊友看到的不透明度 */
 const STEALTH_ALLY_OPACITY = 0.4;
 
+/** 我方單位躲在草叢內（敵人看不到）時的不透明度 */
+const CONCEALED_OPACITY = 0.65;
+
 /** 帶這個 tag 的子實體不受閃白、色調與半透明影響（例如腳下的隊伍色圓環） */
 export const NO_STATUS_FX_TAG = 'no-status-fx';
 
@@ -40,6 +43,10 @@ export class RenderComponent implements Component {
     private flashTimeout: number | null = null;
     private alive = true;
     private stealth: StealthView = 'none';
+    /** 在敵方視野外（戰爭迷霧，見 core/vision） */
+    private fogHidden = false;
+    /** 我方單位躲在草叢內 */
+    private concealed = false;
     /** 狀態效果的色調（覆寫 emissive）；null 為原色 */
     private tint: Float32Array | null = null;
 
@@ -90,16 +97,40 @@ export class RenderComponent implements Component {
     setStealth(view: StealthView): void {
         if (this.stealth === view) return;
         this.stealth = view;
+        this.applyOpacity();
+        this.applyVisibility();
+    }
+
+    /** 戰爭迷霧：敵方單位在本地隊伍的視野外 */
+    setFogHidden(hidden: boolean): void {
+        if (this.fogHidden === hidden) return;
+        this.fogHidden = hidden;
+        this.applyVisibility();
+    }
+
+    /** 我方單位躲在草叢內：半透明，表示敵人看不到 */
+    setConcealed(concealed: boolean): void {
+        if (this.concealed === concealed) return;
+        this.concealed = concealed;
+        this.applyOpacity();
+    }
+
+    private applyOpacity(): void {
+        const opacity = this.stealth === 'ally' ? STEALTH_ALLY_OPACITY : this.concealed ? CONCEALED_OPACITY : null;
         for (const mi of this.getMeshInstances()) {
-            if (view === 'ally') mi.setParameter('material_opacity', STEALTH_ALLY_OPACITY);
+            if (opacity !== null) mi.setParameter('material_opacity', opacity);
             else mi.deleteParameter('material_opacity');
         }
-        this.applyVisibility();
     }
 
     /** 敵方隱身中（看不到）時為 true */
     get hiddenByStealth(): boolean {
         return this.stealth === 'enemy';
+    }
+
+    /** 本地玩家看不到（敵方隱身或在視野外）：小地圖、傷害數字、特效都不顯示 */
+    get hiddenFromView(): boolean {
+        return this.stealth === 'enemy' || this.fogHidden;
     }
 
     private getMeshInstances(): pc.MeshInstance[] {
@@ -116,7 +147,7 @@ export class RenderComponent implements Component {
     }
 
     private applyVisibility(): void {
-        const shown = this.alive && this.stealth !== 'enemy';
+        const shown = this.alive && this.stealth !== 'enemy' && !this.fogHidden;
         this.pcEntity.enabled = shown;
         if (this.hpBarEntity) this.hpBarEntity.enabled = shown;
     }
