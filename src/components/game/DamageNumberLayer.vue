@@ -13,6 +13,9 @@ interface DamageNumber {
   id: number
   amount: number
   isCrit: boolean
+  /** 回血：綠色 +N，比傷害數字小 */
+  heal?: boolean
+  label?: string
   x: number
   y: number
 }
@@ -22,7 +25,6 @@ const LIFETIME_MS = 900
 
 const damageNumbers = ref<DamageNumber[]>([])
 let nextId = 0
-let unsubscribe: (() => void) | null = null
 const screenPos = new pc.Vec3()
 const worldPos = new pc.Vec3()
 const toTarget = new pc.Vec3()
@@ -30,38 +32,52 @@ const toTarget = new pc.Vec3()
 // 隨機散開，避免數字完全重疊
 const randOffset = (max: number) => (Math.random() - 0.5) * max * 2
 
-const onEntityTookDamage = (event: { targetId: string; damage: number; isCrit: boolean }) => {
+/** 實體頭上的螢幕座標；在鏡頭後方時回傳 null */
+const headScreenPos = (targetId: string, height: number): pc.Vec3 | null => {
   const engine = props.gameService?.gameEngine
   const camera = engine?.getCamera()?.camera
-  const position = engine?.getEntityPosition(event.targetId)
-  if (!camera || !position) return
+  const position = engine?.getEntityPosition(targetId)
+  if (!camera || !position) return null
 
-  worldPos.set(position.x, position.y + 2, position.z)
+  worldPos.set(position.x, position.y + height, position.z)
   // 在攝影機後方不顯示；正交鏡頭的 worldToScreen 的 z 不是與鏡頭的距離（會是負值），改用鏡頭前方向判斷
   const cameraEntity = camera.entity
   toTarget.sub2(worldPos, cameraEntity.getPosition())
-  if (toTarget.dot(cameraEntity.forward) <= 0) return
+  if (toTarget.dot(cameraEntity.forward) <= 0) return null
   camera.worldToScreen(worldPos, screenPos)
+  return screenPos
+}
 
+const show = (entry: Omit<DamageNumber, 'id'>) => {
   const id = nextId++
-  damageNumbers.value.push({
-    id,
-    amount: event.damage,
-    isCrit: event.isCrit,
-    x: screenPos.x + randOffset(20),
-    y: screenPos.y + randOffset(10)
-  })
+  damageNumbers.value.push({ id, ...entry })
   window.setTimeout(() => {
     damageNumbers.value = damageNumbers.value.filter(dn => dn.id !== id)
   }, LIFETIME_MS)
 }
 
+const onEntityTookDamage = (event: { targetId: string; damage: number; isCrit: boolean }) => {
+  const pos = headScreenPos(event.targetId, 2)
+  if (!pos) return
+  show({ amount: event.damage, isCrit: event.isCrit, x: pos.x + randOffset(20), y: pos.y + randOffset(10) })
+}
+
+// 回血固定在名字上方、不散開，與傷害數字分開
+const onEntityHealed = (event: { targetId: string; amount: number; label?: string }) => {
+  const pos = headScreenPos(event.targetId, 3.8)
+  if (!pos) return
+  show({ amount: event.amount, isCrit: false, heal: true, label: event.label, x: pos.x, y: pos.y })
+}
+
+const unsubscribers: Array<() => void> = []
+
 onMounted(() => {
-  unsubscribe = eventBus.on('ENTITY_TOOK_DAMAGE', onEntityTookDamage)
+  unsubscribers.push(eventBus.on('ENTITY_TOOK_DAMAGE', onEntityTookDamage))
+  unsubscribers.push(eventBus.on('ENTITY_HEALED', onEntityHealed))
 })
 
 onUnmounted(() => {
-  unsubscribe?.()
+  unsubscribers.forEach(off => off())
 })
 </script>
 
@@ -71,10 +87,11 @@ onUnmounted(() => {
       v-for="dn in damageNumbers"
       :key="dn.id"
       class="damage-number"
-      :class="{ crit: dn.isCrit }"
+      :class="{ crit: dn.isCrit, heal: dn.heal }"
       :style="{ left: `${dn.x}px`, top: `${dn.y}px` }"
     >
-      -{{ Math.round(dn.amount) }}
+      <template v-if="dn.heal"><span v-if="dn.label" class="heal-label">{{ dn.label }}</span>+{{ Math.round(dn.amount) }}</template>
+      <template v-else>-{{ Math.round(dn.amount) }}</template>
     </div>
   </div>
 </template>
@@ -112,6 +129,30 @@ onUnmounted(() => {
   font-style: italic;
   font-size: 32px;
   animation-name: damage-float-crit;
+}
+
+.damage-number.heal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 15px;
+  color: #86EFAC; /* Green 300 */
+  text-shadow: 0 0 3px #000, 0 0 6px #15803D;
+  animation-name: heal-float;
+  animation-timing-function: linear;
+}
+
+.heal-label {
+  font-size: 12px;
+  color: #DCFCE7;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+@keyframes heal-float {
+  0% { transform: translate(-50%, -50%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(-50%, calc(-50% - 28px)); opacity: 0; }
 }
 
 @keyframes damage-float-crit {

@@ -21,3 +21,17 @@ export const FRONT_HITBOX_RANGE_RATIO = 0.75;
 
 /** front 判定的圓心在施法者前方多遠 */
 export const FRONT_HITBOX_OFFSET = 1.0;
+
+/** 自動回血（docs/gameplay-v2/features/f4-regen.md），比例都是每秒占最大生命的比例 */
+export const REGEN = {
+    /** 基礎回血，與裝備 hpRegen 相加 */
+    baseRatio: 0.002,
+    /** 多久沒受傷、沒造成傷害算脫戰（秒） */
+    outOfCombatDelay: 5,
+    /** 脫戰額外回血 */
+    outOfCombatRatio: 0.015,
+    /** 泉水：自家主堡多遠以內 */
+    fountainRadius: 6,
+    /** 泉水額外回血 */
+    fountainRatio: 0.15,
+} as const;

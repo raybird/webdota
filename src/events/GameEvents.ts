@@ -96,6 +96,14 @@ export type EntityTookDamageEvent = {
     isCrit: boolean
 }
 
+/** 英雄明顯回血（RegenFeedback 依血量變化發出，Host 與 Client 都會發）；label 為頭上的提示文字 */
+export type EntityHealedEvent = {
+    type: 'ENTITY_HEALED'
+    targetId: string
+    amount: number
+    label?: string
+}
+
 /** 防禦塔（含主堡）發射光彈；傷害在 flightTime 秒後光彈命中時才結算（Host 發出，GameEngine 轉播給 Client） */
 export type TowerAttackEvent = {
     type: 'TOWER_ATTACK'
@@ -135,6 +143,7 @@ export type GameEvent =
     | PlayerDamagedEvent
     | PlayerHealedEvent
     | EntityTookDamageEvent
+    | EntityHealedEvent
     | TowerAttackEvent
     | EntityDiedEvent
     | PlayerRespawnedEvent

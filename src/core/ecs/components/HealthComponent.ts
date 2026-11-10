@@ -19,6 +19,9 @@ export class HealthComponent implements Component {
     /** 每秒回復的生命值（裝備加成，只在 Host 生效） */
     hpRegen: number = 0;
 
+    /** 距離上次受傷或造成傷害的秒數（脫戰回血用，只在 Host 計算） */
+    outOfCombatSeconds: number = 0;
+
     /** 最後攻擊者 ID（用於擊殺獎勵） */
     lastAttackerId: string | null = null;
 
@@ -57,6 +60,11 @@ export class HealthComponent implements Component {
         const oldHp = this.currentHp;
         this.currentHp = Math.min(this.maxHp, this.currentHp + amount);
         return this.currentHp - oldHp;
+    }
+
+    /** 受傷或造成傷害：脫戰計時歸零 */
+    markCombat(): void {
+        this.outOfCombatSeconds = 0;
     }
 
     /**

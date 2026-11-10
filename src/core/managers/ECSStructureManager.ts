@@ -11,6 +11,7 @@ import {
     ComponentType,
     HealthComponent,
     RenderComponent,
+    TransformComponent,
     type EntityId,
     type Team,
 } from '../ecs';
@@ -86,7 +87,17 @@ export class ECSStructureManager {
         }
     }
 
-    getAll(): ReadonlyMap<EntityId, { kind: StructureKind; team: Team }> {
+    /** 該隊主堡的位置（泉水中心）；主堡已被摧毀時回傳 null */
+    basePosition(team: Team): { x: number; z: number } | null {
+        for (const [entityId, info] of this.structures) {
+            if (info.kind !== 'base' || info.team !== team) continue;
+            const transform = this.world.getComponent<TransformComponent>(entityId, ComponentType.TRANSFORM);
+            if (transform) return { x: transform.position.x, z: transform.position.z };
+        }
+        return null;
+    }
+
+        getAll(): ReadonlyMap<EntityId, { kind: StructureKind; team: Team }> {
         return this.structures;
     }
 
