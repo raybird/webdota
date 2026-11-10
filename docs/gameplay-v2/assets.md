@@ -48,4 +48,4 @@
 
 | 日期 | 素材 | 腳本 | commit | 備註 |
 |---|---|---|---|---|
-| 2026-11-10 | arena_v2 地面（`public/env/arena_v2/ground-{blue,red}.png`，1824×1094） | `tools/maps/bake_ground.py`（種子 20261110，驗證檔 `tools/maps/validation-arena_v2.json`，預覽 `tools/maps/preview-arena_v2.png`） | M3 合併 commit | Codex CLI 製作；沿用 `tools/env/generate.py` 的調色盤與畫法。主路 7 單位泥路、主堡鋪石、塔底鋪石環、野區苔草、空地、封閉區裂岩。兩隊只差主堡點綴。Claude 檢查：在遊戲裡逐點對照主堡、塔、空地與封閉區位置 |
+| 2026-11-10 | arena_v2 地面（`public/env/arena_v2/ground-{blue,red}.png`，1824×1094） | `tools/maps/bake_ground.py`（種子 20261110，驗證檔 `tools/maps/validation-arena_v2.json`，預覽 `tools/maps/preview-arena_v2.png`） | 911b243（合併 98b593f） | Codex CLI 製作；沿用 `tools/env/generate.py` 的調色盤與畫法。主路 7 單位泥路、主堡鋪石、塔底鋪石環、野區苔草、空地、封閉區裂岩。兩隊只差主堡點綴。Claude 檢查：在遊戲裡逐點對照主堡、塔、空地與封閉區位置 |
