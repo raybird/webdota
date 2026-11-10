@@ -5,6 +5,7 @@
 
 import * as pc from 'playcanvas';
 import RAPIER from '@dimforge/rapier3d-compat';
+import { HURTBOX } from '../../data/balance';
 
 import { World } from './World';
 import type { EntityId } from './Entity';
@@ -192,8 +193,8 @@ export class EntityFactory {
         // 狀態效果（無敵、隱身、緩速）
         this.world.addComponent(entityId, new StatusComponent());
 
-        // Physics
-        const physics = this.createKinematicBody(config.position, { halfWidth: 0.3, halfHeight: 0.5, halfDepth: 0.3 });
+        // Physics：受擊範圍為圓柱，不隨面向旋轉
+        const physics = this.createKinematicBody(config.position, HURTBOX.hero);
         this.world.addComponent(entityId, physics);
 
         // 註冊到 CollisionSystem
@@ -247,8 +248,8 @@ export class EntityFactory {
         this.world.addComponent(entityId, ai);
         this.world.addComponent(entityId, new StatusComponent());
 
-        // Physics
-        const physics = this.createKinematicBody(config.position, { halfWidth: 0.3, halfHeight: 0.5, halfDepth: 0.3 });
+        // Physics：受擊範圍為圓柱，不隨面向旋轉
+        const physics = this.createKinematicBody(config.position, HURTBOX.creep);
         this.world.addComponent(entityId, physics);
 
         // 註冊到 CollisionSystem
@@ -379,13 +380,13 @@ export class EntityFactory {
 
     private createKinematicBody(
         position: { x: number; y: number; z: number },
-        size: { halfWidth: number; halfHeight: number; halfDepth: number }
+        hurtbox: { radius: number; halfHeight: number }
     ): PhysicsComponent {
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
             .setTranslation(position.x, position.y, position.z);
         const rigidBody = this.physicsWorld.createRigidBody(rigidBodyDesc);
 
-        const colliderDesc = RAPIER.ColliderDesc.cuboid(size.halfWidth, size.halfHeight, size.halfDepth);
+        const colliderDesc = RAPIER.ColliderDesc.cylinder(hurtbox.halfHeight, hurtbox.radius);
         const collider = this.physicsWorld.createCollider(colliderDesc, rigidBody);
 
         const physics = new PhysicsComponent(rigidBody, this.physicsWorld);

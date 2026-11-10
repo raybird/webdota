@@ -16,6 +16,7 @@ import { EffectManager } from '../EffectManager';
 import { ProjectileManager } from './ProjectileManager';
 import type { SoundManager } from '../SoundManager';
 import type { Skill } from '../../types/Skill';
+import { instantHitboxCenter, instantHitboxRadius } from './skillGeometry';
 
 /** 施放時加在自己身上的狀態；其餘 effect（如緩速）在命中時加在目標身上 */
 const SELF_STATUS: ReadonlySet<StatusKind> = new Set(['invincible', 'invisible']);
@@ -166,21 +167,22 @@ export class ECSSkillExecutor {
         direction: pc.Vec3,
         team: 'red' | 'blue' | 'neutral'
     ): void {
-        // 往前偏移
-        const hitboxX = origin.x + direction.x * 1.0;
-        const hitboxZ = origin.z + direction.z * 1.0;
-
-        const radius = skill.aoe || (skill.range ? skill.range * 0.75 : 1.5);
+        const center = instantHitboxCenter(skill, origin, direction);
+        const radius = instantHitboxRadius(skill);
+        const knockback = skill.knockback || 0;
+        // 以自身為中心的技能把敵人往外推；前方判定沿面向推
+        const self = skill.hitOrigin === 'self';
 
         this.collisionSystem.createHitbox(
-            { x: hitboxX, y: origin.y, z: hitboxZ },
+            center,
             radius,
             skill.damage,
-            { x: direction.x * (skill.knockback || 0), z: direction.z * (skill.knockback || 0) },
+            self ? { x: 0, z: 0 } : { x: direction.x * knockback, z: direction.z * knockback },
             casterId,
             team,
             0.2,
-            hitStatusOf(skill)
+            hitStatusOf(skill),
+            self ? knockback : 0
         );
     }
 }

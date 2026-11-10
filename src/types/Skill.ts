@@ -17,6 +17,8 @@ export interface Skill {
     damage: number;
     range: number;           // 攻擊距離
     aoe?: number;            // 範圍半徑 (0 = 單體)
+    /** 立即判定的圓心：front 在施法者前方（預設），self 以施法者為中心（打周圍的技能） */
+    hitOrigin?: 'front' | 'self';
 
     // 控制效果
     knockback?: number;      // 擊退距離

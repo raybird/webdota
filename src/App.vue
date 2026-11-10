@@ -8,6 +8,7 @@ import { GameService } from './services/GameService'
 import { NetworkManager } from './core/NetworkManager'
 import { eventBus } from './events/EventBus'
 import { audioManager } from './core/AudioManager'
+import { debugMode } from './utils/debugMode'
 
 import { defineAsyncComponent } from 'vue'
 
@@ -54,8 +55,8 @@ const currentView = computed(() => {
 })
 
 // Debug Panel
-// 除錯面板預設隱藏：網址加 ?debug 或按 ` 鍵切換
-const showDebug = ref(new URLSearchParams(location.search).has('debug'))
+// 除錯面板預設隱藏：網址加 ?debug 或按 ` 鍵切換；遊戲內的判定圈也跟著這個開關
+const showDebug = debugMode
 const toggleDebug = (e: KeyboardEvent) => {
   if (e.key === '`' && !(e.target instanceof HTMLInputElement)) showDebug.value = !showDebug.value
 }

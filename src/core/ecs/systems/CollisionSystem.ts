@@ -3,6 +3,7 @@
  * 使用 Rapier Sensor 處理攻擊判定，取代 HitboxManager
  */
 
+import { colliderRadius } from '../../combat/hurtRadius';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { System } from '../System';
 import { World } from '../World';
@@ -63,7 +64,8 @@ export class CollisionSystem extends System {
         ownerId: string,
         ownerTeam: Team,
         duration: number = 0.2,
-        onHitStatus?: HitStatus
+        onHitStatus?: HitStatus,
+        radialKnockback: number = 0
     ): { rigidBody: RAPIER.RigidBody; collider: RAPIER.Collider } {
         // 建立 Kinematic RigidBody
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
@@ -90,7 +92,8 @@ export class CollisionSystem extends System {
             knockback,
             hitTargets: new Set(),
             duration,
-            onHitStatus
+            onHitStatus,
+            radialKnockback
         };
         colliderRegistry.register(collider.handle, metadata);
 
@@ -160,6 +163,23 @@ export class CollisionSystem extends System {
     }
 
     /**
+     * 除錯顯示用：所有單位的受擊範圍與進行中的技能判定（水平位置與半徑）
+     */
+    debugShapes(): { units: DebugCircle[]; hitboxes: DebugCircle[] } {
+        const units: DebugCircle[] = [];
+        const hitboxes: DebugCircle[] = [];
+        this.physicsWorld.forEachCollider((collider) => {
+            const meta = colliderRegistry.get(collider.handle);
+            if (!meta) return;
+            const { x, z } = collider.translation();
+            const circle = { x, z, radius: colliderRadius(collider), team: meta.team };
+            if (meta.type === 'hitbox') hitboxes.push(circle);
+            else if (meta.type === 'entity') units.push(circle);
+        });
+        return { units, hitboxes };
+    }
+
+    /**
      * 使用輪詢方式檢測 Hitbox 碰撞
      * 遍歷所有 Hitbox，使用 intersectionPair 檢查是否與其他 Collider 相交
      */
@@ -206,7 +226,9 @@ export class CollisionSystem extends System {
                     targetId: entityMeta.entityId,
                     attackerId: hitboxMeta.entityId,
                     damage: hitboxMeta.damage ?? 0,
-                    knockback: hitboxMeta.knockback,
+                    knockback: hitboxMeta.radialKnockback
+                        ? radialPush(hitboxCollider.translation(), entityCollider.translation(), hitboxMeta.radialKnockback)
+                        : hitboxMeta.knockback,
                     status: hitboxMeta.onHitStatus
                 });
 
@@ -286,4 +308,20 @@ export class CollisionSystem extends System {
         }
         colliderRegistry.clear();
     }
+}
+
+/** 從判定中心往目標方向推開；目標剛好在中心時不推 */
+function radialPush(center: { x: number; z: number }, target: { x: number; z: number }, distance: number): { x: number; z: number } {
+    const dx = target.x - center.x;
+    const dz = target.z - center.z;
+    const length = Math.hypot(dx, dz);
+    if (length < 1e-4) return { x: 0, z: 0 };
+    return { x: (dx / length) * distance, z: (dz / length) * distance };
+}
+
+export interface DebugCircle {
+    x: number;
+    z: number;
+    radius: number;
+    team: Team;
 }

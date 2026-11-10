@@ -7,9 +7,10 @@ import type { HealthComponent } from '../ecs/components/HealthComponent';
 import type { TeamComponent, Team } from '../ecs/components/TeamComponent';
 import type { Skill } from '../../types/Skill';
 import type { SpriteFxHandle, SpriteFxManager } from '../SpriteFxManager';
+import type { PhysicsComponent } from '../ecs/components/PhysicsComponent';
+import { projectileTouches } from './skillGeometry';
+import { hurtRadiusOf } from './hurtRadius';
 
-/** 投射物碰撞半徑 + 實體半徑 */
-const HIT_DISTANCE = 0.8 + 0.5;
 
 interface Projectile {
     ownerId: string;
@@ -96,7 +97,8 @@ export class ProjectileManager {
             if (health.isDead()) continue;
 
             const transform = world.getComponent<TransformComponent>(entityId, ComponentType.TRANSFORM)!;
-            if (proj.position.distance(transform.position) < HIT_DISTANCE) return true;
+            const radius = hurtRadiusOf(world.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS));
+            if (projectileTouches(proj.position, transform.position, radius)) return true;
         }
         return false;
     }
