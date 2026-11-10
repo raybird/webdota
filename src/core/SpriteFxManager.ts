@@ -1,7 +1,7 @@
 /**
  * SpriteFxManager - 像素連續圖特效（來源：pixelfx 輸出的 sprite sheet，見 public/fx/NOTICE.md）
  *
- * 防禦塔光彈與命中（tower-*）是原創素材，放在 public/env（見 public/env/NOTICE.md）。
+ * 防禦塔光彈與命中（tower-*）與升級（level-up）是原創素材，放在 public/env（見 public/env/NOTICE.md）。
  * 每個特效是一張連續圖 PNG 加 Aseprite 風格的 JSON。播放時用面向鏡頭的平面，
  * 依 fps 切換貼圖的 UV 偏移逐格播放；平面與材質以特效名稱分池重複使用。
  */
@@ -13,8 +13,11 @@ const FX_NAMES = [
     'fireball-impact', 'hit-spark', 'respawn-beam', 'death-poof',
     'skill-slash', 'dash-thrust', 'ground-slam', 'divine-shield', 'spin-slash', 'crit-hit',
     'smoke-bomb', 'dagger-flurry', 'fireball', 'frost-nova', 'blink-out', 'blink-in', 'meteor',
-    'tower-bolt-blue', 'tower-bolt-red', 'tower-impact-blue', 'tower-impact-red'
+    'tower-bolt-blue', 'tower-bolt-red', 'tower-impact-blue', 'tower-impact-red', 'level-up'
 ] as const;
+
+/** 放在 public/env 的原創特效 */
+const isEnvFx = (name: string) => name.startsWith('tower-') || name === 'level-up';
 
 export type SpriteFxName = typeof FX_NAMES[number];
 
@@ -46,7 +49,7 @@ const FX_BASE_URL = '/fx/';
 const ENV_FX_BASE_URL = '/env/';
 
 /** 原創的防禦塔特效放在 public/env，其餘是 pixelfx 輸出的 public/fx */
-const fxUrl = (name: SpriteFxName) => `${name.startsWith('tower-') ? ENV_FX_BASE_URL : FX_BASE_URL}${name}`;
+const fxUrl = (name: SpriteFxName) => `${isEnvFx(name) ? ENV_FX_BASE_URL : FX_BASE_URL}${name}`;
 
 /** 播放位置往鏡頭方向移的距離，避免被目標自己的模型或地面擋住 */
 const TOWARD_CAMERA = 1.2;

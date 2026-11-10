@@ -178,6 +178,14 @@ Entity ID 不重複使用。
 - **建築依序攻擊**：`src/core/combat/structureOrder.ts` 依地圖的 `order` 算出受保護的建築，`ECSStructureManager.updateShields` 每個模擬幀設定 `HealthComponent.shielded`（兩端各自從同步來的建築算），受保護時 `dealDamage` 不扣血、血條變灰；`updateShieldHints` 在本地玩家走近時發 `STRUCTURE_SHIELDED`，由 `DamageNumberLayer` 顯示提示。
 - **地圖選擇**：`src/data/maps/index.ts` 預設 `arena_v2`，網址 `?map=demo_arena` 換回舊圖（Host 與 Client 要一致）。
 
+### 等級與經驗（2026-11-10）
+細節見 `docs/gameplay-v2/features/f6-leveling.md`。
+
+- **只存累計經驗**：`ECSPlayerManager` 每位玩家一個數字，等級由 `progression/leveling.ts` 推得。Host 由 `ExperienceAwards` 加經驗（被動、`ENTITY_DIED` 的小兵／英雄／塔），GAME_STATE 每位玩家多 2 byte 經驗，Client 用 `setXp` 套用；Host 遷移後直接沿用。
+- **等級改變時**：`applyItemStats` 依等級與裝備重算最大生命、`CombatComponent.damageMultiplier`，重畫頭上名稱，升級發 `PLAYER_LEVEL_UP`（特效、提示、通知都接這個事件，兩端都會發）。
+- **大招**：`GameEngine.canUseSkill` 在本地輸入與 Host 套用輸入時都檢查等級。
+- **復活時間**：4 + 等級 × 0.8 秒。
+
 ### 防禦塔攻擊回饋（TowerFeedback，2026-11-06）
 防禦塔與主堡原本每次冷卻結束就直接扣最近敵人的血，畫面上看不出射程與誰在被打。
 
@@ -237,7 +245,8 @@ HUD 的點擊層次：搖桿的觸控區（`VirtualJoystick`）佔滿全畫面�
 - `player_profile`：`{ name, characterId, isReady }`，每位玩家在新連線建立時直接送給對方、資料變動時廣播；接收端只把它當作**送出者本人**的資料，不能改別人的。
 - `room_state`：Host 廣播的權威名單（id、隊伍、角色、準備、暱稱），只接受來自 Host 的版本；名單沒有的玩家會被移除，自己的那筆只套用隊伍。
 - `team_request`：Client 請 Host 換隊，Host 在未倒數時改隊伍後廣播 `room_state`；新玩家由 Host 分到人數較少的隊伍。
-- `joinRoom()` 等連線 `open` 才回傳；房間不存在（PeerJS `peer-unavailable`）或 12 秒逾時會丟出 `JoinRoomError`（`reason: 'not-found' | 'timeout'`）給大廳顯示。
+- `joinRoom()` 等到 Host 的 `peer_list` 才回傳；房間不存在（PeerJS `peer-unavailable`）、12 秒逾時、版本不同會丟出 `JoinRoomError`（`reason: 'not-found' | 'timeout' | 'version'`）給大廳顯示。
+- **版本檢查**（2026-11-10）：`peer_list` 與 `player_profile` 帶 `build`（`src/buildInfo.ts`，正式建置是 commit 前 12 碼、開發伺服器是 `dev`）。Client 加入時版本不同就中斷；Host 收到版本不同或沒帶版本的 `player_profile` 就斷開那條連線。
 - 暱稱存在 `localStorage` 的 `webdota.nickname`，最多 12 字，空白時隨機產生；遊戲內名牌使用暱稱。
 
 Peer ID 在程式內以大寫正規化作為查詢 key，但 PeerJS 的 ID 區分大小寫，建立連線時使用原始的 `conn.peer`。
@@ -372,7 +381,7 @@ Client 關閉 AISystem，CollisionSystem 只做表現不扣血，血量一律以
 主堡被摧毀只在 Host 判定，再以 `game_over` 訊息通知 Client。
 
 **玩家陣亡：**
-玩家血量歸零時不移除實體，改為隱藏並停用剛體，忽略移動與技能輸入；Host 倒數 5 秒（`RESPAWN_SECONDS`）後回滿血量與能量，
+玩家血量歸零時不移除實體，改為隱藏並停用剛體，忽略移動與技能輸入；Host 倒數 4 + 等級 × 0.8 秒（`respawnSecondsFor`，M4 前固定 5 秒）後回滿血量與能量，
 在己方出生點往地圖中央 3 單位處重生。Client 依 Host 同步的血量判斷陣亡與重生，本地玩家的位置偏離時直接瞬移。
 
 **商店與裝備：**

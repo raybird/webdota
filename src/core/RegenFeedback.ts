@@ -22,6 +22,7 @@ export const OUT_OF_COMBAT_LABEL = '脫戰回復';
 
 interface Track {
     lastHp: number;
+    lastMaxHp: number;
     healed: number;
     /** 上一個結算區間是否已達脫戰回血速度 */
     boosted: boolean;
@@ -50,12 +51,15 @@ export class RegenFeedback {
             if (!health) continue;
             const track = this.tracks.get(entityId);
             if (!track) {
-                this.tracks.set(entityId, { lastHp: health.currentHp, healed: 0, boosted: false });
+                this.tracks.set(entityId, { lastHp: health.currentHp, lastMaxHp: health.maxHp, healed: 0, boosted: false });
                 continue;
             }
-            // 陣亡到重生的血量跳升不算回血
-            if (track.lastHp > 0 && health.currentHp > track.lastHp) track.healed += health.currentHp - track.lastHp;
+            // 陣亡到重生的血量跳升不算回血；升級、買裝備讓最大生命增加時，目前生命跟著增加的量也不算
+            const maxGain = Math.max(0, health.maxHp - track.lastMaxHp);
+            const gain = health.currentHp - track.lastHp - maxGain;
+            if (track.lastHp > 0 && gain > 0) track.healed += gain;
             track.lastHp = health.currentHp;
+            track.lastMaxHp = health.maxHp;
         }
 
         this.elapsed += dt;

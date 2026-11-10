@@ -116,4 +116,13 @@ describe('RegenFeedback', () => {
         run(0, 2);
         expect(events).toHaveLength(0);
     });
+
+    it('升級讓最大生命與目前生命一起增加，不算回血', () => {
+        const { health, events, run } = setup();
+        run(0, 0.2);
+        health.maxHp += 80;
+        health.currentHp += 80;
+        run(0, 2);
+        expect(events).toHaveLength(0);
+    });
 });

@@ -17,6 +17,8 @@ interface DamageNumber {
   heal?: boolean
   /** 只有文字的提示（建築依序攻擊） */
   hint?: boolean
+  /** 升級提示（金色） */
+  levelUp?: boolean
   label?: string
   x: number
   y: number
@@ -81,12 +83,20 @@ const onStructureShielded = (event: { targetId: string; label: string }) => {
   show({ amount: 0, isCrit: false, hint: true, label: event.label, x: pos.x, y: pos.y }, HINT_LIFETIME_MS)
 }
 
+// 升級：英雄名字上方的金色文字
+const onLevelUp = (event: { entityId: string; level: number }) => {
+  const pos = headScreenPos(event.entityId, 4.4)
+  if (!pos) return
+  show({ amount: 0, isCrit: false, hint: true, levelUp: true, label: `升級！Lv${event.level}`, x: pos.x, y: pos.y }, HINT_LIFETIME_MS)
+}
+
 const unsubscribers: Array<() => void> = []
 
 onMounted(() => {
   unsubscribers.push(eventBus.on('ENTITY_TOOK_DAMAGE', onEntityTookDamage))
   unsubscribers.push(eventBus.on('ENTITY_HEALED', onEntityHealed))
   unsubscribers.push(eventBus.on('STRUCTURE_SHIELDED', onStructureShielded))
+  unsubscribers.push(eventBus.on('PLAYER_LEVEL_UP', onLevelUp))
 })
 
 onUnmounted(() => {
@@ -100,7 +110,7 @@ onUnmounted(() => {
       v-for="dn in damageNumbers"
       :key="dn.id"
       class="damage-number"
-      :class="{ crit: dn.isCrit, heal: dn.heal, hint: dn.hint }"
+      :class="{ crit: dn.isCrit, heal: dn.heal, hint: dn.hint, 'level-up': dn.levelUp }"
       :style="{ left: `${dn.x}px`, top: `${dn.y}px` }"
     >
       <template v-if="dn.hint">{{ dn.label }}</template>
@@ -162,6 +172,12 @@ onUnmounted(() => {
   white-space: nowrap;
   text-shadow: 0 0 3px #000, 0 0 6px #000;
   animation: heal-float 1.8s linear forwards;
+}
+
+.damage-number.hint.level-up {
+  font-size: 18px;
+  color: #FDE68A; /* Amber 200 */
+  text-shadow: 0 0 3px #000, 0 0 8px #B45309;
 }
 
 .heal-label {

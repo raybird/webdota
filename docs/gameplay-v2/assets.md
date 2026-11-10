@@ -48,4 +48,5 @@
 
 | 日期 | 素材 | 腳本 | commit | 備註 |
 |---|---|---|---|---|
+| 2026-11-10 | 升級特效（`public/env/level-up.png`，每格 64×96、14 格、12fps、pivot [32,88]） | `tools/env/generate_levelup_fx.py`（無亂數，驗證檔 `tools/env/validation-level-up.json`，預覽 `tools/env/preview-level-up.png`） | 待提交（`feat/m4-leveling`） | Codex CLI 製作；金色 6 色，腳下扁橢圓光環、三道光帶與向上箭形，與重生光柱（藍白）區分。Claude 檢查：遊戲內升級時罩住英雄、跟著移動，約 1.2 秒 |
 | 2026-11-10 | arena_v2 地面（`public/env/arena_v2/ground-{blue,red}.png`，1824×1094） | `tools/maps/bake_ground.py`（種子 20261110，驗證檔 `tools/maps/validation-arena_v2.json`，預覽 `tools/maps/preview-arena_v2.png`） | 911b243（合併 98b593f） | Codex CLI 製作；沿用 `tools/env/generate.py` 的調色盤與畫法。主路 7 單位泥路、主堡鋪石、塔底鋪石環、野區苔草、空地、封閉區裂岩。兩隊只差主堡點綴。Claude 檢查：在遊戲裡逐點對照主堡、塔、空地與封閉區位置 |

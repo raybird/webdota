@@ -31,6 +31,8 @@ import { MapManager, type MapConfig } from './map';
 import { selectMap } from '../data/maps';
 import { mapCollisionFor, setActiveMapCollision, type MapCollision, type Obstacle } from './map/MapCollision';
 import { FOOTPRINT } from '../data/balance';
+import { ExperienceAwards } from './progression/ExperienceAwards';
+import { isUltimateUnlocked } from './progression/leveling';
 import {
     World,
     EntityFactory,
@@ -123,6 +125,7 @@ export class GameEngine {
     projectileManager!: ProjectileManager;
     mapManager!: MapManager;
     private mapCollision!: MapCollision;
+    private experience!: ExperienceAwards;
     structureManager!: ECSStructureManager;
     creepManager!: ECSCreepManager;
     entitySync!: EntitySyncManager;
@@ -240,6 +243,7 @@ export class GameEngine {
         this.structureManager = new ECSStructureManager(this.ecsWorld, this.entityFactory, this.uiManager);
         this.creepManager = new ECSCreepManager(this.mapManager, this.uiManager, this.ecsWorld, this.entityFactory);
         this.playerManager = new ECSPlayerManager(this.ecsWorld, this.entityFactory, this.uiManager);
+        this.experience = new ExperienceAwards(this.ecsWorld, this.playerManager, this.creepManager, this.structureManager);
         this.entitySync = new EntitySyncManager(this.ecsWorld, this.structureManager, this.creepManager, this.mapManager);
         this.towerFeedback = new TowerFeedback(this.app, this.ecsWorld, this.spriteFx, this.structureManager);
         this.facingIndicator = new FacingIndicator(this.app);
@@ -314,7 +318,10 @@ export class GameEngine {
             eventBus.on('GAME_STARTED', () => this.startGame()),
             eventBus.on('SKILL_USED', (event) => this.useSkill(event.skillId)),
             eventBus.on('ENTITY_DIED', (event) => {
-                if (this.isHost) this.awardKillGold(event.entityId, event.killerId);
+                if (this.isHost) {
+                    this.awardKillGold(event.entityId, event.killerId);
+                    this.experience.onDeath(event.entityId, event.killerId);
+                }
                 this.playSpriteFxAt('death-poof', event.entityId, 0);
             }),
             eventBus.on('ENTITY_TOOK_DAMAGE', (event) => this.playSpriteFxAt('hit-spark', event.targetId, 1)),
@@ -324,6 +331,18 @@ export class GameEngine {
                 this.broadcastTowerAttack(event.attackerId, event.targetId, event.flightTime, event.damage);
             }),
             eventBus.on('PLAYER_RESPAWNED', (event) => this.playSpriteFxAt('respawn-beam', event.entityId, 0)),
+            // 升級光環跟著英雄移動
+            eventBus.on('PLAYER_LEVEL_UP', (event) => {
+                const physics = this.ecsWorld.getComponent<PhysicsComponent>(event.entityId, ComponentType.PHYSICS);
+                const start = physics?.getPosition();
+                if (!physics || !start) return;
+                this.spriteFx.play('level-up', { x: start.x, y: 0, z: start.z }, {
+                    follow: () => {
+                        const p = physics.getPosition() ?? start;
+                        return { x: p.x, y: 0, z: p.z };
+                    }
+                });
+            }),
             eventBus.on('GAME_OVER', (event) => {
                 this.soundManager.playGameOverSound();
                 // 主堡死亡只在 Host 判定，再通知 Client
@@ -356,7 +375,11 @@ export class GameEngine {
         this.aiSystem.enabled = this.isHost;
         this.statusSystem.enabled = this.isHost;
         this.collisionSystem.authoritative = this.isHost;
-        if (this.isHost) this.spawnStructuresFromMap();
+        if (this.isHost) {
+            this.spawnStructuresFromMap();
+            // 開局就出第一波小兵，之後每 30 秒一波（M4 實測：等 30 秒才出，1v1 到 4 級要約 2 分 20 秒）
+            this.creepManager.spawnWave();
+        }
 
         // 開局在己方基地（與重生位置相同），同隊玩家沿基地兩側錯開；各端依相同排序算出相同位置
         const players = [...this.roomStore.connectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
@@ -425,6 +448,8 @@ export class GameEngine {
                     rb.setNextKinematicTranslation(pData.pos);
                 }
             }
+            // 等級由經驗推得；先套用經驗（會改最大生命），再套用血量
+            if (pData.xp !== undefined) this.playerManager.setXp(pData.id, pData.xp);
             this.playerManager.setPlayerHp(pData.id, pData.stats.hp);
             this.playerManager.setPlayerEnergy(pData.id, pData.stats.energy);
             this.playerManager.setPlayerStatusFlags(pData.id, pData.stats.status);
@@ -553,6 +578,7 @@ export class GameEngine {
 
             this.creepManager.update(dt);
             this.structureManager.update();
+            this.experience.tick(dt);
         }
         this.playerManager.update(
             dt,
@@ -702,6 +728,9 @@ export class GameEngine {
         if (!input.skillUsed || !input.skillDirection) return;
         if (this.playerManager.isDead(input.playerId)) return;
 
+        // 大招未解鎖時不放（各端用同步來的等級判斷，Host 據此拒絕）
+        if (!this.canUseSkill(input.playerId, input.skillUsed)) return;
+
         // 技能執行器以 ECS Entity ID 查詢施放者的物理與隊伍，不是玩家（Peer）ID
         const casterEntityId = this.playerManager.getPlayer(input.playerId);
         const skill = this.playerManager.useSkill(input.playerId, input.skillUsed);
@@ -733,7 +762,8 @@ export class GameEngine {
                 pos: rb.translation(),
                 rot: rb.rotation(),
                 stats: { hp: hp.current, energy: energy.current, status: this.playerManager.getPlayerStatusFlags(playerId) },
-                kb: (this.playerPhysics(playerId)?.forcedMoves ?? 0) & 0xff
+                kb: (this.playerPhysics(playerId)?.forcedMoves ?? 0) & 0xff,
+                xp: Math.floor(this.playerManager.getXp(playerId))
             });
         }
         this.networkManager.broadcastGameState({
@@ -823,11 +853,24 @@ export class GameEngine {
         const skillCd = this.playerManager.getPlayerSkillCooldowns(peerId).get(skillId);
         if (!skillCd || skillCd.current > 0) return;
         const skill = this.playerManager.getPlayerSkills(peerId).find(s => s.id === skillId);
+        if (!this.canUseSkill(peerId, skillId)) return;
         const energy = this.playerManager.getPlayerEnergy(peerId);
         if (skill && energy && (skill.energyCost ?? 0) > energy.current) return;
         const direction = this.playerManager.getPlayerFacingDirection(peerId);
         if (!direction) return;
         this.pendingSkillUse = { skillId, direction: { x: direction.x, z: direction.z } };
+    }
+
+    /** 大招要到解鎖等級才能放，其他技能不限 */
+    private canUseSkill(playerId: string, skillId: string): boolean {
+        const skill = this.playerManager.getPlayerSkills(playerId).find(s => s.id === skillId);
+        return skill?.type !== 'ultimate' || isUltimateUnlocked(this.playerManager.getLevel(playerId));
+    }
+
+    /** 本地玩家的等級與經驗（HUD 用） */
+    getLocalProgress(): { xp: number; level: number } {
+        const peerId = this.networkManager.peerId;
+        return { xp: this.playerManager.getXp(peerId), level: this.playerManager.getLevel(peerId) };
     }
 
     getLocalPlayerSkills() { return this.playerManager.getPlayerSkills(this.networkManager.peerId); }

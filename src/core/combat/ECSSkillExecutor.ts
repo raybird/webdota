@@ -60,9 +60,10 @@ export class ECSSkillExecutor {
 
         const casterPos = physics.getPosition();
 
-        // 裝備攻擊力加到技能傷害上，之後的判定與投射物都用這份
-        const bonusDamage = world.getComponent<CombatComponent>(casterId, ComponentType.COMBAT)?.bonusDamage ?? 0;
-        if (bonusDamage > 0) skill = { ...skill, damage: skill.damage + bonusDamage };
+        // 裝備攻擊力加到技能傷害上、再乘等級倍率，之後的判定與投射物都用這份
+        const combat = world.getComponent<CombatComponent>(casterId, ComponentType.COMBAT);
+        const damage = scaledDamage(skill.damage, combat?.bonusDamage ?? 0, combat?.damageMultiplier ?? 1);
+        if (damage !== skill.damage) skill = { ...skill, damage };
 
         // 0. 播放技能音效
         if (soundManager) {
@@ -195,4 +196,10 @@ export class ECSSkillExecutor {
             self ? knockback : 0
         );
     }
+}
+
+/** 技能傷害：(基礎 + 裝備攻擊力) × 等級倍率；沒有傷害的技能維持 0 */
+export function scaledDamage(base: number, bonus: number, multiplier: number): number {
+    if (base <= 0) return base;
+    return Math.round((base + bonus) * multiplier);
 }

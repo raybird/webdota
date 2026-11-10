@@ -15,6 +15,8 @@ interface Props {
   isReady: boolean
   isComboMode?: boolean
   comboIcon?: string
+  /** 未解鎖：顯示鎖頭與所需等級，按下沒有作用 */
+  lockedLevel?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,6 +52,10 @@ const displayIcon = computed(() => {
 
 // Methods
 const handlePress = () => {
+  if (props.lockedLevel) {
+    audioManager?.playCooldown()
+    return // 等級不夠，還不能用
+  }
   if (!props.isReady && props.currentCooldown > 0) {
     audioManager?.playCooldown()
     return // 冷卻中，不可使用
@@ -82,8 +88,10 @@ const handleMouseDown = (e: MouseEvent) => {
       ready: isReady, 
       cooldown: currentCooldown > 0,
       'combo-mode': isComboMode,
-      pressed: isPressed
+      pressed: isPressed,
+      locked: !!lockedLevel
     }"
+    :aria-disabled="!!lockedLevel"
     :style="buttonStyle"
     @touchstart="handleTouchStart"
     @mousedown="handleMouseDown"
@@ -118,8 +126,14 @@ const handleMouseDown = (e: MouseEvent) => {
       <div class="cooldown-text">{{ currentCooldown.toFixed(1) }}</div>
     </div>
     
+    <!-- 未解鎖：鎖頭與所需等級 -->
+    <div v-if="lockedLevel" class="lock-overlay" :title="`${lockedLevel} 級解鎖`">
+      <span class="lock-icon">🔒</span>
+      <span class="lock-level">Lv{{ lockedLevel }}</span>
+    </div>
+
     <!-- 符文邊框裝飾 (Ready 狀態) -->
-    <div v-if="isReady" class="rune-border"></div>
+    <div v-if="isReady && !lockedLevel" class="rune-border"></div>
     
     <!-- 接招模式發光效果 -->
     <div v-if="isComboMode" class="combo-glow"></div>
@@ -127,6 +141,37 @@ const handleMouseDown = (e: MouseEvent) => {
 </template>
 
 <style scoped>
+.skill-button.locked .skill-icon,
+.skill-button.locked .skill-name {
+  filter: grayscale(1) brightness(0.6);
+}
+
+.lock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 50%;
+  background: rgba(10, 8, 20, 0.7);
+  pointer-events: none;
+}
+
+.lock-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.lock-level {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fde68a;
+  text-shadow: 0 0 3px #000;
+}
+
 .skill-button {
   position: relative;
   border-radius: 50%;
