@@ -32,7 +32,7 @@ describe('BinarySerializer game state', () => {
             frame: 300,
             timestamp: 0,
             isGameStarted: true,
-            players: [{ id: 'ABC', pos: { x: 1, y: 2, z: 3 }, rot: { x: 0, y: 0.5, z: 0, w: 0.5 }, stats: { hp: 900, energy: 40, status: 5 } }]
+            players: [{ id: 'ABC', pos: { x: 1, y: 2, z: 3 }, rot: { x: 0, y: 0.5, z: 0, w: 0.5 }, stats: { hp: 900, energy: 40, status: 5 }, kb: 7 }]
         };
         const decoded = BinarySerializer.deserializeGameState(BinarySerializer.serializeGameState(state));
 

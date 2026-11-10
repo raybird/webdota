@@ -1,0 +1,273 @@
+{
+  "seed": 20261110,
+  "pillow_version": "12.2.0",
+  "source": {
+    "path": "src/data/maps/arena_v2.json",
+    "sha256": "9b8fdcc4d909c9370d6d871b08eb37c9b7c33ea78eba43ec7a0074e0fa40db3d"
+  },
+  "generator": {
+    "path": "tools/maps/bake_ground.py",
+    "sha256": "85409c4b6b68b617c8269fb1f8a1e6fcb1c3e132c45f42f2cc2799d856d6b315",
+    "reference_sha256": "068e3d55552161589470c3d497a5d2607e76bf182898a3fb3cf6cfef9e84cc2c"
+  },
+  "projection": {
+    "ppu": 19,
+    "depth": 11.4,
+    "world_size": [
+      96,
+      96
+    ],
+    "formula": [
+      "px = round((48 + z) * 19)",
+      "py = round((48 - x) * 11.4)"
+    ]
+  },
+  "outputs": {
+    "public/env/arena_v2/ground-blue.png": {
+      "size_px": [
+        1824,
+        1094
+      ],
+      "mode": "RGB",
+      "sha256": "b69bcb231e9a7b3e20fb134cee587250f496ba78a7e7c8ffc93158a8fae759b8"
+    },
+    "public/env/arena_v2/ground-red.png": {
+      "size_px": [
+        1824,
+        1094
+      ],
+      "mode": "RGB",
+      "sha256": "d4c615f49aeb8ac1ca33981a73631df98a4e8073446eb11c468359da470b6423"
+    },
+    "tools/maps/preview-arena_v2.png": {
+      "size_px": [
+        1920,
+        1100
+      ],
+      "mode": "RGB",
+      "sha256": "cf4167d4aabf21d22551ab5b107d92c5479d697eb1e866dc4f38f2a23191a0bb"
+    }
+  },
+  "difference": {
+    "pixel_count": 2328,
+    "bbox_px_exclusive": [
+      109,
+      67,
+      1716,
+      1028
+    ],
+    "outside_base_accents": 0,
+    "equals_base_accents_mask": true,
+    "regions": [
+      {
+        "team_at_blue_view": "blue",
+        "pixel_count": 1164,
+        "bbox_px_exclusive": [
+          109,
+          933,
+          272,
+          1028
+        ]
+      },
+      {
+        "team_at_blue_view": "red",
+        "pixel_count": 1164,
+        "bbox_px_exclusive": [
+          1553,
+          67,
+          1716,
+          162
+        ]
+      }
+    ]
+  },
+  "platforms": [
+    {
+      "type": "base",
+      "team": "blue",
+      "world_xz": [
+        -38,
+        -38
+      ],
+      "center_px": [
+        190,
+        980
+      ],
+      "bbox_px_exclusive": [
+        105,
+        929,
+        276,
+        1032
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "blue",
+      "world_xz": [
+        -12,
+        -12
+      ],
+      "center_px": [
+        684,
+        684
+      ],
+      "bbox_px_exclusive": [
+        656,
+        667,
+        713,
+        702
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "blue",
+      "world_xz": [
+        -22,
+        -22
+      ],
+      "center_px": [
+        494,
+        798
+      ],
+      "bbox_px_exclusive": [
+        466,
+        781,
+        523,
+        816
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "blue",
+      "world_xz": [
+        -30,
+        -30
+      ],
+      "center_px": [
+        342,
+        889
+      ],
+      "bbox_px_exclusive": [
+        314,
+        872,
+        371,
+        907
+      ]
+    },
+    {
+      "type": "base",
+      "team": "red",
+      "world_xz": [
+        38,
+        38
+      ],
+      "center_px": [
+        1634,
+        114
+      ],
+      "bbox_px_exclusive": [
+        1549,
+        63,
+        1720,
+        166
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "red",
+      "world_xz": [
+        12,
+        12
+      ],
+      "center_px": [
+        1140,
+        410
+      ],
+      "bbox_px_exclusive": [
+        1112,
+        393,
+        1169,
+        428
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "red",
+      "world_xz": [
+        22,
+        22
+      ],
+      "center_px": [
+        1330,
+        296
+      ],
+      "bbox_px_exclusive": [
+        1302,
+        279,
+        1359,
+        314
+      ]
+    },
+    {
+      "type": "tower",
+      "team": "red",
+      "world_xz": [
+        30,
+        30
+      ],
+      "center_px": [
+        1482,
+        205
+      ],
+      "bbox_px_exclusive": [
+        1454,
+        188,
+        1511,
+        223
+      ]
+    }
+  ],
+  "preview_details": [
+    {
+      "label": "BASE PLAZA / (-38, -38)",
+      "source_bbox_px_exclusive": [
+        78,
+        900,
+        302,
+        1060
+      ],
+      "scale": 2
+    },
+    {
+      "label": "OUTER TOWER / (-12, -12)",
+      "source_bbox_px_exclusive": [
+        572,
+        604,
+        796,
+        764
+      ],
+      "scale": 2
+    },
+    {
+      "label": "JUNGLE CLEARING / (18, -18)",
+      "source_bbox_px_exclusive": [
+        458,
+        262,
+        682,
+        422
+      ],
+      "scale": 2
+    },
+    {
+      "label": "CLOSED GROUND / STAIR BOUNDARY",
+      "source_bbox_px_exclusive": [
+        287,
+        159,
+        511,
+        319
+      ],
+      "scale": 2
+    }
+  ],
+  "validation_report_hash": "本報告不列自身 SHA-256，以免產生自我參照；outputs 列出所有 PNG。"
+}

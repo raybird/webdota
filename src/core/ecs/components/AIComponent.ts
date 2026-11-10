@@ -14,8 +14,11 @@ export class AIComponent implements Component {
     /** AI 類型 */
     aiType: AIType;
 
-    /** 目標位置（用於小兵尋路） */
+    /** 目前要走去的位置（小兵路線上的下一個中繼點） */
     targetPosition: pc.Vec3 | null = null;
+
+    /** 走到 targetPosition 之後的中繼點 */
+    waypoints: pc.Vec3[] = [];
 
     /** 當前攻擊目標 Entity ID */
     currentTargetId: string | null = null;
@@ -44,6 +47,21 @@ export class AIComponent implements Component {
      */
     setTargetPosition(target: pc.Vec3): void {
         this.targetPosition = target.clone();
+    }
+
+    /** 設定整條路線：先走第一點，到了再依序換下一點 */
+    setRoute(points: pc.Vec3[]): void {
+        const [first, ...rest] = points;
+        this.targetPosition = first ? first.clone() : null;
+        this.waypoints = rest.map(p => p.clone());
+    }
+
+    /** 換到下一個中繼點；已經是終點時回傳 false */
+    advanceWaypoint(): boolean {
+        const next = this.waypoints.shift();
+        if (!next) return false;
+        this.targetPosition = next;
+        return true;
     }
 
     /**

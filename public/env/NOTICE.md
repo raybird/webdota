@@ -7,6 +7,7 @@
 | 檔名（連續圖均含同名 PNG + JSON） | 格子／原生尺寸 | 格數 | fps | loop | pivot |
 |---|---|---:|---:|---|---|
 | ground-blue.png、ground-red.png | 各 1140×684 | — | — | — | — |
+| arena_v2/ground-blue.png、arena_v2/ground-red.png（2026-11-10，`tools/maps/bake_ground.py` 以同一套調色盤產生，96×96 地圖） | 各 1824×1094 | — | — | — | — |
 | wall-side.png、crate-side.png | 各 95×76 | — | — | — | — |
 | wall-top.png、crate-top.png | 各 95×57 | — | — | — | — |
 | tower-red-idle、tower-blue-idle | 48×112（整張 192×112） | 4 | 6 | true | [24,108] |

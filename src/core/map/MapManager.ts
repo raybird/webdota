@@ -38,7 +38,8 @@ export class MapManager {
 
         // 1. 清理當前地圖
         this.unloadCurrentMap();
-        this.pixelSkinLoaded ??= this.pixelSkin.load();
+        // 一場遊戲只載入一張地圖，貼圖第一次載入後沿用
+        this.pixelSkinLoaded ??= this.pixelSkin.load(config.id);
         await this.pixelSkinLoaded;
 
         // 2. 儲存當前配置

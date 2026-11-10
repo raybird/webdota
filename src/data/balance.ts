@@ -13,6 +13,12 @@ export const HURTBOX = {
     creep: { radius: 0.45, halfHeight: 0.6 },
 } as const;
 
+/** 移動佔位：與牆、建築的碰撞半徑，比受擊範圍小，轉角才不會卡住（D10） */
+export const FOOTPRINT = {
+    hero: 0.4,
+    creep: 0.35,
+} as const;
+
 /** 投射物本身的半徑；命中距離 = 投射物半徑 + 目標受擊半徑（英雄 1.5、小兵 1.3，小兵與改版前相同） */
 export const PROJECTILE_RADIUS = 0.85;
 

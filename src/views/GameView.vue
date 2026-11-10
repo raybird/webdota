@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, inject, onMounted, onUnmounted } from 'vue'
 import { GameService } from '../services/GameService'
 import type { RoomService } from '../services/RoomService'
-import type { MinimapEntity } from '../core/GameEngine'
+import type { MinimapEntity, MinimapLayout } from '../core/GameEngine'
 import { eventBus } from '../events/EventBus'
 import { useGameStore } from '../stores/gameStore'
 import SkillPanel from '../components/SkillPanel.vue'
@@ -88,6 +88,7 @@ const toggleShop = () => {
 
 // 小地圖專用資料
 const minimapEntities = ref<MinimapEntity[]>([])
+const minimapLayout = shallowRef<MinimapLayout | null>(null)
 
 /** HUD（冷卻、小地圖、金幣）更新間隔；不需要跟著畫面每幀更新 */
 const HUD_UPDATE_INTERVAL_MS = 100
@@ -100,6 +101,7 @@ const updateHud = () => {
   if (!engine) return
   currentCooldowns.value = props.gameService.getCooldowns()
   minimapEntities.value = engine.getMinimapEntities()
+  minimapLayout.value ??= engine.getMinimapLayout()
   const remaining = engine.getLocalRespawnRemaining()
   respawnSeconds.value = remaining === null ? null : Math.ceil(remaining)
   props.gameService.syncInventory()
@@ -198,7 +200,8 @@ onUnmounted(() => {
       <!-- 右上角：小地圖 -->
       <div class="minimap-area">
         <Minimap
-          :map-size="{ w: 60, h: 60 }"
+          :map-size="minimapLayout?.size ?? { w: 60, h: 60 }"
+          :layout="minimapLayout"
           :entities="minimapEntities"
           :local-player-id="roomStore.myPeerId"
         />

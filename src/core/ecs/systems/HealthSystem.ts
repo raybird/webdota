@@ -68,6 +68,7 @@ export class HealthSystem extends System {
         const health = world.getComponent<HealthComponent>(targetId, ComponentType.HEALTH);
         if (!health || health.isDead()) return 0;
         if (StatusSystem.has(world, targetId, 'invincible')) return 0;
+        if (health.shielded) return 0;
 
         const actualDamage = health.takeDamage(damage, attackerId);
         // 受傷與出手的一方都中斷脫戰回血

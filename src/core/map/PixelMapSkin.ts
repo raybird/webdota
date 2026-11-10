@@ -85,11 +85,15 @@ export class PixelMapSkin {
         this.app = app;
     }
 
-    /** 載入全部貼圖；個別失敗只影響那一組 */
-    async load(): Promise<void> {
+    /**
+     * 載入全部貼圖；個別失敗只影響那一組
+     * 地面依地圖而不同：demo_arena 在 public/env/ground-*.png，其他地圖在 public/env/<地圖 id>/ground-*.png
+     */
+    async load(mapId: string): Promise<void> {
+        const groundPrefix = mapId === 'demo_arena' ? '' : `${mapId}/`;
         const results = await Promise.allSettled([
             ...(['blue', 'red'] as const).map(async (team) => {
-                this.grounds.set(team, this.createMaterial(await this.loadTexture(`ground-${team}`, false)));
+                this.grounds.set(team, this.createMaterial(await this.loadTexture(`${groundPrefix}ground-${team}`, false)));
             }),
             ...['wall', 'crate'].map(async (name) => {
                 const [side, top] = await Promise.all([this.loadTexture(`${name}-side`, true), this.loadTexture(`${name}-top`, true)]);
@@ -177,7 +181,10 @@ export class PixelMapSkin {
         return this.entityWith('Ground', [new pc.MeshInstance(this.groundQuad(config, 0), material)]);
     }
 
-    /** 覆蓋整張地圖的平面，UV 對應烘焙圖的畫面方向（圖片左上是畫面左上，r = d = -w/2） */
+    /**
+     * 覆蓋整張地圖的平面，UV 對應烘焙圖的畫面方向（圖片左上是畫面左上，r = d = -w/2）
+     * PNG 與畫布上傳成貼圖時第 0 列（圖片最上面）都在 v=0
+     */
     private groundQuad(config: MapConfig, y: number): pc.Mesh {
         const hw = config.size.w / 2, hh = config.size.h / 2;
         const positions: number[] = [];
@@ -185,8 +192,8 @@ export class PixelMapSkin {
         for (const [x, z] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as const) {
             const { r, d } = this.toScreen(x, z);
             positions.push(x, y, z);
-            // 圖片上方（v=1）是畫面上方（d 最小）
-            uvs.push((r + hw) / config.size.w, 1 - (d + hh) / config.size.h);
+            // 圖片上方（v=0）是畫面上方（d 最小）
+            uvs.push((r + hw) / config.size.w, (d + hh) / config.size.h);
         }
         const builder = new MeshBuilder();
         builder.raw(positions, uvs, SHADE_TOP);
@@ -207,8 +214,8 @@ export class PixelMapSkin {
         ctx.fillStyle = '#000';
         const hw = config.size.w / 2, hh = config.size.h / 2;
         const px = (r: number) => (r + hw) * GROUND_PX_H;
-        // 畫布上傳成貼圖時列序與 PNG 相反（第 0 列在 v=0），所以縱向倒過來畫，才與烘焙地面同方向
-        const py = (d: number) => height - (d + hh) * GROUND_PX_V;
+        // 與烘焙地面同方向：畫布第 0 列是畫面上方
+        const py = (d: number) => (d + hh) * GROUND_PX_V;
         const right = screenRight();
 
         for (const c of casters) {
@@ -229,8 +236,7 @@ export class PixelMapSkin {
                 if (c.radius !== null) {
                     ctx.ellipse(px(cr), py(cd), halfR * GROUND_PX_H, halfD * GROUND_PX_V, 0, 0, Math.PI * 2);
                 } else {
-                    // 縱向倒過來畫，矩形的上緣是 d 較大的一邊
-                    ctx.rect(px(cr - halfR), py(cd + halfD), halfR * 2 * GROUND_PX_H, halfD * 2 * GROUND_PX_V);
+                    ctx.rect(px(cr - halfR), py(cd - halfD), halfR * 2 * GROUND_PX_H, halfD * 2 * GROUND_PX_V);
                 }
                 ctx.fill();
             }

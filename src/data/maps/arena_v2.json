@@ -1,0 +1,1632 @@
+{
+ "id": "arena_v2",
+ "name": "斷牆古道",
+ "size": {
+  "w": 96,
+  "h": 96
+ },
+ "environment": {
+  "skyColor": [
+   0.05,
+   0.05,
+   0.15
+  ],
+  "ambientIntensity": 1.2,
+  "groundColor": [
+   0.15,
+   0.25,
+   0.15
+  ]
+ },
+ "materials": {
+  "wall_stone": {
+   "color": [
+    0.4,
+    0.4,
+    0.45
+   ],
+   "roughness": 0.8
+  },
+  "pillar_dark": {
+   "color": [
+    0.25,
+    0.25,
+    0.3
+   ],
+   "roughness": 0.6
+  },
+  "obstacle_wood": {
+   "color": [
+    0.5,
+    0.35,
+    0.2
+   ],
+   "roughness": 0.7
+  },
+  "highlight_blue": {
+   "color": [
+    0.2,
+    0.4,
+    0.8
+   ],
+   "emissive": [
+    0.1,
+    0.2,
+    0.4
+   ]
+  },
+  "highlight_red": {
+   "color": [
+    0.8,
+    0.3,
+    0.2
+   ],
+   "emissive": [
+    0.4,
+    0.15,
+    0.1
+   ]
+  }
+ },
+ "blocks": [
+  {
+   "id": "wall_north",
+   "type": "box",
+   "position": [
+    -47.0,
+    2,
+    0
+   ],
+   "scale": [
+    2,
+    4,
+    96
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_south",
+   "type": "box",
+   "position": [
+    47.0,
+    2,
+    0
+   ],
+   "scale": [
+    2,
+    4,
+    96
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_west",
+   "type": "box",
+   "position": [
+    0,
+    2,
+    -47.0
+   ],
+   "scale": [
+    96,
+    4,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_east",
+   "type": "box",
+   "position": [
+    0,
+    2,
+    47.0
+   ],
+   "scale": [
+    96,
+    4,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_0",
+   "type": "box",
+   "position": [
+    -35.0,
+    1,
+    -45.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_1",
+   "type": "box",
+   "position": [
+    -31.0,
+    1,
+    -45.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_2",
+   "type": "box",
+   "position": [
+    -27.0,
+    1,
+    -41.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_3",
+   "type": "box",
+   "position": [
+    -23.0,
+    1,
+    -37.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_4",
+   "type": "box",
+   "position": [
+    -19.0,
+    1,
+    -33.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_5",
+   "type": "box",
+   "position": [
+    -15.0,
+    1,
+    -29.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_6",
+   "type": "box",
+   "position": [
+    -3.0,
+    1,
+    -17.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_7",
+   "type": "box",
+   "position": [
+    1.0,
+    1,
+    -13.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_8",
+   "type": "box",
+   "position": [
+    5.0,
+    1,
+    -9.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_9",
+   "type": "box",
+   "position": [
+    9.0,
+    1,
+    -5.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_10",
+   "type": "box",
+   "position": [
+    13.0,
+    1,
+    -1.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_11",
+   "type": "box",
+   "position": [
+    17.0,
+    1,
+    3.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_12",
+   "type": "box",
+   "position": [
+    29.0,
+    1,
+    15.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_13",
+   "type": "box",
+   "position": [
+    33.0,
+    1,
+    19.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_14",
+   "type": "box",
+   "position": [
+    37.0,
+    1,
+    23.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_15",
+   "type": "box",
+   "position": [
+    41.0,
+    1,
+    27.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_16",
+   "type": "box",
+   "position": [
+    45.0,
+    1,
+    31.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_17",
+   "type": "box",
+   "position": [
+    45.0,
+    1,
+    35.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_18",
+   "type": "box",
+   "position": [
+    11.0,
+    1,
+    -44.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    4.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_19",
+   "type": "box",
+   "position": [
+    15.0,
+    1,
+    -43.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_20",
+   "type": "box",
+   "position": [
+    19.0,
+    1,
+    -39.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_21",
+   "type": "box",
+   "position": [
+    23.0,
+    1,
+    -35.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_22",
+   "type": "box",
+   "position": [
+    27.0,
+    1,
+    -31.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_23",
+   "type": "box",
+   "position": [
+    31.0,
+    1,
+    -27.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_24",
+   "type": "box",
+   "position": [
+    35.0,
+    1,
+    -23.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_25",
+   "type": "box",
+   "position": [
+    39.0,
+    1,
+    -19.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_26",
+   "type": "box",
+   "position": [
+    43.0,
+    1,
+    -15.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_27",
+   "type": "box",
+   "position": [
+    44.0,
+    1,
+    -11.0
+   ],
+   "scale": [
+    4.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_28",
+   "type": "box",
+   "position": [
+    12,
+    1,
+    -22.0
+   ],
+   "scale": [
+    2,
+    2,
+    6
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_29",
+   "type": "box",
+   "position": [
+    14.0,
+    1,
+    -24
+   ],
+   "scale": [
+    6,
+    2,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_30",
+   "type": "box",
+   "position": [
+    12,
+    1,
+    -14.0
+   ],
+   "scale": [
+    2,
+    2,
+    6
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_31",
+   "type": "box",
+   "position": [
+    14.0,
+    1,
+    -12
+   ],
+   "scale": [
+    6,
+    2,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_32",
+   "type": "box",
+   "position": [
+    24,
+    1,
+    -22.0
+   ],
+   "scale": [
+    2,
+    2,
+    6
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_33",
+   "type": "box",
+   "position": [
+    22.0,
+    1,
+    -24
+   ],
+   "scale": [
+    6,
+    2,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_34",
+   "type": "box",
+   "position": [
+    24,
+    1,
+    -14.0
+   ],
+   "scale": [
+    2,
+    2,
+    6
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_35",
+   "type": "box",
+   "position": [
+    22.0,
+    1,
+    -12
+   ],
+   "scale": [
+    6,
+    2,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "crate_36",
+   "type": "box",
+   "position": [
+    1,
+    1,
+    -31
+   ],
+   "scale": [
+    3,
+    2,
+    3
+   ],
+   "material": "obstacle_wood"
+  },
+  {
+   "id": "crate_37",
+   "type": "box",
+   "position": [
+    31,
+    1,
+    1
+   ],
+   "scale": [
+    3,
+    2,
+    3
+   ],
+   "material": "obstacle_wood"
+  },
+  {
+   "id": "wall_38",
+   "type": "box",
+   "position": [
+    35.0,
+    1,
+    45.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_39",
+   "type": "box",
+   "position": [
+    31.0,
+    1,
+    45.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_40",
+   "type": "box",
+   "position": [
+    27.0,
+    1,
+    41.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_41",
+   "type": "box",
+   "position": [
+    23.0,
+    1,
+    37.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_42",
+   "type": "box",
+   "position": [
+    19.0,
+    1,
+    33.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_43",
+   "type": "box",
+   "position": [
+    15.0,
+    1,
+    29.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_44",
+   "type": "box",
+   "position": [
+    3.0,
+    1,
+    17.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_45",
+   "type": "box",
+   "position": [
+    -1.0,
+    1,
+    13.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_46",
+   "type": "box",
+   "position": [
+    -5.0,
+    1,
+    9.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_47",
+   "type": "box",
+   "position": [
+    -9.0,
+    1,
+    5.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_48",
+   "type": "box",
+   "position": [
+    -13.0,
+    1,
+    1.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_49",
+   "type": "box",
+   "position": [
+    -17.0,
+    1,
+    -3.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_50",
+   "type": "box",
+   "position": [
+    -29.0,
+    1,
+    -15.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_51",
+   "type": "box",
+   "position": [
+    -33.0,
+    1,
+    -19.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_52",
+   "type": "box",
+   "position": [
+    -37.0,
+    1,
+    -23.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_53",
+   "type": "box",
+   "position": [
+    -41.0,
+    1,
+    -27.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_54",
+   "type": "box",
+   "position": [
+    -45.0,
+    1,
+    -31.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_55",
+   "type": "box",
+   "position": [
+    -45.0,
+    1,
+    -35.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_56",
+   "type": "box",
+   "position": [
+    -11.0,
+    1,
+    44.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    4.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_57",
+   "type": "box",
+   "position": [
+    -15.0,
+    1,
+    43.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_58",
+   "type": "box",
+   "position": [
+    -19.0,
+    1,
+    39.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_59",
+   "type": "box",
+   "position": [
+    -23.0,
+    1,
+    35.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_60",
+   "type": "box",
+   "position": [
+    -27.0,
+    1,
+    31.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_61",
+   "type": "box",
+   "position": [
+    -31.0,
+    1,
+    27.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_62",
+   "type": "box",
+   "position": [
+    -35.0,
+    1,
+    23.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_63",
+   "type": "box",
+   "position": [
+    -39.0,
+    1,
+    19.0
+   ],
+   "scale": [
+    10.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_64",
+   "type": "box",
+   "position": [
+    -43.0,
+    1,
+    15.0
+   ],
+   "scale": [
+    2.0,
+    2,
+    10.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_65",
+   "type": "box",
+   "position": [
+    -44.0,
+    1,
+    11.0
+   ],
+   "scale": [
+    4.0,
+    2,
+    2.0
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_66",
+   "type": "box",
+   "position": [
+    -12,
+    1,
+    22.0
+   ],
+   "scale": [
+    2,
+    2,
+    6
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_67",
+   "type": "box",
+   "position": [
+    -14.0,
+    1,
+    24
+   ],
+   "scale": [
+    6,
+    2,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_68",
+   "type": "box",
+   "position": [
+    -12,
+    1,
+    14.0
+   ],
+   "scale": [
+    2,
+    2,
+    6
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_69",
+   "type": "box",
+   "position": [
+    -14.0,
+    1,
+    12
+   ],
+   "scale": [
+    6,
+    2,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_70",
+   "type": "box",
+   "position": [
+    -24,
+    1,
+    22.0
+   ],
+   "scale": [
+    2,
+    2,
+    6
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_71",
+   "type": "box",
+   "position": [
+    -22.0,
+    1,
+    24
+   ],
+   "scale": [
+    6,
+    2,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_72",
+   "type": "box",
+   "position": [
+    -24,
+    1,
+    14.0
+   ],
+   "scale": [
+    2,
+    2,
+    6
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "wall_73",
+   "type": "box",
+   "position": [
+    -22.0,
+    1,
+    12
+   ],
+   "scale": [
+    6,
+    2,
+    2
+   ],
+   "material": "wall_stone"
+  },
+  {
+   "id": "crate_74",
+   "type": "box",
+   "position": [
+    -1,
+    1,
+    31
+   ],
+   "scale": [
+    3,
+    2,
+    3
+   ],
+   "material": "obstacle_wood"
+  },
+  {
+   "id": "crate_75",
+   "type": "box",
+   "position": [
+    -31,
+    1,
+    -1
+   ],
+   "scale": [
+    3,
+    2,
+    3
+   ],
+   "material": "obstacle_wood"
+  },
+  {
+   "id": "pillar_76",
+   "type": "cylinder",
+   "position": [
+    0,
+    3,
+    0
+   ],
+   "scale": [
+    3.0,
+    6,
+    3.0
+   ],
+   "material": "pillar_dark"
+  },
+  {
+   "id": "blue_base_marker",
+   "type": "box",
+   "position": [
+    -38,
+    0.1,
+    -38
+   ],
+   "scale": [
+    8,
+    0.2,
+    8
+   ],
+   "material": "highlight_blue",
+   "isCollider": false
+  },
+  {
+   "id": "red_base_marker",
+   "type": "box",
+   "position": [
+    38,
+    0.1,
+    38
+   ],
+   "scale": [
+    8,
+    0.2,
+    8
+   ],
+   "material": "highlight_red",
+   "isCollider": false
+  }
+ ],
+ "entities": [
+  {
+   "type": "spawn_point",
+   "team": "blue",
+   "position": [
+    -36,
+    1,
+    -40
+   ]
+  },
+  {
+   "type": "creep_spawn",
+   "team": "blue",
+   "position": [
+    -33,
+    1,
+    -33
+   ]
+  },
+  {
+   "type": "spawn_point",
+   "team": "red",
+   "position": [
+    36,
+    1,
+    40
+   ]
+  },
+  {
+   "type": "creep_spawn",
+   "team": "red",
+   "position": [
+    33,
+    1,
+    33
+   ]
+  },
+  {
+   "type": "base",
+   "team": "blue",
+   "position": [
+    -38,
+    0,
+    -38
+   ],
+   "config": {
+    "maxHp": 5000,
+    "attackRange": 8,
+    "order": 4
+   }
+  },
+  {
+   "type": "tower",
+   "team": "blue",
+   "position": [
+    -12,
+    0,
+    -12
+   ],
+   "config": {
+    "attackRange": 10,
+    "attackPower": 80,
+    "order": 1
+   }
+  },
+  {
+   "type": "tower",
+   "team": "blue",
+   "position": [
+    -22,
+    0,
+    -22
+   ],
+   "config": {
+    "attackRange": 10,
+    "attackPower": 100,
+    "order": 2
+   }
+  },
+  {
+   "type": "tower",
+   "team": "blue",
+   "position": [
+    -30,
+    0,
+    -30
+   ],
+   "config": {
+    "attackRange": 10,
+    "attackPower": 100,
+    "order": 3
+   }
+  },
+  {
+   "type": "base",
+   "team": "red",
+   "position": [
+    38,
+    0,
+    38
+   ],
+   "config": {
+    "maxHp": 5000,
+    "attackRange": 8,
+    "order": 4
+   }
+  },
+  {
+   "type": "tower",
+   "team": "red",
+   "position": [
+    12,
+    0,
+    12
+   ],
+   "config": {
+    "attackRange": 10,
+    "attackPower": 80,
+    "order": 1
+   }
+  },
+  {
+   "type": "tower",
+   "team": "red",
+   "position": [
+    22,
+    0,
+    22
+   ],
+   "config": {
+    "attackRange": 10,
+    "attackPower": 100,
+    "order": 2
+   }
+  },
+  {
+   "type": "tower",
+   "team": "red",
+   "position": [
+    30,
+    0,
+    30
+   ],
+   "config": {
+    "attackRange": 10,
+    "attackPower": 100,
+    "order": 3
+   }
+  }
+ ],
+ "lanes": {
+  "blue": [
+   [
+    -33,
+    -33
+   ],
+   [
+    -20,
+    -20
+   ],
+   [
+    20,
+    20
+   ],
+   [
+    33,
+    33
+   ]
+  ],
+  "red": [
+   [
+    -33,
+    -33
+   ],
+   [
+    -20,
+    -20
+   ],
+   [
+    20,
+    20
+   ],
+   [
+    33,
+    33
+   ]
+  ]
+ },
+ "brush": [
+  {
+   "x": 1.5,
+   "z": -9.5,
+   "w": 4,
+   "d": 4
+  },
+  {
+   "x": -3,
+   "z": -29,
+   "w": 5,
+   "d": 4
+  },
+  {
+   "x": 29,
+   "z": -3,
+   "w": 4,
+   "d": 5
+  },
+  {
+   "x": 30,
+   "z": -12,
+   "w": 4,
+   "d": 4
+  },
+  {
+   "x": 12,
+   "z": -30,
+   "w": 4,
+   "d": 4
+  },
+  {
+   "x": -1.5,
+   "z": 9.5,
+   "w": 4,
+   "d": 4
+  },
+  {
+   "x": 3,
+   "z": 29,
+   "w": 5,
+   "d": 4
+  },
+  {
+   "x": -29,
+   "z": 3,
+   "w": 4,
+   "d": 5
+  },
+  {
+   "x": -30,
+   "z": 12,
+   "w": 4,
+   "d": 4
+  },
+  {
+   "x": -12,
+   "z": 30,
+   "w": 4,
+   "d": 4
+  }
+ ],
+ "deadZones": [
+  {
+   "x": 15.0,
+   "z": -44.5,
+   "w": 8.0,
+   "d": 3.0
+  },
+  {
+   "x": 23.0,
+   "z": -40.5,
+   "w": 8.0,
+   "d": 11.0
+  },
+  {
+   "x": 31.0,
+   "z": -36.5,
+   "w": 8.0,
+   "d": 19.0
+  },
+  {
+   "x": 39.0,
+   "z": -32.5,
+   "w": 8.0,
+   "d": 27.0
+  },
+  {
+   "x": 44.5,
+   "z": -28.5,
+   "w": 3.0,
+   "d": 35.0
+  },
+  {
+   "x": -15.0,
+   "z": 44.5,
+   "w": 8.0,
+   "d": 3.0
+  },
+  {
+   "x": -23.0,
+   "z": 40.5,
+   "w": 8.0,
+   "d": 11.0
+  },
+  {
+   "x": -31.0,
+   "z": 36.5,
+   "w": 8.0,
+   "d": 19.0
+  },
+  {
+   "x": -39.0,
+   "z": 32.5,
+   "w": 8.0,
+   "d": 27.0
+  },
+  {
+   "x": -44.5,
+   "z": 28.5,
+   "w": 3.0,
+   "d": 35.0
+  }
+ ]
+}

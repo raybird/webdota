@@ -10,6 +10,8 @@ import { ComponentType } from '../Component';
 import { TransformComponent } from '../components/TransformComponent';
 import { PhysicsComponent } from '../components/PhysicsComponent';
 import { CombatComponent } from '../components/CombatComponent';
+import { moveWithCollision } from '../../map/MapCollision';
+import { footprintOf } from '../../map/footprint';
 
 export class MovementSystem extends System {
     readonly name = 'MovementSystem';
@@ -53,10 +55,13 @@ export class MovementSystem extends System {
         const speed = (combat?.moveSpeed ?? 5.0) * StatusSystem.speedMultiplier(world, entityId);
         const currentPos = physics.getPosition();
 
-        const newX = currentPos.x + direction.x * speed * dt;
-        const newZ = currentPos.z + direction.z * speed * dt;
+        const next = moveWithCollision(
+            currentPos,
+            { x: currentPos.x + direction.x * speed * dt, z: currentPos.z + direction.z * speed * dt },
+            footprintOf(world, entityId)
+        );
 
-        physics.setKinematicPosition(newX, currentPos.y, newZ);
+        physics.setKinematicPosition(next.x, currentPos.y, next.z);
 
         // 更新朝向
         if (direction.x !== 0 || direction.z !== 0) {

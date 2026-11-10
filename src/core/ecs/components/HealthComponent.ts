@@ -22,6 +22,9 @@ export class HealthComponent implements Component {
     /** 距離上次受傷或造成傷害的秒數（脫戰回血用，只在 Host 計算） */
     outOfCombatSeconds: number = 0;
 
+    /** 建築依序攻擊：前一座建築還沒破時為 true，不受傷害（ECSStructureManager 每幀更新） */
+    shielded = false;
+
     /** 最後攻擊者 ID（用於擊殺獎勵） */
     lastAttackerId: string | null = null;
 

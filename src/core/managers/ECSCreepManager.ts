@@ -65,7 +65,11 @@ export class ECSCreepManager {
         console.log(`[ECSCreepManager] Initialized. Red base: (${this.redBasePosition.x}, ${this.redBasePosition.z}), Blue base: (${this.blueBasePosition.x}, ${this.blueBasePosition.z})`);
     }
 
+    /** 敵方主堡位置：地圖的主堡；舊地圖沒有時取出生點平均 */
     private calculateBasePosition(team: Team): pc.Vec3 {
+        const base = this.mapManager.getEntitiesByType('base').find(e => e.team === team);
+        if (base) return new pc.Vec3(base.position[0], 1, base.position[2]);
+
         const spawnPoints = this.mapManager.getSpawnPoints(team as 'red' | 'blue');
         if (spawnPoints.length === 0) {
             return team === 'red' ? new pc.Vec3(22, 1, 22) : new pc.Vec3(-22, 1, -22);
@@ -90,33 +94,43 @@ export class ECSCreepManager {
     }
 
     private spawnCreepsForTeam(team: Team): void {
-        const spawnPoints = this.mapManager.getSpawnPoints(team as 'red' | 'blue');
-        if (spawnPoints.length === 0) return;
-
-        const spawnPoint = spawnPoints[0];
-        if (!spawnPoint) return;
-
-        // 出生點是主堡中心；往地圖中央移出主堡底面（5×5），一出生就在主堡像素圖旁邊看得到，也已朝向兵線
-        const { x, z } = spawnPoint.position;
-        const len = Math.hypot(x, z) || 1;
-        const originX = x - (x / len) * CREEP_SPAWN_OFFSET;
-        const originZ = z - (z / len) * CREEP_SPAWN_OFFSET;
+        const origin = this.creepOrigin(team);
+        if (!origin) return;
 
         for (let i = 0; i < this.waveConfig.creepsPerWave; i++) {
             this.spawnCreep(team, {
-                x: originX + (Math.random() - 0.5) * 2,
-                y: spawnPoint.position.y,
-                z: originZ + (Math.random() - 0.5) * 2
+                x: origin.x + (Math.random() - 0.5) * 2,
+                y: origin.y,
+                z: origin.z + (Math.random() - 0.5) * 2
             });
         }
+    }
+
+    /** 小兵出生位置：地圖的 creep_spawn；沒有時從出生點（主堡中心）往地圖中央移出主堡底面 */
+    private creepOrigin(team: Team): { x: number; y: number; z: number } | null {
+        const marker = this.mapManager.getEntitiesByType('creep_spawn').find(e => e.team === team);
+        if (marker) {
+            const [x = 0, y = 1, z = 0] = marker.position;
+            return { x, y, z };
+        }
+        const spawnPoint = this.mapManager.getSpawnPoints(team as 'red' | 'blue')[0];
+        if (!spawnPoint) return null;
+        const { x, y, z } = spawnPoint.position;
+        const len = Math.hypot(x, z) || 1;
+        return { x: x - (x / len) * CREEP_SPAWN_OFFSET, y, z: z - (z / len) * CREEP_SPAWN_OFFSET };
+    }
+
+    /** 小兵路線：地圖的中繼點，最後走到敵方主堡 */
+    private routeOf(team: Team): { x: number; y: number; z: number }[] {
+        const enemyBase = team === 'red' ? this.blueBasePosition : this.redBasePosition;
+        const lane = this.mapManager.getCurrentMapConfig()?.lanes?.[team as 'red' | 'blue'] ?? [];
+        return [...lane.map(([x, z]) => ({ x, y: 1, z })), { x: enemyBase.x, y: 1, z: enemyBase.z }];
     }
 
     /**
      * 生成單一小兵（Host 生成波次，Client 依 Host 同步的狀態生成鏡像）
      */
     spawnCreep(team: Team, position: { x: number; y: number; z: number }, maxHp: number = 200): EntityId {
-        const targetPosition = team === 'red' ? this.blueBasePosition : this.redBasePosition;
-
         // 判斷敵我 (灰色敵人)
         const myTeam = useRoomStore().myPlayer?.team;
         const isEnemy = myTeam && myTeam !== team && myTeam !== 'neutral';
@@ -124,7 +138,7 @@ export class ECSCreepManager {
         const creepId = this.entityFactory.createCreep({
             team,
             position,
-            targetPosition: { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z },
+            route: this.routeOf(team),
             maxHp,
             attackPower: 5,
             moveSpeed: 2.5,

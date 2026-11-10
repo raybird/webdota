@@ -4,6 +4,8 @@
  */
 
 import { colliderRadius } from '../../combat/hurtRadius';
+import { moveWithCollision } from '../../map/MapCollision';
+import { footprintOf } from '../../map/footprint';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { System } from '../System';
 import { World } from '../World';
@@ -274,12 +276,15 @@ export class CollisionSystem extends System {
             if (hit.knockback) {
                 const physics = world.getComponent<PhysicsComponent>(hit.targetId, ComponentType.PHYSICS);
                 if (physics) {
+                    // 擊退會被牆擋住，不會把人推進牆裡或推出地圖
                     const pos = physics.getPosition();
-                    physics.setKinematicPosition(
-                        pos.x + hit.knockback.x,
-                        pos.y,
-                        pos.z + hit.knockback.z
+                    const next = moveWithCollision(
+                        pos,
+                        { x: pos.x + hit.knockback.x, z: pos.z + hit.knockback.z },
+                        footprintOf(world, hit.targetId)
                     );
+                    physics.teleport(next.x, pos.y, next.z);
+                    physics.forcedMoves++;
                 }
             }
         }

@@ -15,6 +15,8 @@ interface DamageNumber {
   isCrit: boolean
   /** 回血：綠色 +N，比傷害數字小 */
   heal?: boolean
+  /** 只有文字的提示（建築依序攻擊） */
+  hint?: boolean
   label?: string
   x: number
   y: number
@@ -48,12 +50,15 @@ const headScreenPos = (targetId: string, height: number): pc.Vec3 | null => {
   return screenPos
 }
 
-const show = (entry: Omit<DamageNumber, 'id'>) => {
+/** 提示文字停留較久，來得及讀 */
+const HINT_LIFETIME_MS = 1800
+
+const show = (entry: Omit<DamageNumber, 'id'>, lifetime = LIFETIME_MS) => {
   const id = nextId++
   damageNumbers.value.push({ id, ...entry })
   window.setTimeout(() => {
     damageNumbers.value = damageNumbers.value.filter(dn => dn.id !== id)
-  }, LIFETIME_MS)
+  }, lifetime)
 }
 
 const onEntityTookDamage = (event: { targetId: string; damage: number; isCrit: boolean }) => {
@@ -69,11 +74,19 @@ const onEntityHealed = (event: { targetId: string; amount: number; label?: strin
   show({ amount: event.amount, isCrit: false, heal: true, label: event.label, x: pos.x, y: pos.y })
 }
 
+// 建築的提示：在血條上方
+const onStructureShielded = (event: { targetId: string; label: string }) => {
+  const pos = headScreenPos(event.targetId, 8)
+  if (!pos) return
+  show({ amount: 0, isCrit: false, hint: true, label: event.label, x: pos.x, y: pos.y }, HINT_LIFETIME_MS)
+}
+
 const unsubscribers: Array<() => void> = []
 
 onMounted(() => {
   unsubscribers.push(eventBus.on('ENTITY_TOOK_DAMAGE', onEntityTookDamage))
   unsubscribers.push(eventBus.on('ENTITY_HEALED', onEntityHealed))
+  unsubscribers.push(eventBus.on('STRUCTURE_SHIELDED', onStructureShielded))
 })
 
 onUnmounted(() => {
@@ -87,10 +100,11 @@ onUnmounted(() => {
       v-for="dn in damageNumbers"
       :key="dn.id"
       class="damage-number"
-      :class="{ crit: dn.isCrit, heal: dn.heal }"
+      :class="{ crit: dn.isCrit, heal: dn.heal, hint: dn.hint }"
       :style="{ left: `${dn.x}px`, top: `${dn.y}px` }"
     >
-      <template v-if="dn.heal"><span v-if="dn.label" class="heal-label">{{ dn.label }}</span>+{{ Math.round(dn.amount) }}</template>
+      <template v-if="dn.hint">{{ dn.label }}</template>
+      <template v-else-if="dn.heal"><span v-if="dn.label" class="heal-label">{{ dn.label }}</span>+{{ Math.round(dn.amount) }}</template>
       <template v-else>-{{ Math.round(dn.amount) }}</template>
     </div>
   </div>
@@ -140,6 +154,14 @@ onUnmounted(() => {
   text-shadow: 0 0 3px #000, 0 0 6px #15803D;
   animation-name: heal-float;
   animation-timing-function: linear;
+}
+
+.damage-number.hint {
+  font-size: 14px;
+  color: #E5E7EB;
+  white-space: nowrap;
+  text-shadow: 0 0 3px #000, 0 0 6px #000;
+  animation: heal-float 1.8s linear forwards;
 }
 
 .heal-label {
