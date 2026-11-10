@@ -17,6 +17,7 @@ import { EntitySyncManager } from './managers/EntitySyncManager';
 import { TowerFeedback } from './TowerFeedback';
 import { FacingIndicator } from './FacingIndicator';
 import { HitboxDebugView } from './HitboxDebugView';
+import { RegenFeedback } from './RegenFeedback';
 import { RemoteBoltLog } from './RemoteBoltLog';
 import type { TowerAttackMessage } from './NetworkManager';
 import { SoundManager } from './SoundManager';
@@ -120,6 +121,7 @@ export class GameEngine {
     private towerFeedback!: TowerFeedback;
     private facingIndicator!: FacingIndicator;
     private hitboxDebugView!: HitboxDebugView;
+    private regenFeedback!: RegenFeedback;
     /** Client：Host 轉播的光彈，Host 遷移時由新 Host 接手結算 */
     private boltLog = new RemoteBoltLog();
 
@@ -226,6 +228,7 @@ export class GameEngine {
         this.towerFeedback = new TowerFeedback(this.app, this.ecsWorld, this.spriteFx, this.structureManager);
         this.facingIndicator = new FacingIndicator(this.app);
         this.hitboxDebugView = new HitboxDebugView(this.app, this.collisionSystem);
+        this.regenFeedback = new RegenFeedback(this.ecsWorld);
 
         this.setupEventListeners();
 
@@ -363,6 +366,7 @@ export class GameEngine {
         this.mapManager.applyView();
         this.towerFeedback.reset();
         this.facingIndicator.reset();
+        this.regenFeedback.reset();
         this.boltLog.clear();
         if (this.playerManager.getPlayer(peerId)) {
             const skills = this.playerManager.getPlayerSkills(peerId);
@@ -424,6 +428,14 @@ export class GameEngine {
                 localPlayer ? this.playerManager.getPlayerFacingDirection(me) : null
             );
             this.hitboxDebugView.update();
+            const localTeam = this.statusVisualSystem.localTeam;
+            const localPosition = localPlayer ? this.playerManager.getPlayerPosition(me) : null;
+            this.regenFeedback.update(dt, {
+                players: this.playerManager.getAllPlayers(),
+                localPlayerId: me,
+                localPosition,
+                fountain: localTeam ? this.structureManager.basePosition(localTeam) : null
+            });
         }
     }
 
@@ -519,7 +531,12 @@ export class GameEngine {
             this.creepManager.update(dt);
             this.structureManager.update();
         }
-        this.playerManager.update(dt, this.isHost, (team) => this.getRespawnPosition(team));
+        this.playerManager.update(
+            dt,
+            this.isHost,
+            (team) => this.getRespawnPosition(team),
+            (team) => this.structureManager.basePosition(team)
+        );
 
         this.projectileManager.update(dt, this.ecsWorld, this.collisionSystem);
         this.physicsWorld.step();

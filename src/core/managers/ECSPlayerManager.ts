@@ -11,6 +11,7 @@ import { useCharacterStore } from '../../stores/characterStore';
 import { useRoomStore } from '../../stores/roomStore';
 import { getCharacter } from '../../data/characters';
 import { eventBus } from '../../events/EventBus';
+import { isInFountain, regenPerSecond } from '../combat/regen';
 
 import {
     World,
@@ -34,6 +35,7 @@ import {
 export const RESPAWN_SECONDS = 5;
 
 type Vec3Like = { x: number; y: number; z: number };
+type GroundPoint = { x: number; z: number };
 
 export class ECSPlayerManager {
     private world: World;
@@ -200,8 +202,14 @@ export class ECSPlayerManager {
     /**
      * 每幀更新：偵測陣亡並隱藏玩家、停用碰撞；權威端倒數結束後在 respawnAt 回傳的位置重生
      * Client 不自行重生，等 Host 的血量恢復後才顯示
+     * 權威端同時計算自動回血（基礎、脫戰、fountainOf 回傳的自家泉水）
      */
-    update(dt: number, authoritative: boolean, respawnAt: (team: Team) => Vec3Like): void {
+    update(
+        dt: number,
+        authoritative: boolean,
+        respawnAt: (team: Team) => Vec3Like,
+        fountainOf: (team: Team) => GroundPoint | null = () => null
+    ): void {
         for (const [playerId, entityId] of this.players) {
             const health = this.world.getComponent<HealthComponent>(entityId, ComponentType.HEALTH);
             if (!health) continue;
@@ -210,7 +218,7 @@ export class ECSPlayerManager {
             if (remaining === undefined) {
                 if (!health.isDead()) {
                     // 生命回復只在權威端計算，Client 的血量由 Host 同步
-                    if (authoritative && health.hpRegen > 0) health.heal(health.hpRegen * dt);
+                    if (authoritative) this.regenerate(entityId, health, dt, fountainOf);
                     continue;
                 }
                 this.respawnTimers.set(playerId, RESPAWN_SECONDS);
@@ -238,6 +246,25 @@ export class ECSPlayerManager {
             this.respawn(entityId, respawnAt(team));
             this.respawnTimers.delete(playerId);
         }
+    }
+
+    private regenerate(
+        entityId: EntityId,
+        health: HealthComponent,
+        dt: number,
+        fountainOf: (team: Team) => GroundPoint | null
+    ): void {
+        health.outOfCombatSeconds += dt;
+        if (health.currentHp >= health.maxHp) return;
+        const team = this.world.getComponent<TeamComponent>(entityId, ComponentType.TEAM)?.team ?? 'neutral';
+        const pos = this.world.getComponent<PhysicsComponent>(entityId, ComponentType.PHYSICS)?.rigidBody?.translation();
+        const perSecond = regenPerSecond({
+            maxHp: health.maxHp,
+            itemRegen: health.hpRegen,
+            outOfCombatSeconds: health.outOfCombatSeconds,
+            inFountain: !!pos && team !== 'neutral' && isInFountain(pos, fountainOf(team))
+        });
+        health.heal(perSecond * dt);
     }
 
     private respawn(entityId: EntityId, position: Vec3Like): void {

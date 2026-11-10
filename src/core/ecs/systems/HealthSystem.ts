@@ -70,6 +70,9 @@ export class HealthSystem extends System {
         if (StatusSystem.has(world, targetId, 'invincible')) return 0;
 
         const actualDamage = health.takeDamage(damage, attackerId);
+        // 受傷與出手的一方都中斷脫戰回血
+        health.markCombat();
+        if (attackerId) world.getComponent<HealthComponent>(attackerId, ComponentType.HEALTH)?.markCombat();
 
         // 如果大於0的傷害，觸發受擊效果與跳字
         if (actualDamage > 0) {
